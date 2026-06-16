@@ -1,1 +1,41 @@
-node_modules
+# Dependency directories
+node_modules/
+**/node_modules/
+
+# Local env files and secrets
+.env
+**/.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Backend build outputs
+backend/dist/
+backend/dist-ts/
+
+# SQLite Database and journaling
+backend/prisma/*.db
+backend/prisma/*.db-journal
+*.db
+*.db-journal
+
+# Uploaded assets (PDFs, study resources, test papers)
+backend/uploads/
+uploads/
+
+# Expo / React Native files
+.expo/
+**/web-build/
+**/.tsbuildinfo
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# System & IDE files
+.DS_Store
+.idea/
+.vscode/

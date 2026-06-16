@@ -16,6 +16,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isOtpMode, setIsOtpMode] = useState(true);
+  const [role, setRole] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
 
   const { sendOtp, loginWithEmail, loginWithGoogle, isLoading, error } = useAuthStore();
 
@@ -28,7 +29,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     const formattedPhone = phoneNumber.startsWith('+91') ? phoneNumber : `+91${phoneNumber}`;
     const success = await sendOtp(formattedPhone);
     if (success) {
-      navigation.navigate('OTPVerification', { phoneNumber: formattedPhone });
+      navigation.navigate('OTPVerification', { phoneNumber: formattedPhone, role });
     }
   };
 
@@ -37,7 +38,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('Invalid Input', 'Please fill in both email and password');
       return;
     }
-    const success = await loginWithEmail(email, password);
+    const success = await loginWithEmail(email, password, role);
     if (success) {
       navigation.replace('AppTabs', { screen: 'Home' });
     }
@@ -68,6 +69,38 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           <Text className="text-red-400 text-xs font-semibold">{error}</Text>
         </View>
       )}
+
+      {/* Role Selector */}
+      <View className="flex-row bg-slate-900 border border-slate-800 rounded-2xl p-1 mb-6">
+        <TouchableOpacity
+          onPress={() => setRole('STUDENT')}
+          className={`flex-1 py-3 rounded-xl items-center ${
+            role === 'STUDENT' ? 'bg-blue-600' : 'bg-transparent'
+          }`}
+        >
+          <Text
+            className={`text-xs font-bold ${
+              role === 'STUDENT' ? 'text-white' : 'text-slate-400'
+            }`}
+          >
+            🎓 Student Portal
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setRole('TEACHER')}
+          className={`flex-1 py-3 rounded-xl items-center ${
+            role === 'TEACHER' ? 'bg-blue-600' : 'bg-transparent'
+          }`}
+        >
+          <Text
+            className={`text-xs font-bold ${
+              role === 'TEACHER' ? 'text-white' : 'text-slate-400'
+            }`}
+          >
+            👨‍🏫 Teacher Portal
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {isOtpMode ? (
         // OTP Mode Input

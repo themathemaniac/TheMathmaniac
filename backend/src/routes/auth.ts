@@ -43,7 +43,7 @@ router.post('/otp/send', async (req, res) => {
 // 2. Verify OTP (Handles both Login & Instant Signup)
 router.post('/otp/verify', async (req, res) => {
   try {
-    const { phoneNumber, code, name } = req.body;
+    const { phoneNumber, code, name, role } = req.body;
     if (!phoneNumber || !code) {
       return res.status(400).json({ success: false, error: 'Phone number and code are required' });
     }
@@ -62,14 +62,14 @@ router.post('/otp/verify', async (req, res) => {
     });
 
     if (!user) {
-      // Auto register student
+      // Auto register student/teacher
       const fallbackEmail = `user_${Date.now()}@synapseedutech.in`;
       user = await prisma.user.create({
         data: {
-          name: name || 'Mathemaniac Student',
+          name: name || (role === 'TEACHER' ? 'Mathemaniac Teacher' : 'Mathemaniac Student'),
           email: fallbackEmail,
           phoneNumber,
-          role: 'STUDENT',
+          role: role || 'STUDENT',
         },
       });
 
@@ -80,6 +80,12 @@ router.post('/otp/verify', async (req, res) => {
           title: 'Welcome to Mathemaniac!',
           body: 'Thanks for signing up. Start exploring courses and attempting integration quizzes now!',
         },
+      });
+    } else if (role && user.role !== role) {
+      // Dynamic role update for ease of testing student/teacher switching
+      user = await prisma.user.update({
+        where: { phoneNumber },
+        data: { role },
       });
     }
 
@@ -105,7 +111,7 @@ router.post('/otp/verify', async (req, res) => {
 // 3. Signup (Standard Email registration)
 router.post('/signup', async (req, res) => {
   try {
-    const { name, email, phoneNumber, password } = req.body;
+    const { name, email, phoneNumber, password, role } = req.body;
     if (!name || !email || !phoneNumber || !password) {
       return res.status(400).json({ success: false, error: 'All fields are required' });
     }
@@ -127,7 +133,7 @@ router.post('/signup', async (req, res) => {
         email,
         phoneNumber,
         passwordHash,
-        role: 'STUDENT',
+        role: role || 'STUDENT',
       },
     });
 
@@ -169,12 +175,12 @@ router.post('/signup', async (req, res) => {
 // 4. Login (Standard Email login)
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
     if (!email || !password) {
       return res.status(400).json({ success: false, error: 'Email and password are required' });
     }
 
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { email },
     });
 
@@ -185,6 +191,14 @@ router.post('/login', async (req, res) => {
     const isValid = await bcrypt.compare(password, user.passwordHash);
     if (!isValid) {
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    }
+
+    // Dynamic role update for ease of testing student/teacher switching
+    if (role && user.role !== role) {
+      user = await prisma.user.update({
+        where: { email },
+        data: { role },
+      });
     }
 
     const tokens = generateTokens({ id: user.id, email: user.email, role: user.role });

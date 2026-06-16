@@ -30,7 +30,7 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
     // Match any sequence starting with a backslash and containing math characters
     // E.g. \int_{0}^{2} 3x^2 dx
     const latexRegex = /(\\[a-zA-Z]+[a-zA-Z0-9\s\+\-\*\/\=\(\)\^\_\{\}\\]*)/g;
-    return input.replace(latexRegex, '$$1$');
+    return input.replace(latexRegex, '$$$1$$');
   };
 
   const formattedText = preprocessText(text);

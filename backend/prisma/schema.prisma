@@ -108,6 +108,9 @@ model Test {
   published  Boolean    @default(false)
   questions  Question[]
   results    Result[]
+  pdfUrl     String?
+  pdfSize    Int?
+  pdfName    String?
 
   @@index([courseId])
 }

@@ -20,10 +20,10 @@ interface AuthState {
   // Actions
   initializeAuth: () => Promise<void>;
   sendOtp: (phoneNumber: string) => Promise<boolean>;
-  verifyOtp: (phoneNumber: string, code: string, name?: string) => Promise<boolean>;
-  loginWithEmail: (email: string, password: string) => Promise<boolean>;
+  verifyOtp: (phoneNumber: string, code: string, name?: string, role?: string) => Promise<boolean>;
+  loginWithEmail: (email: string, password: string, role?: string) => Promise<boolean>;
   loginWithGoogle: (email: string, name: string, googleId: string) => Promise<boolean>;
-  signupWithEmail: (name: string, email: string, phoneNumber: string, password: string) => Promise<boolean>;
+  signupWithEmail: (name: string, email: string, phoneNumber: string, password: string, role?: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
 
@@ -72,10 +72,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  verifyOtp: async (phoneNumber: string, code: string, name?: string) => {
+  verifyOtp: async (phoneNumber: string, code: string, name?: string, role?: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.post('/auth/otp/verify', { phoneNumber, code, name });
+      const response = await apiClient.post('/auth/otp/verify', { phoneNumber, code, name, role });
       const { accessToken, refreshToken, user } = response.data.data;
       await secureStorage.saveTokens(accessToken, refreshToken);
 
@@ -93,10 +93,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  loginWithEmail: async (email: string, password: string) => {
+  loginWithEmail: async (email: string, password: string, role?: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.post('/auth/login', { email, password });
+      const response = await apiClient.post('/auth/login', { email, password, role });
       const { accessToken, refreshToken, user } = response.data.data;
       await secureStorage.saveTokens(accessToken, refreshToken);
 
@@ -135,10 +135,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  signupWithEmail: async (name: string, email: string, phoneNumber: string, password: string) => {
+  signupWithEmail: async (name: string, email: string, phoneNumber: string, password: string, role?: string) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.post('/auth/signup', { name, email, phoneNumber, password });
+      const response = await apiClient.post('/auth/signup', { name, email, phoneNumber, password, role });
       const { accessToken, refreshToken, user } = response.data.data;
       await secureStorage.saveTokens(accessToken, refreshToken);
 

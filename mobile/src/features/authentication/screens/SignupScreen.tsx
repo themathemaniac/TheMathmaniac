@@ -16,6 +16,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
 
   const { signupWithEmail, isLoading, error } = useAuthStore();
 
@@ -25,7 +26,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
     const formattedPhone = phoneNumber.startsWith('+91') ? phoneNumber : `+91${phoneNumber}`;
-    const success = await signupWithEmail(name, email, formattedPhone, password);
+    const success = await signupWithEmail(name, email, formattedPhone, password, role);
     if (success) {
       navigation.replace('AppTabs', { screen: 'Home' });
     }
@@ -45,6 +46,38 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
           <Text className="text-red-400 text-xs font-semibold">{error}</Text>
         </View>
       )}
+
+      {/* Role Selector */}
+      <View className="flex-row bg-slate-900 border border-slate-800 rounded-2xl p-1 mb-6">
+        <TouchableOpacity
+          onPress={() => setRole('STUDENT')}
+          className={`flex-1 py-3 rounded-xl items-center ${
+            role === 'STUDENT' ? 'bg-blue-600' : 'bg-transparent'
+          }`}
+        >
+          <Text
+            className={`text-xs font-bold ${
+              role === 'STUDENT' ? 'text-white' : 'text-slate-400'
+            }`}
+          >
+            🎓 Student Signup
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setRole('TEACHER')}
+          className={`flex-1 py-3 rounded-xl items-center ${
+            role === 'TEACHER' ? 'bg-blue-600' : 'bg-transparent'
+          }`}
+        >
+          <Text
+            className={`text-xs font-bold ${
+              role === 'TEACHER' ? 'text-white' : 'text-slate-400'
+            }`}
+          >
+            👨‍🏫 Teacher Signup
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       <View className="mb-6">
         <Text className="text-slate-300 text-xs font-bold uppercase tracking-wider mb-2">Full Name</Text>

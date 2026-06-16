@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import * as dotenv from 'dotenv';
+import path from 'path';
 import authRoutes from './routes/auth';
 import courseRoutes from './routes/courses';
 import lectureRoutes from './routes/lectures';
@@ -17,6 +18,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware configurations
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes Bindings
 app.use('/api/v1/auth', authRoutes);

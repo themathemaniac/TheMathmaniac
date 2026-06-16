@@ -71,12 +71,12 @@ export const MaterialsListScreen: React.FC = () => {
     <View className="flex-1 bg-slate-950 px-5 pt-14">
       {/* Header */}
       <View className="mb-4">
-        <Text className="text-white text-2xl font-black">Study Resources</Text>
+        <Text className="text-slate-100 text-2xl font-black">Study Resources</Text>
         {/* Search */}
         <View className="bg-slate-900 border border-slate-800 rounded-2xl flex-row items-center px-4 py-3.5 mt-4">
           <Text className="text-slate-400 mr-2">🔍</Text>
           <TextInput
-            className="flex-1 text-white font-semibold"
+            className="flex-1 text-slate-100 font-semibold"
             placeholder="Search formulas, mock assignments..."
             placeholderTextColor="#64748B"
             value={searchQuery}
@@ -139,7 +139,7 @@ export const MaterialsListScreen: React.FC = () => {
                       {item.courseTitle}
                     </Text>
                   </View>
-                  <Text className="text-white text-sm font-bold mt-2" numberOfLines={1}>
+                  <Text className="text-slate-100 text-sm font-bold mt-2" numberOfLines={1}>
                     {item.title}
                   </Text>
                   <Text className="text-slate-400 text-xs mt-1">Size: {formatSize(item.fileSize)}</Text>

@@ -1,14 +1,52 @@
 import { Router, Response } from 'express';
 import prisma from '../config/db';
 import { authenticateJWT, AuthenticatedRequest } from '../middleware/auth';
+import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
 
 const router = Router();
 
-// 1. Get Tests List
+// Setup upload directory
+const uploadDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed!'));
+    }
+  },
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+});
+
+// 1. Get Tests List (Teachers see published/unpublished, students see published only)
 router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const userRole = req.user?.role;
+    const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN';
+    const whereClause: any = {};
+    if (!isTeacher) {
+      whereClause.published = true;
+    }
+
     const tests = await prisma.test.findMany({
-      where: { published: true },
+      where: whereClause,
       include: {
         course: {
           select: { title: true },
@@ -60,6 +98,9 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
         title: test.title,
         duration: test.duration,
         totalMarks: test.totalMarks,
+        pdfUrl: test.pdfUrl,
+        pdfSize: test.pdfSize,
+        pdfName: test.pdfName,
         questions: safeQuestions,
       },
     });
@@ -233,6 +274,94 @@ router.get('/:id/leaderboard', authenticateJWT, async (req: AuthenticatedRequest
       success: true,
       data: uniqueLeaderboard,
     });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Upload PDF Question Paper to Test (Requires Auth)
+router.post('/:id/upload-pdf', authenticateJWT, upload.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'A PDF file is required' });
+    }
+
+    const test = await prisma.test.findUnique({
+      where: { id },
+    });
+    if (!test) {
+      return res.status(404).json({ success: false, error: 'Test not found' });
+    }
+
+    // Try deleting old file if it exists
+    if (test.pdfUrl) {
+      try {
+        const oldFilename = test.pdfUrl.split('/uploads/')[1];
+        if (oldFilename) {
+          const oldFilePath = path.join(uploadDir, oldFilename);
+          if (fs.existsSync(oldFilePath)) {
+            fs.unlinkSync(oldFilePath);
+          }
+        }
+      } catch (err) {
+        console.error('Error deleting old test PDF:', err);
+      }
+    }
+
+    const pdfUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    const updatedTest = await prisma.test.update({
+      where: { id },
+      data: {
+        pdfUrl,
+        pdfSize: req.file.size,
+        pdfName: req.file.originalname,
+      },
+    });
+
+    return res.status(200).json({ success: true, data: updatedTest });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Delete PDF Question Paper from Test (Requires Auth)
+router.delete('/:id/pdf', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const test = await prisma.test.findUnique({
+      where: { id },
+    });
+    if (!test) {
+      return res.status(404).json({ success: false, error: 'Test not found' });
+    }
+
+    // Delete file from disk
+    if (test.pdfUrl) {
+      try {
+        const filename = test.pdfUrl.split('/uploads/')[1];
+        if (filename) {
+          const filePath = path.join(uploadDir, filename);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        }
+      } catch (err) {
+        console.error('Error deleting test PDF file:', err);
+      }
+    }
+
+    const updatedTest = await prisma.test.update({
+      where: { id },
+      data: {
+        pdfUrl: null,
+        pdfSize: null,
+        pdfName: null,
+      },
+    });
+
+    return res.status(200).json({ success: true, data: updatedTest });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }

@@ -15,7 +15,7 @@ interface Props {
 }
 
 export const OTPVerificationScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { phoneNumber } = route.params;
+  const { phoneNumber, role } = route.params;
   const [code, setCode] = useState('');
   const [timer, setTimer] = useState(30);
 
@@ -36,7 +36,7 @@ export const OTPVerificationScreen: React.FC<Props> = ({ route, navigation }) =>
       Alert.alert('Invalid Code', 'Please enter the 6-digit OTP code');
       return;
     }
-    const success = await verifyOtp(phoneNumber, code);
+    const success = await verifyOtp(phoneNumber, code, undefined, role);
     if (success) {
       navigation.replace('AppTabs', { screen: 'Home' });
     }
