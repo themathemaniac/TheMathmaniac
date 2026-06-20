@@ -15,6 +15,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
 
   const { register, isLoading, error } = useAuthStore();
 
@@ -33,13 +34,9 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     const formattedPhone = phoneNumber.startsWith('+91') ? phoneNumber : `+91${phoneNumber}`;
-    const success = await register(name.trim(), formattedPhone, password);
+    const success = await register(name.trim(), formattedPhone, password, role);
     if (success) {
-      navigation.navigate('OTPVerification', { 
-        phoneNumber: formattedPhone, 
-        mode: 'signup',
-        name: name.trim()
-      });
+      navigation.replace('AppTabs', { screen: 'Home' });
     }
   };
 
@@ -57,6 +54,30 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
           <Text className="text-red-400 text-xs font-semibold">{error}</Text>
         </View>
       )}
+
+      {/* Role Selector Tabs */}
+      <View className="flex-row bg-slate-900 p-1.5 rounded-2xl mb-8 border border-slate-800">
+        <TouchableOpacity
+          onPress={() => setRole('STUDENT')}
+          className={`flex-1 py-3.5 rounded-xl justify-center items-center ${
+            role === 'STUDENT' ? 'bg-slate-800' : 'bg-transparent'
+          }`}
+        >
+          <Text className={`font-bold text-sm ${role === 'STUDENT' ? 'text-slate-100' : 'text-slate-400'}`}>
+            Student Register
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setRole('TEACHER')}
+          className={`flex-1 py-3.5 rounded-xl justify-center items-center ${
+            role === 'TEACHER' ? 'bg-slate-800' : 'bg-transparent'
+          }`}
+        >
+          <Text className={`font-bold text-sm ${role === 'TEACHER' ? 'text-slate-100' : 'text-slate-400'}`}>
+            Teacher Register
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Inputs */}
       <View className="mb-8">
@@ -97,6 +118,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          keyboardType="default"
         />
 
         <Button

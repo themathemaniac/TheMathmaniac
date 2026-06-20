@@ -1,79 +1,63 @@
 import { Router, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
 import prisma from '../config/db';
-import twilio from 'twilio';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import crypto from 'crypto';
+import { db, isFirebaseEnabled } from '../config/firebase';
+import { FieldValue } from 'firebase-admin/firestore';
 import * as bcrypt from 'bcryptjs';
+import { authenticateJWT, AuthenticatedRequest } from '../middleware/auth';
+import { loginRateLimiter, recordLoginFailure, clearLoginAttempts } from '../middleware/rateLimiter';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'mathemaniac_secret_key';
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'mathemaniac_refresh_key';
+const RESET_TOKEN_SECRET = JWT_SECRET + '_reset';
 
-// Initialize Firebase Admin SDK if environment variables exist
-const firebaseProjectId = process.env.FIREBASE_PROJECT_ID;
-const firebaseClientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-const firebasePrivateKey = process.env.FIREBASE_PRIVATE_KEY;
+export async function syncUserToFirestore(
+  user: { id: string; role: string },
+  creds?: { phoneNumber?: string; passwordHash?: string; passphraseHash?: string }
+) {
+  if (isFirebaseEnabled && db) {
+    try {
+      let collectionName = 'students';
+      if (user.role === 'TEACHER') {
+        collectionName = 'teachers';
+      } else if (user.role === 'ADMIN') {
+        collectionName = 'admin';
+      }
 
-if (firebaseProjectId && firebaseClientEmail && firebasePrivateKey) {
-  try {
-    if (getApps().length === 0) {
-      initializeApp({
-        credential: cert({
-          projectId: firebaseProjectId,
-          clientEmail: firebaseClientEmail,
-          privateKey: firebasePrivateKey.replace(/\\n/g, '\n'),
-        }),
-      });
-      console.log('Firebase Admin SDK initialized successfully.');
+      const userRef = db.collection(collectionName).doc(user.id);
+      
+      const fullUser = await prisma.user.findUnique({ where: { id: user.id } });
+      if (!fullUser) return;
+
+      const dataToSync: any = {
+        id: fullUser.id,
+        name: fullUser.name,
+        role: fullUser.role,
+        firstLogin: fullUser.firstLogin,
+        stream: fullUser.stream || null,
+        class: fullUser.class || null,
+        faculty: fullUser.faculty || null,
+        school: fullUser.school || null,
+        createdAt: fullUser.createdAt,
+        updatedAt: fullUser.updatedAt,
+      };
+
+      if (fullUser.email) dataToSync.email = fullUser.email;
+
+      if (creds) {
+        if (creds.phoneNumber) dataToSync.phoneNumber = creds.phoneNumber;
+        if (creds.passwordHash) dataToSync.passwordHash = creds.passwordHash;
+        if (creds.passphraseHash) dataToSync.passphraseHash = creds.passphraseHash;
+      }
+
+      await userRef.set(dataToSync, { merge: true });
+      console.log(`[Firebase Sync] Synchronized user ${fullUser.id} to Firestore collection "${collectionName}".`);
+    } catch (firebaseErr: any) {
+      console.error('[Firebase Sync Error]', firebaseErr.message || firebaseErr);
     }
-  } catch (err) {
-    console.error('Failed to initialize Firebase Admin SDK:', err);
   }
-} else {
-  console.warn('Firebase Admin environment variables missing. Firebase user sync is disabled.');
 }
-
-// Initialize Twilio client if environment variables exist
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const fromPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-
-let twilioClient: any = null;
-if (accountSid && authToken) {
-  twilioClient = twilio(accountSid, authToken);
-  console.log('Twilio client initialized.');
-} else {
-  console.warn('Twilio credentials missing. SMS delivery is disabled.');
-}
-
-// In-Memory OTP Store
-interface OtpRecord {
-  code: string;
-  expiresAt: number;
-  attempts: number;
-  lastSentAt: number;
-}
-const pendingOtps = new Map<string, OtpRecord>();
-
-// In-Memory Signup Store
-interface PendingSignup {
-  name: string;
-  phoneNumber: string;
-  passwordHash: string;
-  code: string;
-  expiresAt: number;
-}
-const pendingSignups = new Map<string, PendingSignup>();
-
-// In-Memory Reset Store
-interface PendingReset {
-  phoneNumber: string;
-  code: string;
-  expiresAt: number;
-}
-const pendingResets = new Map<string, PendingReset>();
 
 function generateTokens(payload: { id: string; phoneNumber: string; role: string }) {
   const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
@@ -81,10 +65,26 @@ function generateTokens(payload: { id: string; phoneNumber: string; role: string
   return { accessToken, refreshToken };
 }
 
-// New Password-based Auth & OTP verification routes
+export async function findUserByPhoneInFirestore(formattedPhone: string) {
+  if (!db) return null;
+  
+  const collections = ['students', 'teachers', 'admin'];
+  for (const collName of collections) {
+    const snapshot = await db.collection(collName).where('phoneNumber', '==', formattedPhone).limit(1).get();
+    if (!snapshot.empty) {
+      const doc = snapshot.docs[0];
+      return {
+        id: doc.id,
+        ...doc.data(),
+        role: collName === 'students' ? 'STUDENT' : (collName === 'teachers' ? 'TEACHER' : 'ADMIN')
+      } as any;
+    }
+  }
+  return null;
+}
 
-// 1. Password Login
-router.post('/login', async (req, res) => {
+// 1. Password Login (Rate Limited)
+router.post('/login', loginRateLimiter, async (req, res) => {
   try {
     const { phoneNumber, password } = req.body;
     if (!phoneNumber || !password) {
@@ -100,20 +100,61 @@ router.post('/login', async (req, res) => {
       }
     }
 
-    const user = await prisma.user.findUnique({
-      where: { phoneNumber: formattedPhone },
-    });
+    // Find user by phoneNumber in Firestore
+    const firestoreUser = await findUserByPhoneInFirestore(formattedPhone);
 
-    if (!user || !user.passwordHash) {
+    if (!firestoreUser || !firestoreUser.passwordHash) {
+      recordLoginFailure(req);
       return res.status(400).json({ success: false, error: 'Incorrect phone number or password.' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    const isMatch = await bcrypt.compare(password, firestoreUser.passwordHash);
     if (!isMatch) {
+      recordLoginFailure(req);
       return res.status(400).json({ success: false, error: 'Incorrect phone number or password.' });
     }
 
-    const tokens = generateTokens({ id: user.id, phoneNumber: user.phoneNumber, role: user.role });
+    // Clear failed attempts upon successful login
+    clearLoginAttempts(req);
+
+    // Ensure user exists in local SQLite db
+    let user = await prisma.user.findUnique({ where: { id: firestoreUser.id } });
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          id: firestoreUser.id,
+          name: firestoreUser.name,
+          email: firestoreUser.email || null,
+          role: firestoreUser.role,
+          firstLogin: firestoreUser.firstLogin !== undefined ? firestoreUser.firstLogin : true,
+          stream: firestoreUser.stream || null,
+          class: firestoreUser.class || null,
+          faculty: firestoreUser.faculty || null,
+          school: firestoreUser.school || null,
+        }
+      });
+    } else {
+      // Keep name, role, firstLogin, and other fields up to date in SQLite
+      user = await prisma.user.update({
+        where: { id: firestoreUser.id },
+        data: {
+          name: firestoreUser.name,
+          email: firestoreUser.email || null,
+          role: firestoreUser.role,
+          firstLogin: firestoreUser.firstLogin !== undefined ? firestoreUser.firstLogin : user.firstLogin,
+          stream: firestoreUser.stream || null,
+          class: firestoreUser.class || null,
+          faculty: firestoreUser.faculty || null,
+          school: firestoreUser.school || null,
+        }
+      });
+    }
+
+    const tokens = generateTokens({ id: user.id, phoneNumber: firestoreUser.phoneNumber, role: user.role });
+    
+    // Sync back non-credentials details
+    await syncUserToFirestore(user);
+
     return res.status(200).json({
       success: true,
       data: {
@@ -121,8 +162,9 @@ router.post('/login', async (req, res) => {
         user: {
           id: user.id,
           name: user.name,
-          phoneNumber: user.phoneNumber,
+          phoneNumber: firestoreUser.phoneNumber,
           role: user.role,
+          firstLogin: user.firstLogin,
         },
       },
     });
@@ -132,188 +174,68 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// 2. Register / Sign Up (OTP Triggered)
+// 2. Register (Disabled for Self-Registration)
 router.post('/register', async (req, res) => {
-  try {
-    const { name, phoneNumber, password } = req.body;
-    if (!name || !phoneNumber || !password) {
-      return res.status(400).json({ success: false, error: 'Name, phone number, and password are required.' });
-    }
-
-    let formattedPhone = phoneNumber.trim();
-    if (!formattedPhone.startsWith('+')) {
-      if (formattedPhone.length === 10) {
-        formattedPhone = `+91${formattedPhone}`;
-      } else {
-        return res.status(400).json({ success: false, error: 'Invalid phone number format.' });
-      }
-    }
-
-    // Check if user already exists in Prisma DB
-    const existingUser = await prisma.user.findUnique({
-      where: { phoneNumber: formattedPhone },
-    });
-    if (existingUser) {
-      return res.status(400).json({ success: false, error: 'An account with this phone number already exists.' });
-    }
-
-    if (!twilioClient || !fromPhoneNumber) {
-      return res.status(500).json({
-        success: false,
-        error: 'Twilio SMS service is not configured on the server. Unable to send OTP.',
-      });
-    }
-
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Generate 6-digit OTP code
-    const code = crypto.randomInt(100000, 999999).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
-
-    // Deliver OTP via Twilio
-    await twilioClient.messages.create({
-      body: `Your Mathemaniac registration code is: ${code}. Valid for 5 minutes.`,
-      from: fromPhoneNumber,
-      to: formattedPhone,
-    });
-
-    // Save registration details to pendingSignups map
-    pendingSignups.set(formattedPhone, {
-      name: name.trim(),
-      phoneNumber: formattedPhone,
-      passwordHash,
-      code,
-      expiresAt,
-    });
-
-    console.log(`[Twilio Registration OTP] Sent verification code to ${formattedPhone}`);
-    return res.status(200).json({
-      success: true,
-      data: { message: 'Verification code sent successfully.' },
-    });
-  } catch (error: any) {
-    console.error('[Registration OTP Send Error]', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to deliver registration verification SMS.',
-    });
-  }
+  return res.status(403).json({
+    success: false,
+    error: 'Registration is restricted to administrators. Please contact administration to create your account.',
+  });
 });
 
-// 3. Register Verification
-router.post('/register/verify', async (req, res) => {
+// 3. Change Password (Mandatory / Profile)
+router.post('/change-password', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { phoneNumber, code } = req.body;
-    if (!phoneNumber || !code) {
-      return res.status(400).json({ success: false, error: 'Phone number and verification code are required.' });
+    const userId = req.user?.id;
+    const { newPassword } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized.' });
+    }
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'New password must be at least 6 characters long.' });
     }
 
-    let formattedPhone = phoneNumber.trim();
-    if (!formattedPhone.startsWith('+')) {
-      if (formattedPhone.length === 10) {
-        formattedPhone = `+91${formattedPhone}`;
-      } else {
-        return res.status(400).json({ success: false, error: 'Invalid phone number format.' });
-      }
-    }
-
-    const pending = pendingSignups.get(formattedPhone);
-    if (!pending) {
-      return res.status(400).json({ success: false, error: 'No pending registration found. Please register again.' });
-    }
-
-    if (Date.now() > pending.expiresAt) {
-      pendingSignups.delete(formattedPhone);
-      return res.status(400).json({ success: false, error: 'Verification code has expired. Please register again.' });
-    }
-
-    if (pending.code !== code.trim()) {
-      return res.status(400).json({ success: false, error: 'Incorrect verification code.' });
-    }
-
-    // OTP matches! Create the user in Prisma DB
-    const user = await prisma.user.create({
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
       data: {
-        name: pending.name,
-        phoneNumber: pending.phoneNumber,
-        passwordHash: pending.passwordHash,
-        role: 'STUDENT',
+        firstLogin: false,
       },
     });
 
-    // Clean up
-    pendingSignups.delete(formattedPhone);
-
-    // Welcome Notification
-    await prisma.notification.create({
+    // Write to AuditLog
+    await prisma.auditLog.create({
       data: {
-        userId: user.id,
-        title: 'Welcome to Mathemaniac!',
-        body: 'Thanks for signing up. Start exploring your courses and taking integration quizzes!',
+        action: 'PASSWORD_CHANGE',
+        userId: updatedUser.id,
+        actorId: userId,
+        details: `User changed their password. firstLogin set to false.`,
       },
     });
 
-    // Auto-unlock Calculus course for onboarding ease
-    const calculusCourse = await prisma.course.findFirst({
-      where: { title: { contains: 'Calculus' } },
+    // Sync updated user to Firestore along with new passwordHash
+    await syncUserToFirestore(updatedUser, {
+      phoneNumber: req.user?.phoneNumber || '',
+      passwordHash
     });
-    if (calculusCourse) {
-      await prisma.purchase.create({
-        data: {
-          userId: user.id,
-          courseId: calculusCourse.id,
-          amount: calculusCourse.price,
-          status: 'SUCCESS',
-          razorpayOrderId: `order_auto_${user.id.substring(0, 8)}`,
-        },
-      });
-    }
 
-    // Sync to Firestore
-    if (getApps().length > 0) {
-      try {
-        const db = getFirestore();
-        const userRef = db.collection('users').doc(user.id);
-        await userRef.set({
-          id: user.id,
-          name: user.name,
-          phoneNumber: user.phoneNumber,
-          role: user.role,
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true });
-        console.log(`[Firebase Sync] Synchronized registered user ${user.id} to Firestore.`);
-      } catch (firebaseErr) {
-        console.error('[Firebase Sync Error]', firebaseErr);
-      }
-    }
-
-    const tokens = generateTokens({ id: user.id, phoneNumber: user.phoneNumber, role: user.role });
     return res.status(200).json({
       success: true,
-      data: {
-        ...tokens,
-        user: {
-          id: user.id,
-          name: user.name,
-          phoneNumber: user.phoneNumber,
-          role: user.role,
-        },
-      },
+      data: { message: 'Password updated successfully.' },
     });
   } catch (error: any) {
-    console.error('[Verify Register Error]', error);
-    return res.status(500).json({ success: false, error: error.message || 'Verification failed.' });
+    console.error('[Change Password Error]', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to update password.' });
   }
 });
 
-// 3.5. Register Resend OTP
-router.post('/register/resend', async (req, res) => {
+// 4. Forgot Password - Verify Passphrase
+router.post('/forgot-password/verify', async (req, res) => {
   try {
-    const { phoneNumber } = req.body;
-    if (!phoneNumber) {
-      return res.status(400).json({ success: false, error: 'Phone number is required.' });
+    const { phoneNumber, passphrase } = req.body;
+
+    if (!phoneNumber || !passphrase) {
+      return res.status(400).json({ success: false, error: 'Phone number and recovery passphrase are required.' });
     }
 
     let formattedPhone = phoneNumber.trim();
@@ -325,145 +247,114 @@ router.post('/register/resend', async (req, res) => {
       }
     }
 
-    const pending = pendingSignups.get(formattedPhone);
-    if (!pending) {
-      return res.status(400).json({ success: false, error: 'No pending registration found. Please signup again.' });
+    // Query Firestore directly for the user
+    const firestoreUser = await findUserByPhoneInFirestore(formattedPhone);
+
+    if (!firestoreUser || !firestoreUser.passphraseHash) {
+      return res.status(400).json({ success: false, error: 'Invalid phone number or recovery passphrase.' });
     }
 
-    if (!twilioClient || !fromPhoneNumber) {
-      return res.status(500).json({
-        success: false,
-        error: 'Twilio SMS service is not configured on the server.',
-      });
+    const isMatch = await bcrypt.compare(passphrase.trim().toUpperCase(), firestoreUser.passphraseHash);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, error: 'Invalid phone number or recovery passphrase.' });
     }
 
-    // Generate new OTP
-    const code = crypto.randomInt(100000, 999999).toString();
-    pending.code = code;
-    pending.expiresAt = Date.now() + 5 * 60 * 1000;
-    pendingSignups.set(formattedPhone, pending);
+    // Generate short-lived reset token (valid for 10 minutes)
+    const resetToken = jwt.sign(
+      { userId: firestoreUser.id, phoneNumber: firestoreUser.phoneNumber, role: firestoreUser.role, purpose: 'PASSWORD_RESET' },
+      RESET_TOKEN_SECRET,
+      { expiresIn: '10m' }
+    );
 
-    await twilioClient.messages.create({
-      body: `Your Mathemaniac registration code is: ${code}. Valid for 5 minutes.`,
-      from: fromPhoneNumber,
-      to: formattedPhone,
-    });
-
-    console.log(`[Twilio Registration OTP Resend] Sent code to ${formattedPhone}`);
-    return res.status(200).json({ success: true, data: { message: 'OTP resent successfully.' } });
-  } catch (error: any) {
-    console.error('[Registration OTP Resend Error]', error);
-    return res.status(500).json({ success: false, error: error.message || 'Failed to resend OTP.' });
-  }
-});
-
-
-// 4. Forgot Password - Send OTP
-router.post('/forgot-password/send', async (req, res) => {
-  try {
-    const { phoneNumber } = req.body;
-    if (!phoneNumber) {
-      return res.status(400).json({ success: false, error: 'Phone number is required.' });
-    }
-
-    let formattedPhone = phoneNumber.trim();
-    if (!formattedPhone.startsWith('+')) {
-      if (formattedPhone.length === 10) {
-        formattedPhone = `+91${formattedPhone}`;
-      } else {
-        return res.status(400).json({ success: false, error: 'Invalid phone number format.' });
-      }
-    }
-
-    // Verify user exists
-    const user = await prisma.user.findUnique({
-      where: { phoneNumber: formattedPhone },
-    });
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'No account found with this phone number.' });
-    }
-
-    if (!twilioClient || !fromPhoneNumber) {
-      return res.status(500).json({
-        success: false,
-        error: 'Twilio SMS service is not configured on the server. Unable to send OTP.',
-      });
-    }
-
-    // Generate 6-digit OTP code
-    const code = crypto.randomInt(100000, 999999).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
-
-    // Deliver OTP via Twilio
-    await twilioClient.messages.create({
-      body: `Your Mathemaniac password reset code is: ${code}. Valid for 5 minutes.`,
-      from: fromPhoneNumber,
-      to: formattedPhone,
-    });
-
-    // Store in pendingResets
-    pendingResets.set(formattedPhone, {
-      phoneNumber: formattedPhone,
-      code,
-      expiresAt,
-    });
-
-    console.log(`[Twilio Reset OTP] Sent code to ${formattedPhone}`);
     return res.status(200).json({
       success: true,
-      data: { message: 'Reset OTP sent successfully.' },
+      data: { resetToken },
     });
   } catch (error: any) {
-    console.error('[Forgot Password OTP Send Error]', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to deliver reset verification SMS.',
-    });
+    console.error('[Verify Passphrase Error]', error);
+    return res.status(500).json({ success: false, error: error.message || 'Passphrase verification failed.' });
   }
 });
 
-// 5. Forgot Password - Reset
+// 5. Forgot Password - Reset with Token
 router.post('/forgot-password/reset', async (req, res) => {
   try {
-    const { phoneNumber, code, newPassword } = req.body;
-    if (!phoneNumber || !code || !newPassword) {
-      return res.status(400).json({ success: false, error: 'Phone number, code, and new password are required.' });
+    const { resetToken, newPassword } = req.body;
+
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ success: false, error: 'Reset token and new password are required.' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long.' });
     }
 
-    let formattedPhone = phoneNumber.trim();
-    if (!formattedPhone.startsWith('+')) {
-      if (formattedPhone.length === 10) {
-        formattedPhone = `+91${formattedPhone}`;
-      } else {
-        return res.status(400).json({ success: false, error: 'Invalid phone number format.' });
-      }
+    // Verify reset token
+    let decoded: any;
+    try {
+      decoded = jwt.verify(resetToken, RESET_TOKEN_SECRET);
+    } catch (jwtErr) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired password reset token.' });
     }
 
-    const pending = pendingResets.get(formattedPhone);
-    if (!pending) {
-      return res.status(400).json({ success: false, error: 'No pending reset request. Please request OTP first.' });
+    if (decoded.purpose !== 'PASSWORD_RESET') {
+      return res.status(400).json({ success: false, error: 'Invalid reset token purpose.' });
     }
 
-    if (Date.now() > pending.expiresAt) {
-      pendingResets.delete(formattedPhone);
-      return res.status(400).json({ success: false, error: 'Reset code has expired.' });
-    }
-
-    if (pending.code !== code.trim()) {
-      return res.status(400).json({ success: false, error: 'Incorrect verification code.' });
-    }
-
-    // OTP matches! Hash and update the user's password in Prisma
+    const userId = decoded.userId;
     const passwordHash = await bcrypt.hash(newPassword, 10);
-    await prisma.user.update({
-      where: { phoneNumber: formattedPhone },
-      data: { passwordHash },
+
+    // Ensure user is created/updated in SQLite first (since we might have cleaned up or aligned them)
+    let user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      if (!db) {
+        return res.status(500).json({ success: false, error: 'Firebase database is not initialized.' });
+      }
+      // Query Firestore to get user details to sync back to SQLite
+      const collName = decoded.role === 'STUDENT' ? 'students' : (decoded.role === 'TEACHER' ? 'teachers' : 'admin');
+      const firestoreDoc = await db.collection(collName).doc(userId).get();
+      if (firestoreDoc.exists) {
+        const fData = firestoreDoc.data()!;
+        user = await prisma.user.create({
+          data: {
+            id: userId,
+            name: fData.name,
+            email: fData.email || null,
+            role: decoded.role,
+            firstLogin: false,
+            stream: fData.stream || null,
+            class: fData.class || null,
+            faculty: fData.faculty || null,
+            school: fData.school || null,
+          }
+        });
+      } else {
+        return res.status(404).json({ success: false, error: 'User not found in Firestore.' });
+      }
+    } else {
+      user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          firstLogin: false,
+        },
+      });
+    }
+
+    // Write to AuditLog
+    await prisma.auditLog.create({
+      data: {
+        action: 'PASSWORD_RESET',
+        userId: user.id,
+        actorId: userId,
+        details: `Password reset successfully via recovery passphrase.`,
+      },
     });
 
-    // Clean up
-    pendingResets.delete(formattedPhone);
+    // Sync updated user and new passwordHash to Firestore
+    await syncUserToFirestore(user, {
+      phoneNumber: decoded.phoneNumber,
+      passwordHash
+    });
 
-    console.log(`[Password Reset Success] Password reset for user with phone ${formattedPhone}`);
     return res.status(200).json({
       success: true,
       data: { message: 'Password has been reset successfully.' },
@@ -474,210 +365,7 @@ router.post('/forgot-password/reset', async (req, res) => {
   }
 });
 
-// 1. Send SMS OTP (Exclusive login/signup entry)
-router.post('/otp/send', async (req, res) => {
-  try {
-    const { phoneNumber } = req.body;
-    if (!phoneNumber) {
-      return res.status(400).json({ success: false, error: 'Phone number is required' });
-    }
-
-    let formattedPhone = phoneNumber.trim();
-    if (!formattedPhone.startsWith('+')) {
-      if (formattedPhone.length === 10) {
-        formattedPhone = `+91${formattedPhone}`;
-      } else {
-        return res.status(400).json({ success: false, error: 'Phone number must include country code (e.g. +91xxxxxxxxxx)' });
-      }
-    }
-
-    // Rate Limiting: Max 1 request per 60 seconds
-    const existingRecord = pendingOtps.get(formattedPhone);
-    if (existingRecord) {
-      const timeDiff = Date.now() - existingRecord.lastSentAt;
-      if (timeDiff < 60 * 1000) {
-        const waitSeconds = Math.ceil((60 * 1000 - timeDiff) / 1000);
-        return res.status(429).json({
-          success: false,
-          error: `Please wait ${waitSeconds} seconds before requesting another OTP.`,
-        });
-      }
-    }
-
-    if (!twilioClient || !fromPhoneNumber) {
-      return res.status(500).json({
-        success: false,
-        error: 'Twilio SMS service is not configured on the server. Unable to send OTP.',
-      });
-    }
-
-    // Cryptographically secure 6-digit OTP
-    const code = crypto.randomInt(100000, 999999).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
-
-    // Deliver OTP via Twilio
-    await twilioClient.messages.create({
-      body: `Your Mathemaniac verification code is: ${code}. Valid for 5 minutes.`,
-      from: fromPhoneNumber,
-      to: formattedPhone,
-    });
-
-    pendingOtps.set(formattedPhone, {
-      code,
-      expiresAt,
-      attempts: 0,
-      lastSentAt: Date.now(),
-    });
-
-    console.log(`[Twilio OTP] Successfully sent verification code to ${formattedPhone}`);
-    return res.status(200).json({
-      success: true,
-      data: { message: 'OTP sent successfully.' },
-    });
-  } catch (error: any) {
-    console.error('[Twilio Send Error]', error);
-    return res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to deliver verification SMS via Twilio.',
-    });
-  }
-});
-
-// 2. Verify OTP (Handles both existing login & automatic signup)
-router.post('/otp/verify', async (req, res) => {
-  try {
-    const { phoneNumber, code, name, role } = req.body;
-    if (!phoneNumber || !code) {
-      return res.status(400).json({ success: false, error: 'Phone number and verification code are required' });
-    }
-
-    let formattedPhone = phoneNumber.trim();
-    if (!formattedPhone.startsWith('+')) {
-      if (formattedPhone.length === 10) {
-        formattedPhone = `+91${formattedPhone}`;
-      } else {
-        return res.status(400).json({ success: false, error: 'Invalid phone number format' });
-      }
-    }
-
-    const record = pendingOtps.get(formattedPhone);
-
-    if (!record) {
-      return res.status(400).json({ success: false, error: 'No OTP requested for this number. Please request a code first.' });
-    }
-
-    // Expiration check
-    if (Date.now() > record.expiresAt) {
-      pendingOtps.delete(formattedPhone);
-      return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new one.' });
-    }
-
-    // Brute-force check: max 3 attempts
-    if (record.attempts >= 3) {
-      pendingOtps.delete(formattedPhone);
-      return res.status(400).json({ success: false, error: 'Too many incorrect attempts. Please request a new verification code.' });
-    }
-
-    // Code check
-    if (record.code !== code.trim()) {
-      record.attempts += 1;
-      pendingOtps.set(formattedPhone, record);
-      const remaining = 3 - record.attempts;
-      return res.status(400).json({
-        success: false,
-        error: `Incorrect code. ${remaining} attempt(s) remaining.`,
-      });
-    }
-
-    // Verified successfully - clean up
-    pendingOtps.delete(formattedPhone);
-
-    // Look up or auto-register user in Prisma
-    let user = await prisma.user.findUnique({
-      where: { phoneNumber: formattedPhone },
-    });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          name: name?.trim() || (role === 'TEACHER' ? 'Mathemaniac Teacher' : 'Mathemaniac Student'),
-          phoneNumber: formattedPhone,
-          role: role || 'STUDENT',
-        },
-      });
-
-      // Welcome Notification
-      await prisma.notification.create({
-        data: {
-          userId: user.id,
-          title: 'Welcome to Mathemaniac!',
-          body: 'Thanks for signing up. Start exploring your courses and taking integration quizzes!',
-        },
-      });
-
-      // Auto-unlock Calculus course for onboarding ease
-      const calculusCourse = await prisma.course.findFirst({
-        where: { title: { contains: 'Calculus' } },
-      });
-      if (calculusCourse) {
-        await prisma.purchase.create({
-          data: {
-            userId: user.id,
-            courseId: calculusCourse.id,
-            amount: calculusCourse.price,
-            status: 'SUCCESS',
-            razorpayOrderId: `order_auto_${user.id.substring(0, 8)}`,
-          },
-        });
-      }
-    } else if (role && user.role !== role) {
-      // Dynamic role updates for portal switching tests convenience
-      user = await prisma.user.update({
-        where: { phoneNumber: formattedPhone },
-        data: { role },
-      });
-    }
-
-    // Sync user data to Firebase Firestore
-    if (getApps().length > 0) {
-      try {
-        const db = getFirestore();
-        const userRef = db.collection('users').doc(user.id);
-        await userRef.set({
-          id: user.id,
-          name: user.name,
-          phoneNumber: user.phoneNumber,
-          role: user.role,
-          createdAt: FieldValue.serverTimestamp(),
-          updatedAt: FieldValue.serverTimestamp(),
-        }, { merge: true });
-        console.log(`[Firebase Sync] Synchronized user ${user.id} to Firestore users collection.`);
-      } catch (firebaseErr) {
-        console.error('[Firebase Sync Error]', firebaseErr);
-        // Do not fail the flow if Firebase Firestore is unreachable/offline
-      }
-    }
-
-    const tokens = generateTokens({ id: user.id, phoneNumber: user.phoneNumber, role: user.role });
-    return res.status(200).json({
-      success: true,
-      data: {
-        ...tokens,
-        user: {
-          id: user.id,
-          name: user.name,
-          phoneNumber: user.phoneNumber,
-          role: user.role,
-        },
-      },
-    });
-  } catch (error: any) {
-    console.error('[OTP Verify Error]', error);
-    return res.status(500).json({ success: false, error: error.message || 'OTP verification failed.' });
-  }
-});
-
-// 3. Refresh Token
+// 6. Refresh Token
 router.post('/refresh', (req, res) => {
   const { refreshToken } = req.body;
   if (!refreshToken) {

@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const ACCESS_TOKEN_KEY = 'mathemaniac_access_token';
 const REFRESH_TOKEN_KEY = 'mathemaniac_refresh_token';
+const USER_KEY = 'mathemaniac_user_profile';
 
 export const secureStorage = {
   async saveTokens(accessToken: string, refreshToken: string): Promise<void> {
@@ -31,10 +32,29 @@ export const secureStorage = {
     }
   },
 
+  async saveUser(user: any): Promise<void> {
+    try {
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+    } catch (error) {
+      console.error('Error saving secure user:', error);
+    }
+  },
+
+  async getUser(): Promise<any | null> {
+    try {
+      const uStr = await SecureStore.getItemAsync(USER_KEY);
+      return uStr ? JSON.parse(uStr) : null;
+    } catch (error) {
+      console.error('Error reading user profile:', error);
+      return null;
+    }
+  },
+
   async clearTokens(): Promise<void> {
     try {
       await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
       await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(USER_KEY);
     } catch (error) {
       console.error('Error clearing secure tokens:', error);
     }

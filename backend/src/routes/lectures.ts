@@ -44,6 +44,7 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
       data: {
         id: lecture.id,
         courseId: lecture.courseId,
+        courseTitle: lecture.course.title,
         title: lecture.title,
         description: lecture.description,
         videoUrl: lecture.videoUrl,

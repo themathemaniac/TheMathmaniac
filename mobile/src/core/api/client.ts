@@ -12,7 +12,11 @@ const getBaseUrl = () => {
   
   // hostUri yields e.g. "192.168.1.5:8081"
   const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
-  const ip = hostUri ? hostUri.split(':')[0] : 'localhost';
+  let ip = hostUri ? hostUri.split(':')[0] : 'localhost';
+  
+  if (ip === 'localhost' && Platform.OS === 'android') {
+    ip = '10.0.2.2';
+  }
   
   return `http://${ip}:3000/api/v1`;
 };

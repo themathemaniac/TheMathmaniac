@@ -13,7 +13,9 @@ import { OnboardingScreen } from '../features/authentication/screens/OnboardingS
 import { LoginScreen } from '../features/authentication/screens/LoginScreen';
 import { SignupScreen } from '../features/authentication/screens/SignupScreen';
 import { ForgotPasswordScreen } from '../features/authentication/screens/ForgotPasswordScreen';
-import { OTPVerificationScreen } from '../features/authentication/screens/OTPVerificationScreen';
+import { ForgotPasswordResetScreen } from '../features/authentication/screens/ForgotPasswordResetScreen';
+import { MandatoryChangePasswordScreen } from '../features/authentication/screens/MandatoryChangePasswordScreen';
+import { AdminPanelScreen } from '../features/admin/screens/AdminPanelScreen';
 import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { CoursesExploreScreen } from '../features/courses/screens/CoursesExploreScreen';
 import { CourseDetailsScreen } from '../features/courses/screens/CourseDetailsScreen';
@@ -145,6 +147,9 @@ function TeacherTabNavigator() {
 
 function AppTabsWrapper() {
   const { user } = useAuthStore();
+  if (user?.role === 'ADMIN') {
+    return <AdminPanelScreen />;
+  }
   if (user?.role === 'TEACHER') {
     return <TeacherTabNavigator />;
   }
@@ -168,7 +173,9 @@ export const AppNavigator = () => {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="OTPVerification" component={OTPVerificationScreen} />
+        <Stack.Screen name="ForgotPasswordReset" component={ForgotPasswordResetScreen} />
+        <Stack.Screen name="MandatoryChangePassword" component={MandatoryChangePasswordScreen} />
+        <Stack.Screen name="AdminPanel" component={AdminPanelScreen} />
         <Stack.Screen name="AppTabs" component={AppTabsWrapper} />
         <Stack.Screen name="CourseDetails" component={CourseDetailsScreen} />
         <Stack.Screen name="PurchaseWebview" component={PurchaseWebviewScreen} />

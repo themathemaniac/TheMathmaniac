@@ -18,8 +18,11 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
         id: true,
         name: true,
         email: true,
-        phoneNumber: true,
         role: true,
+        stream: true,
+        class: true,
+        faculty: true,
+        school: true,
         createdAt: true,
       },
     });
@@ -28,35 +31,59 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
+    const userWithPhone = {
+      ...user,
+      phoneNumber: req.user?.phoneNumber || '',
+    };
+
     // Performance numbers
-    const totalPurchased = await prisma.purchase.count({
-      where: { userId, status: 'SUCCESS' },
-    });
+    let stats = {};
+    if (user.role === 'TEACHER' || user.role === 'ADMIN') {
+      const totalStudents = await prisma.user.count({
+        where: { role: 'STUDENT' },
+      });
+      const totalCourses = await prisma.course.count();
+      const totalTests = await prisma.test.count();
+      const totalMaterials = await prisma.studyMaterial.count();
 
-    const completedProgress = await prisma.lectureProgress.count({
-      where: { userId, completed: true },
-    });
+      stats = {
+        totalStudents,
+        totalCourses,
+        totalTests,
+        totalMaterials,
+      };
+    } else {
+      const totalPurchased = await prisma.purchase.count({
+        where: { userId, status: 'SUCCESS' },
+      });
 
-    const testResults = await prisma.result.findMany({
-      where: { userId },
-      select: { score: true, accuracy: true, test: { select: { totalMarks: true } } },
-    });
+      const completedProgress = await prisma.lectureProgress.count({
+        where: { userId, completed: true },
+      });
 
-    const totalTestsAttempted = testResults.length;
-    const averageAccuracy = totalTestsAttempted > 0
-      ? testResults.reduce((acc, row) => acc + row.accuracy, 0) / totalTestsAttempted
-      : 0;
+      const testResults = await prisma.result.findMany({
+        where: { userId },
+        select: { score: true, accuracy: true, test: { select: { totalMarks: true } } },
+      });
+
+      const totalTestsAttempted = testResults.length;
+      const averageAccuracy = totalTestsAttempted > 0
+        ? testResults.reduce((acc, row) => acc + row.accuracy, 0) / totalTestsAttempted
+        : 0;
+
+      stats = {
+        purchasedCoursesCount: totalPurchased,
+        completedLecturesCount: completedProgress,
+        testsAttemptedCount: totalTestsAttempted,
+        averageTestAccuracy: Math.round(averageAccuracy),
+      };
+    }
 
     return res.status(200).json({
       success: true,
       data: {
-        profile: user,
-        stats: {
-          purchasedCoursesCount: totalPurchased,
-          completedLecturesCount: completedProgress,
-          testsAttemptedCount: totalTestsAttempted,
-          averageTestAccuracy: Math.round(averageAccuracy),
-        },
+        profile: userWithPhone,
+        stats,
       },
     });
   } catch (error: any) {

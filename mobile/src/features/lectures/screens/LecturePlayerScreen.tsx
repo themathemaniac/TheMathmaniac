@@ -222,7 +222,7 @@ export const LecturePlayerScreen: React.FC<Props> = ({ route }) => {
       {/* 2. Lecture Details */}
       <ScrollView className="flex-1 p-6" showsVerticalScrollIndicator={false}>
         <Text className="text-xs font-bold text-blue-400 uppercase tracking-widest">
-          IIT-JEE Calculus Chapter
+          {lecture.courseTitle || 'Course Lecture'}
         </Text>
         <Text className="text-white text-xl font-black mt-2 leading-7">{lecture.title}</Text>
         <Text className="text-slate-400 text-xs mt-3 leading-5">{lecture.description}</Text>

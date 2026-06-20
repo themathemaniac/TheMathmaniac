@@ -32,23 +32,67 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
     });
   };
 
-  // On iOS, WebView renders PDFs natively.
-  // On Android, we can try using Google Docs Viewer if it's a public URL.
-  // If it's a local address (like localhost or 10.24.204.100), Google Docs Viewer won't work 
-  // since Google's cloud servers cannot resolve the local private IP. In that case, we prompt 
-  // the user to open/download it natively using the browser/PDF viewer.
-  const isLocalUrl = fileUrl.includes('localhost') || 
-                     fileUrl.includes('127.0.0.1') || 
-                     fileUrl.includes('192.168.') || 
-                     fileUrl.includes('10.');
+  const isAndroid = Platform.OS === 'android';
 
-  const webViewUri = Platform.OS === 'ios'
-    ? fileUrl
-    : (!isLocalUrl
-        ? `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(fileUrl)}`
-        : fileUrl);
+  const htmlSource = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2, user-scalable=yes">
+  <style>
+    body { margin: 0; padding: 0; background-color: #020617; display: flex; flex-direction: column; align-items: center; }
+    #pdf-container { display: flex; flex-direction: column; align-items: center; width: 100%; padding: 10px 0; }
+    canvas { width: 95% !important; height: auto !important; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
+    #loading { color: #94a3b8; font-family: sans-serif; font-size: 14px; text-align: center; margin-top: 50px; font-weight: bold; }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body>
+  <div id="loading">Loading PDF Document...</div>
+  <div id="pdf-container"></div>
 
-  const showWebView = !webViewError && (Platform.OS === 'ios' || !isLocalUrl);
+  <script>
+    const url = '${fileUrl}';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    const loadingTask = pdfjsLib.getDocument(url);
+    loadingTask.promise.then(function(pdf) {
+      document.getElementById('loading').style.display = 'none';
+      const container = document.getElementById('pdf-container');
+      
+      // Render all pages
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        pdf.getPage(pageNum).then(function(page) {
+          const viewport = page.getViewport({ scale: 2.0 }); // High quality scaling
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          
+          container.appendChild(canvas);
+
+          const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+          };
+          page.render(renderContext);
+        });
+      }
+    }, function (reason) {
+      document.getElementById('loading').innerHTML = 'Error loading PDF: ' + reason.message;
+      console.error(reason);
+    });
+  </script>
+</body>
+</html>
+  `;
+
+  const webViewSource = isAndroid
+    ? { html: htmlSource, baseUrl: '' }
+    : { uri: fileUrl };
+
+  const showWebView = !webViewError;
 
   return (
     <View className="flex-1 bg-slate-950">
@@ -76,10 +120,13 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
       <View className="flex-1">
         {showWebView ? (
           <WebView
-            source={{ uri: webViewUri }}
+            source={webViewSource}
             className="flex-1"
             onError={() => setWebViewError(true)}
             startInLoadingState={true}
+            originWhitelist={['*']}
+            mixedContentMode="always"
+            scalesPageToFit={true}
             renderLoading={() => (
               <View className="absolute inset-0 justify-center items-center bg-slate-950">
                  <ActivityIndicator size="large" color="#2D8C82" />
@@ -95,14 +142,14 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
                 {title}
               </Text>
               <Text className="text-slate-500 text-xs text-center mb-6 leading-relaxed">
-                Local network PDF files on Android are best viewed in the device's native browser or PDF reader.
+                Unable to display PDF document. Please download it or open in another application.
               </Text>
               
               <TouchableOpacity
                 onPress={handleOpenNatively}
                 className="bg-blue-600 px-6 py-3 rounded-2xl w-full items-center active:opacity-90"
               >
-                <Text className="text-white text-xs font-bold">Open PDF Natively</Text>
+                <Text className="text-white text-xs font-bold">Open in Browser</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -36,26 +36,40 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const dotenv = __importStar(require("dotenv"));
+dotenv.config();
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
-const dotenv = __importStar(require("dotenv"));
 const path_1 = __importDefault(require("path"));
 const auth_1 = __importDefault(require("./routes/auth"));
+const admin_1 = __importDefault(require("./routes/admin"));
 const courses_1 = __importDefault(require("./routes/courses"));
 const lectures_1 = __importDefault(require("./routes/lectures"));
 const materials_1 = __importDefault(require("./routes/materials"));
 const tests_1 = __importDefault(require("./routes/tests"));
 const payments_1 = __importDefault(require("./routes/payments"));
 const profile_1 = __importDefault(require("./routes/profile"));
-dotenv.config();
+const firestoreListener_1 = require("./services/firestoreListener");
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
+// Start Firestore real-time sync listener
+(0, firestoreListener_1.startFirestoreListener)();
 // Middleware configurations
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
+app.use((req, res, next) => {
+    console.log(`[HTTP Request] ${req.method} ${req.url}`, req.method === 'POST' || req.method === 'PUT' ? req.body : '');
+    const oldJson = res.json;
+    res.json = function (data) {
+        console.log(`[HTTP Response] ${req.method} ${req.url} - Status: ${res.statusCode}`);
+        return oldJson.apply(res, arguments);
+    };
+    next();
+});
 app.use('/uploads', express_1.default.static(path_1.default.join(__dirname, '../uploads')));
 // Routes Bindings
 app.use('/api/v1/auth', auth_1.default);
+app.use('/api/v1/admin', admin_1.default);
 app.use('/api/v1/courses', courses_1.default);
 app.use('/api/v1/lectures', lectures_1.default);
 app.use('/api/v1/materials', materials_1.default);

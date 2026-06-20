@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../../../core/store/auth';
 import { apiClient } from '../../../core/api/client';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -7,51 +7,93 @@ import { Button } from '../../../shared/components/Button';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
+import { generateWeeks, getMonthName, formatDateString } from '../../../shared/utils/calendar';
 
 type ProfileHomeNavigationProp = StackNavigationProp<RootStackParamList, 'AppTabs'>;
 
-const AttendanceCalendar: React.FC = () => {
-  // June 2026: 30 days, starts on Monday
-  const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+interface AttendanceCalendarProps {
+  records: any[];
+  loading: boolean;
+}
+
+const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ records, loading }) => {
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   
-  // Custom mock attendance record
-  // 1 = Present, 0 = Absent, -3 = Holiday, -4 = Teacher Leave, -2 = Future/Unmarked
-  const getAttendanceStatus = (day: number) => {
-    if (day > 15) return -2; // Future
-    if (day === 11) return -3; // Holiday
-    if ([5, 12].includes(day)) return -4; // Teacher Leave (Class Not Held)
-    if ([3, 10].includes(day)) return 0; // Absent
-    return 1; // Present
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth(); // 0-indexed
+
+  const weekDays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  const weeks = generateWeeks(currentYear, currentMonth);
+
+  const handlePrevMonth = () => {
+    setCurrentDate(prev => {
+      const newD = new Date(prev.getFullYear(), prev.getMonth() - 1, 1);
+      return newD;
+    });
   };
 
-  const weeks = [
-    [1, 2, 3, 4, 5, 6, 7],
-    [8, 9, 10, 11, 12, 13, 14],
-    [15, 16, 17, 18, 19, 20, 21],
-    [22, 23, 24, 25, 26, 27, 28],
-    [29, 30, null, null, null, null, null],
-  ];
+  const handleNextMonth = () => {
+    setCurrentDate(prev => {
+      const newD = new Date(prev.getFullYear(), prev.getMonth() + 1, 1);
+      return newD;
+    });
+  };
+
+  // Convert records array to a map for easy lookup
+  const recordMap = new Map(records.map(r => [r.date, r.status]));
+
+  // Calculate percentage of present days across all recorded days in history (Regular class held days)
+  const regularRecords = records.filter(r => r.status === 'PRESENT' || r.status === 'ABSENT');
+  const presentCount = regularRecords.filter(r => r.status === 'PRESENT').length;
+  const totalCount = regularRecords.length;
+  const presentPercentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 100;
+
+  const isFutureDate = (day: number) => {
+    const checkDate = new Date(currentYear, currentMonth, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return checkDate > today;
+  };
 
   const handleDayPress = (day: number) => {
-    const status = getAttendanceStatus(day);
-    if (status === -2) {
+    const dayStr = formatDateString(currentYear, currentMonth, day);
+    const status = recordMap.get(dayStr);
+    const future = isFutureDate(day);
+
+    if (future) {
       Alert.alert('Future Date', 'Class schedule or attendance has not been recorded yet.');
-    } else if (status === -3) {
-      Alert.alert('Institute Holiday', 'June 11: Institute closed for Holiday.');
-    } else if (status === -4) {
-      Alert.alert('Class Cancelled', `June ${day}: Class was not held because the instructor was on leave.`);
-    } else if (status === 1) {
-      Alert.alert('Attendance Status', `June ${day}: You attended this class.`);
-    } else if (status === 0) {
-      Alert.alert('Attendance Status', `June ${day}: You were absent from this class.`);
+    } else if (status === 'HOLIDAY') {
+      Alert.alert('Institute Holiday', `${getMonthName(currentMonth)} ${day}: Institute closed for Holiday.`);
+    } else if (status === 'CANCELLED') {
+      Alert.alert('Class Cancelled', `${getMonthName(currentMonth)} ${day}: Class was not held because the instructor was on leave.`);
+    } else if (status === 'PRESENT') {
+      Alert.alert('Attendance Status', `${getMonthName(currentMonth)} ${day}: You attended this class.`);
+    } else if (status === 'ABSENT') {
+      Alert.alert('Attendance Status', `${getMonthName(currentMonth)} ${day}: You were absent from this class.`);
+    } else {
+      Alert.alert('Unmarked Date', `${getMonthName(currentMonth)} ${day}: Attendance was not recorded for this day.`);
     }
   };
 
   return (
     <View className="bg-slate-900 border border-slate-800 rounded-3xl p-5 mb-6">
       <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-slate-100 text-sm font-bold">📅 June 2026 Attendance</Text>
-        <Text className="text-emerald-400 text-xs font-bold">83.3% Present</Text>
+        <View className="flex-row items-center gap-1">
+          <TouchableOpacity onPress={handlePrevMonth} className="p-1">
+            <Text className="text-slate-400 text-xs font-bold">◀</Text>
+          </TouchableOpacity>
+          <Text className="text-slate-100 text-xs font-bold">
+            📅 {getMonthName(currentMonth)} {currentYear}
+          </Text>
+          <TouchableOpacity onPress={handleNextMonth} className="p-1">
+            <Text className="text-slate-400 text-xs font-bold">▶</Text>
+          </TouchableOpacity>
+        </View>
+        {loading ? (
+          <ActivityIndicator size="small" color="#2D8C82" />
+        ) : (
+          <Text className="text-emerald-400 text-xs font-bold">{presentPercentage}% Present</Text>
+        )}
       </View>
       
       {/* Weekday headers */}
@@ -63,7 +105,7 @@ const AttendanceCalendar: React.FC = () => {
         ))}
       </View>
       
-      {/* Days grid - rendering week by week for perfect alignment */}
+      {/* Days grid */}
       <View className="mb-2">
         {weeks.map((week, wIdx) => (
           <View key={wIdx} className="flex-row justify-between mb-1.5">
@@ -72,28 +114,31 @@ const AttendanceCalendar: React.FC = () => {
                 return <View key={`empty-${dIdx}`} className="w-8 h-8" />;
               }
 
-              const status = getAttendanceStatus(day);
+              const dayStr = formatDateString(currentYear, currentMonth, day);
+              const status = recordMap.get(dayStr);
+              const future = isFutureDate(day);
+
               let bgClass = 'bg-transparent';
               let borderClass = 'border border-slate-800';
               let textClass = 'text-slate-400';
               
-              if (status === 1) {
+              if (status === 'PRESENT') {
                 bgClass = 'bg-green-500/20';
                 borderClass = 'border border-green-500/40';
                 textClass = 'text-green-400 font-bold';
-              } else if (status === 0) {
+              } else if (status === 'ABSENT') {
                 bgClass = 'bg-red-500/20';
                 borderClass = 'border border-red-500/40';
                 textClass = 'text-red-400 font-bold';
-              } else if (status === -3) {
+              } else if (status === 'HOLIDAY') {
                 bgClass = 'bg-amber-500/10';
                 borderClass = 'border border-amber-500/20';
                 textClass = 'text-amber-500 font-bold';
-              } else if (status === -4) {
+              } else if (status === 'CANCELLED') {
                 bgClass = 'bg-slate-950/40';
                 borderClass = 'border border-red-500/20';
                 textClass = 'text-red-300 font-bold';
-              } else if (status === -2) {
+              } else if (future) {
                 bgClass = 'bg-transparent';
                 borderClass = 'border border-slate-800';
                 textClass = 'text-slate-500';
@@ -153,6 +198,8 @@ export const ProfileHomeScreen: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(true);
 
   const fetchProfile = async () => {
     try {
@@ -166,13 +213,28 @@ export const ProfileHomeScreen: React.FC = () => {
     }
   };
 
+  const fetchAttendance = async () => {
+    try {
+      setAttendanceLoading(true);
+      const response = await apiClient.get('/attendance/my-attendance');
+      if (response.data.success) {
+        setAttendanceRecords(response.data.data);
+      }
+    } catch (e) {
+      console.log('Error fetching student attendance:', e);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchProfile();
+    fetchAttendance();
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchProfile();
+    await Promise.all([fetchProfile(), fetchAttendance()]);
     setRefreshing(false);
   };
 
@@ -266,7 +328,7 @@ export const ProfileHomeScreen: React.FC = () => {
               <View className="flex-row items-center justify-between mt-4 pb-4 border-b border-slate-850/80">
                 <View>
                   <Text className="text-slate-300 text-xs font-semibold">The Mathemaniac</Text>
-                  <Text className="text-slate-500 text-[10px] mt-0.5">Madhyamgram Branch Student</Text>
+                  <Text className="text-slate-500 text-[10px] mt-0.5">{profileData.profile.school || 'Enrolled Student'}</Text>
                 </View>
                 <View className="bg-blue-600/20 px-3 py-1 rounded-full border border-blue-500/20">
                   <Text className="text-blue-400 text-[10px] font-bold uppercase tracking-wider">
@@ -279,20 +341,30 @@ export const ProfileHomeScreen: React.FC = () => {
               <View className="mt-4 space-y-3">
                 <View>
                   <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Current Class</Text>
-                  <Text className="text-slate-200 text-xs font-bold mt-1">12th Standard - IIT-JEE Advanced Batch</Text>
+                  <Text className="text-slate-200 text-xs font-bold mt-1">
+                    {profileData.profile.class ? `${profileData.profile.class} Standard` : 'N/A'}{profileData.profile.stream ? ` - ${profileData.profile.stream}` : ''}
+                  </Text>
                 </View>
                 <View className="mt-3">
                   <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Assigned Faculty / Instructors</Text>
                   <Text className="text-slate-300 text-xs mt-1 leading-5">
-                    • <Text className="font-bold text-slate-200">Prof. S. Sen</Text> (Calculus){'\n'}
-                    • <Text className="font-bold text-slate-200">S. K. Dey</Text> (Algebra & Olympiad Math)
+                    {profileData.profile.faculty ? `• ${profileData.profile.faculty}` : '• No Faculty assigned yet'}
                   </Text>
                 </View>
               </View>
             </View>
 
             {/* Attendance calendar component */}
-            <AttendanceCalendar />
+            <AttendanceCalendar records={attendanceRecords} loading={attendanceLoading} />
+
+            {/* Admin Panel Button */}
+            {profileData.profile.role === 'ADMIN' && (
+              <Button
+                title="Admin Control Panel"
+                onPress={() => navigation.navigate('AdminPanel')}
+                className="mb-4"
+              />
+            )}
 
             {/* Logout */}
             <Button title="Sign Out of Session" onPress={handleLogout} variant="danger" />

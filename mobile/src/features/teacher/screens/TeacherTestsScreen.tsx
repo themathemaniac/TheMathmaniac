@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { apiClient } from '../../../core/api/client';
 import { useNavigation } from '@react-navigation/native';
@@ -26,6 +26,16 @@ export const TeacherTestsScreen: React.FC = () => {
   const [selectedTestTitle, setSelectedTestTitle] = useState('');
   const [selectedTestTotalMarks, setSelectedTestTotalMarks] = useState(0);
 
+  // Create Test Modal states
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDuration, setNewDuration] = useState('');
+  const [newTotalMarks, setNewTotalMarks] = useState('');
+  const [newCourseId, setNewCourseId] = useState('NONE');
+  const [newPublished, setNewPublished] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [courses, setCourses] = useState<any[]>([]);
+
   const fetchTests = async () => {
     try {
       setLoading(true);
@@ -39,13 +49,23 @@ export const TeacherTestsScreen: React.FC = () => {
     }
   };
 
+  const fetchCourses = async () => {
+    try {
+      const res = await apiClient.get('/courses');
+      setCourses(res.data.data);
+    } catch (e) {
+      console.log('Error pulling courses:', e);
+    }
+  };
+
   useEffect(() => {
     fetchTests();
+    fetchCourses();
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchTests();
+    await Promise.all([fetchTests(), fetchCourses()]);
     setRefreshing(false);
   };
 
@@ -58,10 +78,11 @@ export const TeacherTestsScreen: React.FC = () => {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
+        const fileName = file.name || 'document.pdf';
         
         // Validation: Only PDF
         if (file.mimeType && file.mimeType !== 'application/pdf') {
-          const ext = file.name.split('.').pop()?.toLowerCase();
+          const ext = fileName.split('.').pop()?.toLowerCase();
           if (ext !== 'pdf') {
             Alert.alert('Invalid File', 'Only PDF documents are allowed.');
             return;
@@ -78,7 +99,7 @@ export const TeacherTestsScreen: React.FC = () => {
         const formData = new FormData();
         formData.append('file', {
           uri: file.uri,
-          name: file.name,
+          name: fileName,
           type: 'application/pdf',
         } as any);
 
@@ -101,9 +122,10 @@ export const TeacherTestsScreen: React.FC = () => {
         Alert.alert('Success', 'PDF Question Paper uploaded successfully!');
         fetchTests();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.log('Error picking or uploading file:', err);
-      Alert.alert('Error', 'An error occurred during file upload.');
+      const errorMsg = err.response?.data?.error || err.message || 'An error occurred during file upload.';
+      Alert.alert('Upload Failed', errorMsg);
     } finally {
       setUploading(false);
       setActiveTestId(null);
@@ -148,6 +170,50 @@ export const TeacherTestsScreen: React.FC = () => {
     }
   };
 
+  const handleCreateTest = async () => {
+    if (!newTitle.trim()) {
+      Alert.alert('Input Error', 'Please enter a test title.');
+      return;
+    }
+    if (!newDuration || isNaN(Number(newDuration)) || Number(newDuration) <= 0) {
+      Alert.alert('Input Error', 'Please enter a valid duration (mins).');
+      return;
+    }
+    if (!newTotalMarks || isNaN(Number(newTotalMarks)) || Number(newTotalMarks) <= 0) {
+      Alert.alert('Input Error', 'Please enter valid total marks.');
+      return;
+    }
+
+    try {
+      setIsCreating(true);
+      await apiClient.post('/tests', {
+        title: newTitle.trim(),
+        duration: Number(newDuration),
+        totalMarks: Number(newTotalMarks),
+        courseId: newCourseId === 'NONE' ? null : newCourseId,
+        published: newPublished,
+      });
+
+      Alert.alert('Success', 'Test created successfully!');
+      setCreateModalVisible(false);
+      
+      // Reset form
+      setNewTitle('');
+      setNewDuration('');
+      setNewTotalMarks('');
+      setNewCourseId('NONE');
+      setNewPublished(false);
+
+      fetchTests();
+    } catch (err: any) {
+      console.log('Error creating test:', err);
+      const errorMsg = err.response?.data?.error || 'Failed to create test.';
+      Alert.alert('Creation Failed', errorMsg);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const formatSize = (bytes: number) => {
     const kb = bytes / 1024;
     if (kb > 1024) return `${(kb / 1024).toFixed(1)} MB`;
@@ -166,11 +232,19 @@ export const TeacherTestsScreen: React.FC = () => {
 
   return (
     <View className="flex-1 bg-slate-950 px-5 pt-14">
-      <View className="mb-6">
-        <Text className="text-slate-100 text-2xl font-black">Test Papers & Evaluations</Text>
-        <Text className="text-slate-400 text-sm mt-1 font-medium">
-          Manage question papers and evaluate student submissions
-        </Text>
+      <View className="flex-row justify-between items-center mb-6">
+        <View className="flex-1 mr-4">
+          <Text className="text-slate-100 text-2xl font-black">Test Papers & Evaluations</Text>
+          <Text className="text-slate-400 text-xs mt-1 font-medium">
+            Manage question papers and evaluate student submissions
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => setCreateModalVisible(true)}
+          className="bg-blue-600 px-4 py-2.5 rounded-xl border border-blue-500 shadow-md shadow-blue-500/20"
+        >
+          <Text className="text-white text-xs font-bold">+ Add Test</Text>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -349,6 +423,141 @@ export const TeacherTestsScreen: React.FC = () => {
                 </View>
               </ScrollView>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Create Test Modal */}
+      <Modal visible={createModalVisible} animationType="slide" transparent>
+        <View className="flex-1 justify-end bg-slate-950/80">
+          <View className="bg-slate-900 border-t border-slate-800 rounded-t-3xl p-6 min-h-[550px] max-h-[90%]">
+            <View className="flex-row justify-between items-center mb-6 pb-3 border-b border-slate-800">
+              <Text className="text-slate-100 text-base font-black">Create New Test Paper</Text>
+              <TouchableOpacity
+                onPress={() => setCreateModalVisible(false)}
+                className="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700/50"
+              >
+                <Text className="text-slate-100 text-xs font-bold">Cancel</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+              {/* Title */}
+              <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Test Title</Text>
+              <TextInput
+                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                placeholder="e.g. Mid-Term Geometry Exam"
+                placeholderTextColor="#5C5446"
+                value={newTitle}
+                onChangeText={setNewTitle}
+              />
+
+              <View className="flex-row gap-4 mb-4">
+                {/* Duration */}
+                <View className="flex-1">
+                  <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Duration (Mins)</Text>
+                  <TextInput
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold"
+                    placeholder="e.g. 60"
+                    placeholderTextColor="#5C5446"
+                    keyboardType="number-pad"
+                    value={newDuration}
+                    onChangeText={setNewDuration}
+                  />
+                </View>
+
+                {/* Total Marks */}
+                <View className="flex-1">
+                  <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Total Marks</Text>
+                  <TextInput
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold"
+                    placeholder="e.g. 100"
+                    placeholderTextColor="#5C5446"
+                    keyboardType="number-pad"
+                    value={newTotalMarks}
+                    onChangeText={setNewTotalMarks}
+                  />
+                </View>
+              </View>
+
+              {/* Course Selection */}
+              <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Assign to Course</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-4">
+                <TouchableOpacity
+                  onPress={() => setNewCourseId('NONE')}
+                  className={`mr-2 px-3.5 py-2 rounded-xl border ${
+                    newCourseId === 'NONE'
+                      ? 'bg-blue-600 border-blue-500'
+                      : 'bg-slate-950 border-slate-800'
+                  }`}
+                >
+                  <Text className={`text-xs font-bold ${
+                    newCourseId === 'NONE' ? 'text-white' : 'text-slate-400'
+                  }`}>
+                    Open Practice
+                  </Text>
+                </TouchableOpacity>
+
+                {courses.map((course) => (
+                  <TouchableOpacity
+                    key={course.id}
+                    onPress={() => setNewCourseId(course.id)}
+                    className={`mr-2 px-3.5 py-2 rounded-xl border ${
+                      newCourseId === course.id
+                        ? 'bg-blue-600 border-blue-500'
+                        : 'bg-slate-950 border-slate-800'
+                    }`}
+                  >
+                    <Text className={`text-xs font-bold ${
+                      newCourseId === course.id ? 'text-white' : 'text-slate-400'
+                    }`}>
+                      {course.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Publish Toggle */}
+              <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Publish Immediately?</Text>
+              <View className="flex-row bg-slate-950 p-1 rounded-xl mb-6 border border-slate-800">
+                <TouchableOpacity
+                  onPress={() => setNewPublished(false)}
+                  className={`flex-1 py-2.5 rounded-lg items-center ${
+                    !newPublished ? 'bg-slate-800' : 'bg-transparent'
+                  }`}
+                >
+                  <Text className={`font-black text-[10px] uppercase tracking-wider ${
+                    !newPublished ? 'text-slate-100' : 'text-slate-500'
+                  }`}>
+                    Draft (No)
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setNewPublished(true)}
+                  className={`flex-1 py-2.5 rounded-lg items-center ${
+                    newPublished ? 'bg-slate-800' : 'bg-transparent'
+                  }`}
+                >
+                  <Text className={`font-black text-[10px] uppercase tracking-wider ${
+                    newPublished ? 'text-slate-100' : 'text-slate-500'
+                  }`}>
+                    Publish (Yes)
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleCreateTest}
+                disabled={isCreating}
+                className="bg-blue-600 py-3.5 rounded-xl justify-center items-center shadow-lg shadow-blue-500/20"
+              >
+                {isCreating ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text className="text-white font-bold text-sm">Create Test Paper</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>

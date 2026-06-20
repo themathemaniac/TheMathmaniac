@@ -338,4 +338,37 @@ router.delete('/:id/pdf', auth_1.authenticateJWT, async (req, res) => {
         return res.status(500).json({ success: false, error: error.message });
     }
 });
+// 7. Create Test (Requires Auth - Teacher or Admin)
+router.post('/', auth_1.authenticateJWT, async (req, res) => {
+    try {
+        const userRole = req.user?.role;
+        if (userRole !== 'TEACHER' && userRole !== 'ADMIN') {
+            return res.status(403).json({ success: false, error: 'Access Denied: Teacher or Administrator role required.' });
+        }
+        const { title, duration, totalMarks, courseId, published } = req.body;
+        if (!title || duration === undefined || totalMarks === undefined) {
+            return res.status(400).json({ success: false, error: 'Title, duration, and totalMarks are required.' });
+        }
+        // Verify courseId if provided
+        if (courseId && courseId !== 'NONE') {
+            const courseExists = await db_1.default.course.findUnique({ where: { id: courseId } });
+            if (!courseExists) {
+                return res.status(404).json({ success: false, error: 'Course not found.' });
+            }
+        }
+        const test = await db_1.default.test.create({
+            data: {
+                title: title.trim(),
+                duration: Number(duration),
+                totalMarks: Number(totalMarks),
+                courseId: (courseId && courseId !== 'NONE') ? courseId : null,
+                published: published !== undefined ? Boolean(published) : false,
+            },
+        });
+        return res.status(201).json({ success: true, data: test });
+    }
+    catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
 exports.default = router;

@@ -11,19 +11,22 @@ model User {
   id              String            @id @default(uuid())
   name            String
   email           String?           @unique
-  phoneNumber     String            @unique
   googleId        String?
-  passwordHash    String?
+  firstLogin      Boolean           @default(true)
   role            String            @default("STUDENT")
+  stream          String?
+  class           String?
+  faculty         String?
+  school          String?
   purchases       Purchase[]
   lectureProgress LectureProgress[]
   results         Result[]
   notifications   Notification[]
+  attendance      Attendance[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
   @@index([email])
-  @@index([phoneNumber])
 }
 
 model CourseCategory {
@@ -184,4 +187,28 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  userId    String
+  actorId   String
+  details   String
+  createdAt DateTime @default(now())
+}
+
+model Attendance {
+  id         String   @id @default(uuid())
+  date       String   // Format: YYYY-MM-DD
+  status     String   // "PRESENT", "ABSENT", "CANCELLED", "HOLIDAY"
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recordedBy String   // Teacher/Admin ID who recorded it
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
 }

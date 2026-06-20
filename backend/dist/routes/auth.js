@@ -36,64 +36,91 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.syncUserToFirestore = syncUserToFirestore;
+exports.findUserByPhoneInFirestore = findUserByPhoneInFirestore;
 const express_1 = require("express");
 const jwt = __importStar(require("jsonwebtoken"));
 const db_1 = __importDefault(require("../config/db"));
-const twilio_1 = __importDefault(require("twilio"));
-const app_1 = require("firebase-admin/app");
-const firestore_1 = require("firebase-admin/firestore");
-const crypto_1 = __importDefault(require("crypto"));
+const firebase_1 = require("../config/firebase");
+const bcrypt = __importStar(require("bcryptjs"));
+const auth_1 = require("../middleware/auth");
+const rateLimiter_1 = require("../middleware/rateLimiter");
 const router = (0, express_1.Router)();
 const JWT_SECRET = process.env.JWT_SECRET || 'mathemaniac_secret_key';
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'mathemaniac_refresh_key';
-// Initialize Firebase Admin SDK if environment variables exist
-const firebaseProjectId = process.env.FIREBASE_PROJECT_ID;
-const firebaseClientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-const firebasePrivateKey = process.env.FIREBASE_PRIVATE_KEY;
-if (firebaseProjectId && firebaseClientEmail && firebasePrivateKey) {
-    try {
-        if ((0, app_1.getApps)().length === 0) {
-            (0, app_1.initializeApp)({
-                credential: (0, app_1.cert)({
-                    projectId: firebaseProjectId,
-                    clientEmail: firebaseClientEmail,
-                    privateKey: firebasePrivateKey.replace(/\\n/g, '\n'),
-                }),
-            });
-            console.log('Firebase Admin SDK initialized successfully.');
+const RESET_TOKEN_SECRET = JWT_SECRET + '_reset';
+async function syncUserToFirestore(user, creds) {
+    if (firebase_1.isFirebaseEnabled && firebase_1.db) {
+        try {
+            let collectionName = 'students';
+            if (user.role === 'TEACHER') {
+                collectionName = 'teachers';
+            }
+            else if (user.role === 'ADMIN') {
+                collectionName = 'admin';
+            }
+            const userRef = firebase_1.db.collection(collectionName).doc(user.id);
+            const fullUser = await db_1.default.user.findUnique({ where: { id: user.id } });
+            if (!fullUser)
+                return;
+            const dataToSync = {
+                id: fullUser.id,
+                name: fullUser.name,
+                role: fullUser.role,
+                firstLogin: fullUser.firstLogin,
+                stream: fullUser.stream || null,
+                class: fullUser.class || null,
+                faculty: fullUser.faculty || null,
+                school: fullUser.school || null,
+                createdAt: fullUser.createdAt,
+                updatedAt: fullUser.updatedAt,
+            };
+            if (fullUser.email)
+                dataToSync.email = fullUser.email;
+            if (creds) {
+                if (creds.phoneNumber)
+                    dataToSync.phoneNumber = creds.phoneNumber;
+                if (creds.passwordHash)
+                    dataToSync.passwordHash = creds.passwordHash;
+                if (creds.passphraseHash)
+                    dataToSync.passphraseHash = creds.passphraseHash;
+            }
+            await userRef.set(dataToSync, { merge: true });
+            console.log(`[Firebase Sync] Synchronized user ${fullUser.id} to Firestore collection "${collectionName}".`);
+        }
+        catch (firebaseErr) {
+            console.error('[Firebase Sync Error]', firebaseErr.message || firebaseErr);
         }
     }
-    catch (err) {
-        console.error('Failed to initialize Firebase Admin SDK:', err);
-    }
 }
-else {
-    console.warn('Firebase Admin environment variables missing. Firebase user sync is disabled.');
-}
-// Initialize Twilio client if environment variables exist
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const fromPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
-let twilioClient = null;
-if (accountSid && authToken) {
-    twilioClient = (0, twilio_1.default)(accountSid, authToken);
-    console.log('Twilio client initialized.');
-}
-else {
-    console.warn('Twilio credentials missing. SMS delivery is disabled.');
-}
-const pendingOtps = new Map();
 function generateTokens(payload) {
     const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
     const refreshToken = jwt.sign(payload, REFRESH_SECRET, { expiresIn: '30d' });
     return { accessToken, refreshToken };
 }
-// 1. Send SMS OTP (Exclusive login/signup entry)
-router.post('/otp/send', async (req, res) => {
+async function findUserByPhoneInFirestore(formattedPhone) {
+    if (!firebase_1.db)
+        return null;
+    const collections = ['students', 'teachers', 'admin'];
+    for (const collName of collections) {
+        const snapshot = await firebase_1.db.collection(collName).where('phoneNumber', '==', formattedPhone).limit(1).get();
+        if (!snapshot.empty) {
+            const doc = snapshot.docs[0];
+            return {
+                id: doc.id,
+                ...doc.data(),
+                role: collName === 'students' ? 'STUDENT' : (collName === 'teachers' ? 'TEACHER' : 'ADMIN')
+            };
+        }
+    }
+    return null;
+}
+// 1. Password Login (Rate Limited)
+router.post('/login', rateLimiter_1.loginRateLimiter, async (req, res) => {
     try {
-        const { phoneNumber } = req.body;
-        if (!phoneNumber) {
-            return res.status(400).json({ success: false, error: 'Phone number is required' });
+        const { phoneNumber, password } = req.body;
+        if (!phoneNumber || !password) {
+            return res.status(400).json({ success: false, error: 'Phone number and password are required.' });
         }
         let formattedPhone = phoneNumber.trim();
         if (!formattedPhone.startsWith('+')) {
@@ -101,162 +128,58 @@ router.post('/otp/send', async (req, res) => {
                 formattedPhone = `+91${formattedPhone}`;
             }
             else {
-                return res.status(400).json({ success: false, error: 'Phone number must include country code (e.g. +91xxxxxxxxxx)' });
+                return res.status(400).json({ success: false, error: 'Invalid phone number format.' });
             }
         }
-        // Rate Limiting: Max 1 request per 60 seconds
-        const existingRecord = pendingOtps.get(formattedPhone);
-        if (existingRecord) {
-            const timeDiff = Date.now() - existingRecord.lastSentAt;
-            if (timeDiff < 60 * 1000) {
-                const waitSeconds = Math.ceil((60 * 1000 - timeDiff) / 1000);
-                return res.status(429).json({
-                    success: false,
-                    error: `Please wait ${waitSeconds} seconds before requesting another OTP.`,
-                });
-            }
+        // Find user by phoneNumber in Firestore
+        const firestoreUser = await findUserByPhoneInFirestore(formattedPhone);
+        if (!firestoreUser || !firestoreUser.passwordHash) {
+            (0, rateLimiter_1.recordLoginFailure)(req);
+            return res.status(400).json({ success: false, error: 'Incorrect phone number or password.' });
         }
-        if (!twilioClient || !fromPhoneNumber) {
-            return res.status(500).json({
-                success: false,
-                error: 'Twilio SMS service is not configured on the server. Unable to send OTP.',
-            });
+        const isMatch = await bcrypt.compare(password, firestoreUser.passwordHash);
+        if (!isMatch) {
+            (0, rateLimiter_1.recordLoginFailure)(req);
+            return res.status(400).json({ success: false, error: 'Incorrect phone number or password.' });
         }
-        // Cryptographically secure 6-digit OTP
-        const code = crypto_1.default.randomInt(100000, 999999).toString();
-        const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes validity
-        // Deliver OTP via Twilio
-        await twilioClient.messages.create({
-            body: `Your Mathemaniac verification code is: ${code}. Valid for 5 minutes.`,
-            from: fromPhoneNumber,
-            to: formattedPhone,
-        });
-        pendingOtps.set(formattedPhone, {
-            code,
-            expiresAt,
-            attempts: 0,
-            lastSentAt: Date.now(),
-        });
-        console.log(`[Twilio OTP] Successfully sent verification code to ${formattedPhone}`);
-        return res.status(200).json({
-            success: true,
-            data: { message: 'OTP sent successfully.' },
-        });
-    }
-    catch (error) {
-        console.error('[Twilio Send Error]', error);
-        return res.status(500).json({
-            success: false,
-            error: error.message || 'Failed to deliver verification SMS via Twilio.',
-        });
-    }
-});
-// 2. Verify OTP (Handles both existing login & automatic signup)
-router.post('/otp/verify', async (req, res) => {
-    try {
-        const { phoneNumber, code, name, role } = req.body;
-        if (!phoneNumber || !code) {
-            return res.status(400).json({ success: false, error: 'Phone number and verification code are required' });
-        }
-        let formattedPhone = phoneNumber.trim();
-        if (!formattedPhone.startsWith('+')) {
-            if (formattedPhone.length === 10) {
-                formattedPhone = `+91${formattedPhone}`;
-            }
-            else {
-                return res.status(400).json({ success: false, error: 'Invalid phone number format' });
-            }
-        }
-        const record = pendingOtps.get(formattedPhone);
-        if (!record) {
-            return res.status(400).json({ success: false, error: 'No OTP requested for this number. Please request a code first.' });
-        }
-        // Expiration check
-        if (Date.now() > record.expiresAt) {
-            pendingOtps.delete(formattedPhone);
-            return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new one.' });
-        }
-        // Brute-force check: max 3 attempts
-        if (record.attempts >= 3) {
-            pendingOtps.delete(formattedPhone);
-            return res.status(400).json({ success: false, error: 'Too many incorrect attempts. Please request a new verification code.' });
-        }
-        // Code check
-        if (record.code !== code.trim()) {
-            record.attempts += 1;
-            pendingOtps.set(formattedPhone, record);
-            const remaining = 3 - record.attempts;
-            return res.status(400).json({
-                success: false,
-                error: `Incorrect code. ${remaining} attempt(s) remaining.`,
-            });
-        }
-        // Verified successfully - clean up
-        pendingOtps.delete(formattedPhone);
-        // Look up or auto-register user in Prisma
-        let user = await db_1.default.user.findUnique({
-            where: { phoneNumber: formattedPhone },
-        });
+        // Clear failed attempts upon successful login
+        (0, rateLimiter_1.clearLoginAttempts)(req);
+        // Ensure user exists in local SQLite db
+        let user = await db_1.default.user.findUnique({ where: { id: firestoreUser.id } });
         if (!user) {
             user = await db_1.default.user.create({
                 data: {
-                    name: name?.trim() || (role === 'TEACHER' ? 'Mathemaniac Teacher' : 'Mathemaniac Student'),
-                    phoneNumber: formattedPhone,
-                    role: role || 'STUDENT',
-                },
+                    id: firestoreUser.id,
+                    name: firestoreUser.name,
+                    email: firestoreUser.email || null,
+                    role: firestoreUser.role,
+                    firstLogin: firestoreUser.firstLogin !== undefined ? firestoreUser.firstLogin : true,
+                    stream: firestoreUser.stream || null,
+                    class: firestoreUser.class || null,
+                    faculty: firestoreUser.faculty || null,
+                    school: firestoreUser.school || null,
+                }
             });
-            // Welcome Notification
-            await db_1.default.notification.create({
-                data: {
-                    userId: user.id,
-                    title: 'Welcome to Mathemaniac!',
-                    body: 'Thanks for signing up. Start exploring your courses and taking integration quizzes!',
-                },
-            });
-            // Auto-unlock Calculus course for onboarding ease
-            const calculusCourse = await db_1.default.course.findFirst({
-                where: { title: { contains: 'Calculus' } },
-            });
-            if (calculusCourse) {
-                await db_1.default.purchase.create({
-                    data: {
-                        userId: user.id,
-                        courseId: calculusCourse.id,
-                        amount: calculusCourse.price,
-                        status: 'SUCCESS',
-                        razorpayOrderId: `order_auto_${user.id.substring(0, 8)}`,
-                    },
-                });
-            }
         }
-        else if (role && user.role !== role) {
-            // Dynamic role updates for portal switching tests convenience
+        else {
+            // Keep name, role, firstLogin, and other fields up to date in SQLite
             user = await db_1.default.user.update({
-                where: { phoneNumber: formattedPhone },
-                data: { role },
+                where: { id: firestoreUser.id },
+                data: {
+                    name: firestoreUser.name,
+                    email: firestoreUser.email || null,
+                    role: firestoreUser.role,
+                    firstLogin: firestoreUser.firstLogin !== undefined ? firestoreUser.firstLogin : user.firstLogin,
+                    stream: firestoreUser.stream || null,
+                    class: firestoreUser.class || null,
+                    faculty: firestoreUser.faculty || null,
+                    school: firestoreUser.school || null,
+                }
             });
         }
-        // Sync user data to Firebase Firestore
-        if ((0, app_1.getApps)().length > 0) {
-            try {
-                const db = (0, firestore_1.getFirestore)();
-                const userRef = db.collection('users').doc(user.id);
-                await userRef.set({
-                    id: user.id,
-                    name: user.name,
-                    phoneNumber: user.phoneNumber,
-                    role: user.role,
-                    createdAt: firestore_1.FieldValue.serverTimestamp(),
-                    updatedAt: firestore_1.FieldValue.serverTimestamp(),
-                }, { merge: true });
-                console.log(`[Firebase Sync] Synchronized user ${user.id} to Firestore users collection.`);
-            }
-            catch (firebaseErr) {
-                console.error('[Firebase Sync Error]', firebaseErr);
-                // Do not fail the flow if Firebase Firestore is unreachable/offline
-            }
-        }
-        const tokens = generateTokens({ id: user.id, phoneNumber: user.phoneNumber, role: user.role });
+        const tokens = generateTokens({ id: user.id, phoneNumber: firestoreUser.phoneNumber, role: user.role });
+        // Sync back non-credentials details
+        await syncUserToFirestore(user);
         return res.status(200).json({
             success: true,
             data: {
@@ -264,18 +187,189 @@ router.post('/otp/verify', async (req, res) => {
                 user: {
                     id: user.id,
                     name: user.name,
-                    phoneNumber: user.phoneNumber,
+                    phoneNumber: firestoreUser.phoneNumber,
                     role: user.role,
+                    firstLogin: user.firstLogin,
                 },
             },
         });
     }
     catch (error) {
-        console.error('[OTP Verify Error]', error);
-        return res.status(500).json({ success: false, error: error.message || 'OTP verification failed.' });
+        console.error('[Login Error]', error);
+        return res.status(500).json({ success: false, error: error.message || 'Login failed.' });
     }
 });
-// 3. Refresh Token
+// 2. Register (Disabled for Self-Registration)
+router.post('/register', async (req, res) => {
+    return res.status(403).json({
+        success: false,
+        error: 'Registration is restricted to administrators. Please contact administration to create your account.',
+    });
+});
+// 3. Change Password (Mandatory / Profile)
+router.post('/change-password', auth_1.authenticateJWT, async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        const { newPassword } = req.body;
+        if (!userId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized.' });
+        }
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ success: false, error: 'New password must be at least 6 characters long.' });
+        }
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        const updatedUser = await db_1.default.user.update({
+            where: { id: userId },
+            data: {
+                firstLogin: false,
+            },
+        });
+        // Write to AuditLog
+        await db_1.default.auditLog.create({
+            data: {
+                action: 'PASSWORD_CHANGE',
+                userId: updatedUser.id,
+                actorId: userId,
+                details: `User changed their password. firstLogin set to false.`,
+            },
+        });
+        // Sync updated user to Firestore along with new passwordHash
+        await syncUserToFirestore(updatedUser, {
+            phoneNumber: req.user?.phoneNumber || '',
+            passwordHash
+        });
+        return res.status(200).json({
+            success: true,
+            data: { message: 'Password updated successfully.' },
+        });
+    }
+    catch (error) {
+        console.error('[Change Password Error]', error);
+        return res.status(500).json({ success: false, error: error.message || 'Failed to update password.' });
+    }
+});
+// 4. Forgot Password - Verify Passphrase
+router.post('/forgot-password/verify', async (req, res) => {
+    try {
+        const { phoneNumber, passphrase } = req.body;
+        if (!phoneNumber || !passphrase) {
+            return res.status(400).json({ success: false, error: 'Phone number and recovery passphrase are required.' });
+        }
+        let formattedPhone = phoneNumber.trim();
+        if (!formattedPhone.startsWith('+')) {
+            if (formattedPhone.length === 10) {
+                formattedPhone = `+91${formattedPhone}`;
+            }
+            else {
+                return res.status(400).json({ success: false, error: 'Invalid phone number format.' });
+            }
+        }
+        // Query Firestore directly for the user
+        const firestoreUser = await findUserByPhoneInFirestore(formattedPhone);
+        if (!firestoreUser || !firestoreUser.passphraseHash) {
+            return res.status(400).json({ success: false, error: 'Invalid phone number or recovery passphrase.' });
+        }
+        const isMatch = await bcrypt.compare(passphrase.trim().toUpperCase(), firestoreUser.passphraseHash);
+        if (!isMatch) {
+            return res.status(400).json({ success: false, error: 'Invalid phone number or recovery passphrase.' });
+        }
+        // Generate short-lived reset token (valid for 10 minutes)
+        const resetToken = jwt.sign({ userId: firestoreUser.id, phoneNumber: firestoreUser.phoneNumber, role: firestoreUser.role, purpose: 'PASSWORD_RESET' }, RESET_TOKEN_SECRET, { expiresIn: '10m' });
+        return res.status(200).json({
+            success: true,
+            data: { resetToken },
+        });
+    }
+    catch (error) {
+        console.error('[Verify Passphrase Error]', error);
+        return res.status(500).json({ success: false, error: error.message || 'Passphrase verification failed.' });
+    }
+});
+// 5. Forgot Password - Reset with Token
+router.post('/forgot-password/reset', async (req, res) => {
+    try {
+        const { resetToken, newPassword } = req.body;
+        if (!resetToken || !newPassword) {
+            return res.status(400).json({ success: false, error: 'Reset token and new password are required.' });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({ success: false, error: 'Password must be at least 6 characters long.' });
+        }
+        // Verify reset token
+        let decoded;
+        try {
+            decoded = jwt.verify(resetToken, RESET_TOKEN_SECRET);
+        }
+        catch (jwtErr) {
+            return res.status(400).json({ success: false, error: 'Invalid or expired password reset token.' });
+        }
+        if (decoded.purpose !== 'PASSWORD_RESET') {
+            return res.status(400).json({ success: false, error: 'Invalid reset token purpose.' });
+        }
+        const userId = decoded.userId;
+        const passwordHash = await bcrypt.hash(newPassword, 10);
+        // Ensure user is created/updated in SQLite first (since we might have cleaned up or aligned them)
+        let user = await db_1.default.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            if (!firebase_1.db) {
+                return res.status(500).json({ success: false, error: 'Firebase database is not initialized.' });
+            }
+            // Query Firestore to get user details to sync back to SQLite
+            const collName = decoded.role === 'STUDENT' ? 'students' : (decoded.role === 'TEACHER' ? 'teachers' : 'admin');
+            const firestoreDoc = await firebase_1.db.collection(collName).doc(userId).get();
+            if (firestoreDoc.exists) {
+                const fData = firestoreDoc.data();
+                user = await db_1.default.user.create({
+                    data: {
+                        id: userId,
+                        name: fData.name,
+                        email: fData.email || null,
+                        role: decoded.role,
+                        firstLogin: false,
+                        stream: fData.stream || null,
+                        class: fData.class || null,
+                        faculty: fData.faculty || null,
+                        school: fData.school || null,
+                    }
+                });
+            }
+            else {
+                return res.status(404).json({ success: false, error: 'User not found in Firestore.' });
+            }
+        }
+        else {
+            user = await db_1.default.user.update({
+                where: { id: userId },
+                data: {
+                    firstLogin: false,
+                },
+            });
+        }
+        // Write to AuditLog
+        await db_1.default.auditLog.create({
+            data: {
+                action: 'PASSWORD_RESET',
+                userId: user.id,
+                actorId: userId,
+                details: `Password reset successfully via recovery passphrase.`,
+            },
+        });
+        // Sync updated user and new passwordHash to Firestore
+        await syncUserToFirestore(user, {
+            phoneNumber: decoded.phoneNumber,
+            passwordHash
+        });
+        return res.status(200).json({
+            success: true,
+            data: { message: 'Password has been reset successfully.' },
+        });
+    }
+    catch (error) {
+        console.error('[Reset Password Error]', error);
+        return res.status(500).json({ success: false, error: error.message || 'Password reset failed.' });
+    }
+});
+// 6. Refresh Token
 router.post('/refresh', (req, res) => {
     const { refreshToken } = req.body;
     if (!refreshToken) {

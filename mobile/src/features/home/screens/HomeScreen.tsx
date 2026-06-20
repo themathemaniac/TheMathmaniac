@@ -48,18 +48,18 @@ export const HomeScreen: React.FC = () => {
 
       // Extract resume lecture from purchased courses progress
       let resumeLecture = null;
-      const purchasedCalculus = courses.find(
-        (c: any) => c.title.includes('Calculus') && c.isPurchased
+      const purchasedCourse = courses.find(
+        (c: any) => c.isPurchased
       );
 
-      if (purchasedCalculus) {
-        const detailRes = await apiClient.get(`/courses/${purchasedCalculus.id}`);
+      if (purchasedCourse) {
+        const detailRes = await apiClient.get(`/courses/${purchasedCourse.id}`);
         const outline = detailRes.data.data.lectures;
         const incomplete = outline.find((l: any) => !l.completed);
         if (incomplete) {
           resumeLecture = {
             ...incomplete,
-            courseTitle: purchasedCalculus.title,
+            courseTitle: purchasedCourse.title,
           };
         }
       }
@@ -233,35 +233,7 @@ export const HomeScreen: React.FC = () => {
               ))}
             </View>
 
-            {/* 4. Top Performers Leaderboard */}
-            <View className="bg-slate-900 border border-slate-800 rounded-3xl p-5 mb-6">
-              <Text className="text-slate-100 text-base font-bold mb-4">🏆 Mathemaniac Leaderboard</Text>
-              <View className="space-y-3">
-                {[
-                  { rank: '1st', name: 'Amit Sharma', accuracy: '98.5% Accuracy', rankColor: 'text-amber-400' },
-                  { rank: '2nd', name: 'Rohan Dey', accuracy: '95.0% Accuracy', rankColor: 'text-neutral-300' },
-                  { rank: '3rd', name: 'Anjali Sen', accuracy: '92.0% Accuracy', rankColor: 'text-orange-300' },
-                ].map((item, idx) => (
-                  <View key={idx} className="rounded-xl overflow-hidden shadow-sm">
-                    <LinearGradient
-                      colors={['rgba(115, 120, 130, 0.95)', 'rgba(85, 90, 100, 0.85)']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      className="flex-row justify-between items-center p-3 rounded-xl border border-slate-700/20 relative"
-                    >
-                      {/* Top highlight shine */}
-                      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.3)' }} />
-                      
-                      <View className="flex-row items-center">
-                        <Text className={`${item.rankColor} font-bold text-sm mr-3`}>{item.rank}</Text>
-                        <Text className="text-white font-semibold text-sm">{item.name}</Text>
-                      </View>
-                      <Text className={`${item.rankColor} font-bold text-xs`}>{item.accuracy}</Text>
-                    </LinearGradient>
-                  </View>
-                ))}
-              </View>
-            </View>
+
 
             {/* 5. Recent Announcements */}
             <View className="mb-6">

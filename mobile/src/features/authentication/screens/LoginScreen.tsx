@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
 import { useAuthStore } from '../../../core/store/auth';
@@ -14,8 +14,9 @@ interface Props {
 export const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'STUDENT' | 'TEACHER' | 'ADMIN'>('STUDENT');
 
-  const { login, isLoading, error } = useAuthStore();
+  const { login, isLoading, error, logout } = useAuthStore();
 
   const handleLoginSubmit = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
@@ -31,17 +32,83 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     const formattedPhone = phoneNumber.startsWith('+91') ? phoneNumber : `+91${phoneNumber}`;
     const success = await login(formattedPhone, password);
     if (success) {
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser) {
+        if (role === 'STUDENT' && currentUser.role !== 'STUDENT') {
+          Alert.alert('Access Denied', 'You cannot log into the Student Portal with a Teacher/Admin account.');
+          await logout();
+          return;
+        }
+        if (role === 'TEACHER' && currentUser.role !== 'TEACHER') {
+          Alert.alert('Access Denied', 'You cannot log into the Teacher Portal with this account.');
+          await logout();
+          return;
+        }
+        if (role === 'ADMIN' && currentUser.role !== 'ADMIN') {
+          Alert.alert('Access Denied', 'You cannot log into the Admin Portal with this account.');
+          await logout();
+          return;
+        }
+        
+        // Redirect to Mandatory Change Password if first login
+        if (currentUser.firstLogin) {
+          navigation.replace('MandatoryChangePassword');
+          return;
+        }
+      }
       navigation.replace('AppTabs', { screen: 'Home' });
     }
   };
 
   return (
-    <ScrollView className="flex-1 bg-slate-950 px-6 pt-16">
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      className="flex-1 bg-slate-950"
+    >
+      <ScrollView 
+        className="flex-1 px-6 pt-16"
+        contentContainerStyle={{ paddingBottom: 60 }}
+        keyboardShouldPersistTaps="handled"
+      >
       <View className="mb-12">
         <Text className="text-slate-100 text-3xl font-black">Welcome to Mathemaniac</Text>
         <Text className="text-slate-400 text-sm mt-2 font-medium">
           Sign in to your account to continue
         </Text>
+      </View>
+
+      {/* Role Selector Tabs */}
+      <View className="flex-row bg-slate-900 p-1.5 rounded-2xl mb-8 border border-slate-800 gap-x-1">
+        <TouchableOpacity
+          onPress={() => setRole('STUDENT')}
+          className={`flex-1 py-3 rounded-xl justify-center items-center ${
+            role === 'STUDENT' ? 'bg-slate-800' : 'bg-transparent'
+          }`}
+        >
+          <Text className={`font-bold text-xs ${role === 'STUDENT' ? 'text-slate-100' : 'text-slate-400'}`}>
+            Student
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setRole('TEACHER')}
+          className={`flex-1 py-3 rounded-xl justify-center items-center ${
+            role === 'TEACHER' ? 'bg-slate-800' : 'bg-transparent'
+          }`}
+        >
+          <Text className={`font-bold text-xs ${role === 'TEACHER' ? 'text-slate-100' : 'text-slate-400'}`}>
+            Teacher
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setRole('ADMIN')}
+          className={`flex-1 py-3 rounded-xl justify-center items-center ${
+            role === 'ADMIN' ? 'bg-slate-800' : 'bg-transparent'
+          }`}
+        >
+          <Text className={`font-bold text-xs ${role === 'ADMIN' ? 'text-slate-100' : 'text-slate-400'}`}>
+            Admin
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {error && (
@@ -78,14 +145,24 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          keyboardType="default"
         />
 
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('ForgotPassword')}
-          className="align-self-end items-end mb-8"
-        >
-          <Text className="text-blue-400 text-sm font-semibold">Forgot Password?</Text>
-        </TouchableOpacity>
+        <View className="flex-row justify-between items-center mb-8">
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ForgotPassword')}
+          >
+            <Text className="text-blue-400 text-xs font-semibold">Forgot Password?</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            onPress={() => Alert.alert(
+              'Account Recovery Assistance',
+              'Your recovery passphrase cannot be recovered. Please contact the administration for account recovery assistance.'
+            )}
+          >
+            <Text className="text-blue-400 text-xs font-semibold">Forgot Passphrase?</Text>
+          </TouchableOpacity>
+        </View>
 
         <Button
           title="Sign In"
@@ -94,14 +171,14 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
           className="mb-8"
         />
 
-        {/* Highlighted registration link */}
-        <View className="flex-row justify-center items-center py-4">
-          <Text className="text-slate-400 text-sm">New user? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-            <Text className="text-blue-400 text-sm font-black underline">Register here</Text>
-          </TouchableOpacity>
+        {/* Informational administration text */}
+        <View className="items-center py-4">
+          <Text className="text-slate-500 text-[10px] font-bold text-center leading-4 px-4">
+            Account registration is managed exclusively by administration. If you do not have an account, please contact the admin desk.
+          </Text>
         </View>
       </View>
     </ScrollView>
+  </KeyboardAvoidingView>
   );
 };

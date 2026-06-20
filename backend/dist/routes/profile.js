@@ -20,7 +20,6 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
                 id: true,
                 name: true,
                 email: true,
-                phoneNumber: true,
                 role: true,
                 createdAt: true,
             },
@@ -28,6 +27,10 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
         if (!user) {
             return res.status(404).json({ success: false, error: 'User not found' });
         }
+        const userWithPhone = {
+            ...user,
+            phoneNumber: req.user?.phoneNumber || '',
+        };
         // Performance numbers
         const totalPurchased = await db_1.default.purchase.count({
             where: { userId, status: 'SUCCESS' },
@@ -46,7 +49,7 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
         return res.status(200).json({
             success: true,
             data: {
-                profile: user,
+                profile: userWithPhone,
                 stats: {
                     purchasedCoursesCount: totalPurchased,
                     completedLecturesCount: completedProgress,
