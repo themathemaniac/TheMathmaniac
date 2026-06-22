@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, TextInput, ActivityIndicator, Alert, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
@@ -30,6 +31,21 @@ export const SuperuserReportsScreen: React.FC = () => {
   };
 
   const [compileDate, setCompileDate] = useState(getTodayString());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateObj, setDateObj] = useState(new Date());
+  const [sortFilter, setSortFilter] = useState<'date' | 'createdAt'>('date');
+
+  const onChangeDate = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setDateObj(selectedDate);
+      const tzOffset = selectedDate.getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(selectedDate.getTime() - tzOffset)).toISOString().slice(0, -1);
+      setCompileDate(localISOTime.split('T')[0]);
+    }
+  };
 
   const fetchReports = async () => {
     try {
@@ -114,6 +130,14 @@ export const SuperuserReportsScreen: React.FC = () => {
     });
   };
 
+  const sortedReports = [...reports].sort((a, b) => {
+    if (sortFilter === 'date') {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    } else {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+  });
+
   return (
     <View className="flex-1 bg-slate-950">
       {/* Header */}
@@ -127,7 +151,7 @@ export const SuperuserReportsScreen: React.FC = () => {
         <Text className="text-slate-100 text-base font-bold flex-1 ml-4 text-center">
           🔑 Superuser Reports
         </Text>
-        <View className="w-10" /> {/* Spacer */}
+        <View className="w-10" />
       </View>
 
       <ScrollView
@@ -156,16 +180,24 @@ export const SuperuserReportsScreen: React.FC = () => {
             </Text>
             
             <View className="flex-row items-center">
-              <View className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 mr-3">
-                <TextInput
-                  className="text-slate-100 text-xs font-semibold"
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#475569"
-                  value={compileDate}
-                  onChangeText={setCompileDate}
-                  maxLength={10}
+              <TouchableOpacity
+                onPress={() => setShowDatePicker(true)}
+                className="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 mr-3 justify-center"
+              >
+                <Text className="text-slate-100 text-xs font-semibold">
+                  {compileDate}
+                </Text>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={dateObj}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={onChangeDate}
+                  maximumDate={new Date()}
                 />
-              </View>
+              )}
               
               <TouchableOpacity
                 onPress={handleGenerateReport}
@@ -182,15 +214,35 @@ export const SuperuserReportsScreen: React.FC = () => {
           </View>
 
           {/* Reports History List */}
-          <Text className="text-slate-100 text-base font-bold mb-4">Historical Archive</Text>
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-slate-100 text-base font-bold">Historical Archive</Text>
+            <View className="flex-row bg-slate-900 rounded-lg p-1 border border-slate-800">
+              <TouchableOpacity
+                onPress={() => setSortFilter('date')}
+                className={`px-3 py-1.5 rounded-md ${sortFilter === 'date' ? 'bg-amber-500/20' : 'bg-transparent'}`}
+              >
+                <Text className={`text-[10px] font-bold ${sortFilter === 'date' ? 'text-amber-400' : 'text-slate-500'}`}>
+                  By Date
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setSortFilter('createdAt')}
+                className={`px-3 py-1.5 rounded-md ${sortFilter === 'createdAt' ? 'bg-amber-500/20' : 'bg-transparent'}`}
+              >
+                <Text className={`text-[10px] font-bold ${sortFilter === 'createdAt' ? 'text-amber-400' : 'text-slate-500'}`}>
+                  By Created
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           {loading && !refreshing ? (
             <View className="py-20 justify-center items-center">
               <ActivityIndicator size="large" color="#F59E0B" />
               <Text className="text-slate-500 text-xs mt-3">Loading historical registry...</Text>
             </View>
-          ) : reports.length > 0 ? (
-            reports.map((report) => (
+          ) : sortedReports.length > 0 ? (
+            sortedReports.map((report) => (
               <TouchableOpacity
                 key={report.id}
                 onPress={() => handleViewReport(report)}

@@ -18,6 +18,7 @@ model User {
   class           String?
   faculty         String?
   school          String?
+  subjects        String?
   purchases       Purchase[]
   lectureProgress LectureProgress[]
   results         Result[]
@@ -27,6 +28,7 @@ model User {
   teacherSchedules    TeacherSchedule[]
   teacherLocationLogs TeacherLocationLog[]
   teacherAttendances  TeacherAttendance[]
+  courseTeachers      CourseTeacher[]
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -55,6 +57,7 @@ model Course {
   purchases        Purchase[]
   tests            Test[]
   studyMaterials   StudyMaterial[]
+  teachers         CourseTeacher[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 }
@@ -291,4 +294,17 @@ model DailyReport {
   date      String   @unique // Format: YYYY-MM-DD
   pdfUrl    String   // Relative URL, e.g. "/uploads/reports/attendance-2026-06-22.pdf"
   createdAt DateTime @default(now())
+}
+
+model CourseTeacher {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, userId])
+  @@index([courseId])
+  @@index([userId])
 }

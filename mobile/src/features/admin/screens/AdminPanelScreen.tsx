@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../../navigation/types';
 import { useAuthStore } from '../../../core/store/auth';
 import { Button } from '../../../shared/components/Button';
+import { AdminCoursesTab } from './AdminCoursesTab';
 
 type AdminPanelScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminPanel'>;
 
@@ -21,7 +22,7 @@ export const AdminPanelScreen: React.FC = () => {
     isLoading
   } = useAuthStore();
 
-  const [activeTab, setActiveTab] = useState<'directory' | 'create' | 'audit'>('directory');
+  const [activeTab, setActiveTab] = useState<'directory' | 'create' | 'audit' | 'courses'>('directory');
 
   // Directory State
   const [users, setUsers] = useState<any[]>([]);
@@ -39,6 +40,7 @@ export const AdminPanelScreen: React.FC = () => {
   const [classText, setClassText] = useState('');
   const [faculty, setFaculty] = useState('');
   const [school, setSchool] = useState('');
+  const [subjects, setSubjects] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Generated Credentials Modal State
@@ -133,7 +135,8 @@ export const AdminPanelScreen: React.FC = () => {
       role === 'STUDENT' ? stream.trim() || undefined : undefined,
       role === 'STUDENT' ? classText.trim() || undefined : undefined,
       role === 'STUDENT' ? faculty.trim() || undefined : undefined,
-      role === 'STUDENT' ? school.trim() || undefined : undefined
+      role === 'STUDENT' ? school.trim() || undefined : undefined,
+      role === 'TEACHER' ? subjects.trim() || undefined : undefined
     );
     setIsSubmitting(false);
 
@@ -156,6 +159,7 @@ export const AdminPanelScreen: React.FC = () => {
       setClassText('');
       setFaculty('');
       setSchool('');
+      setSubjects('');
     } else {
       const errorMsg = useAuthStore.getState().error || 'Failed to create user.';
       Alert.alert('Creation Failed', errorMsg);
@@ -292,7 +296,7 @@ export const AdminPanelScreen: React.FC = () => {
             activeTab === 'directory' ? 'bg-slate-800' : 'bg-transparent'
           }`}
         >
-          <Text className={`font-bold text-xs ${activeTab === 'directory' ? 'text-slate-100' : 'text-slate-400'}`}>
+          <Text className={`font-bold text-[10px] ${activeTab === 'directory' ? 'text-slate-100' : 'text-slate-400'}`}>
             Directory
           </Text>
         </TouchableOpacity>
@@ -302,8 +306,8 @@ export const AdminPanelScreen: React.FC = () => {
             activeTab === 'create' ? 'bg-slate-800' : 'bg-transparent'
           }`}
         >
-          <Text className={`font-bold text-xs ${activeTab === 'create' ? 'text-slate-100' : 'text-slate-400'}`}>
-            Create User
+          <Text className={`font-bold text-[10px] ${activeTab === 'create' ? 'text-slate-100' : 'text-slate-400'}`}>
+            Create
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -312,8 +316,18 @@ export const AdminPanelScreen: React.FC = () => {
             activeTab === 'audit' ? 'bg-slate-800' : 'bg-transparent'
           }`}
         >
-          <Text className={`font-bold text-xs ${activeTab === 'audit' ? 'text-slate-100' : 'text-slate-400'}`}>
-            Audit Logs
+          <Text className={`font-bold text-[10px] ${activeTab === 'audit' ? 'text-slate-100' : 'text-slate-400'}`}>
+            Logs
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setActiveTab('courses')}
+          className={`flex-1 py-3 rounded-xl items-center justify-center ${
+            activeTab === 'courses' ? 'bg-slate-800' : 'bg-transparent'
+          }`}
+        >
+          <Text className={`font-bold text-[10px] ${activeTab === 'courses' ? 'text-slate-100' : 'text-slate-400'}`}>
+            Courses
           </Text>
         </TouchableOpacity>
       </View>
@@ -455,6 +469,11 @@ export const AdminPanelScreen: React.FC = () => {
                                 <Text className="text-[10px] text-slate-400 font-medium">Faculty: {item.faculty}</Text>
                               </View>
                             )}
+                          </View>
+                        )}
+                        {item.role === 'TEACHER' && item.subjects && (
+                          <View className="mt-2">
+                            <Text className="text-[10px] text-slate-400 font-medium">Subjects: {item.subjects}</Text>
                           </View>
                         )}
                       </View>
@@ -607,6 +626,19 @@ export const AdminPanelScreen: React.FC = () => {
               </View>
             )}
 
+            {role === 'TEACHER' && (
+              <View className="mb-4">
+                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects</Text>
+                <TextInput
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                  placeholder="e.g. Mathematics, Physics"
+                  placeholderTextColor="#5C5446"
+                  value={subjects}
+                  onChangeText={setSubjects}
+                />
+              </View>
+            )}
+
             <Button
               title="Generate Credentials & Create"
               onPress={handleCreateSubmit}
@@ -649,6 +681,8 @@ export const AdminPanelScreen: React.FC = () => {
           )}
         </ScrollView>
       )}
+
+      {activeTab === 'courses' && <AdminCoursesTab />}
 
       {/* Generated Credentials Modal (Shown ONLY ONCE) */}
       <Modal visible={showCredsModal} transparent animationType="fade" onRequestClose={() => setShowCredsModal(false)}>

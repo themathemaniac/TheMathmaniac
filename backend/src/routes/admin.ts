@@ -25,9 +25,12 @@ function generatePassphrase(): string {
   return `${adj}-${noun}-${num}`;
 }
 
-// Middleware to enforce Admin role
+const SUPERUSER_PHONES = ['+917980357754', '+919831754957'];
+
+// Middleware to enforce Admin role or Superuser
 function requireAdmin(req: AuthenticatedRequest, res: Response, next: any) {
-  if (req.user?.role !== 'ADMIN') {
+  const isSuperuser = req.user?.phoneNumber && SUPERUSER_PHONES.includes(req.user.phoneNumber);
+  if (req.user?.role !== 'ADMIN' && !isSuperuser) {
     return res.status(403).json({ success: false, error: 'Access Denied: Administrator role required.' });
   }
   next();
@@ -36,7 +39,7 @@ function requireAdmin(req: AuthenticatedRequest, res: Response, next: any) {
 // 1. Create User (Admin Only)
 router.post('/users', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { name, phoneNumber, role, email, stream, class: studentClass, faculty, school } = req.body;
+    const { name, phoneNumber, role, email, stream, class: studentClass, faculty, school, subjects } = req.body;
 
     if (!name || !phoneNumber || !role) {
       return res.status(400).json({ success: false, error: 'Name, phone number, and role are required.' });
@@ -79,6 +82,7 @@ router.post('/users', authenticateJWT, requireAdmin, async (req: AuthenticatedRe
         class: role === 'STUDENT' && studentClass ? studentClass.trim() : null,
         faculty: role === 'STUDENT' && faculty ? faculty.trim() : null,
         school: role === 'STUDENT' && school ? school.trim() : null,
+        subjects: role === 'TEACHER' && subjects ? subjects.trim() : null,
       }
     });
 
@@ -205,21 +209,28 @@ router.get('/users', authenticateJWT, requireAdmin, async (req: AuthenticatedReq
 
     let users: any[] = [];
 
+    console.log('[GET /users] DB Status:', db ? 'Initialized' : 'NULL');
+
     if (db) {
       if (!roleFilter || roleFilter === 'STUDENT') {
         const studentSnap = await db.collection('students').get();
+        console.log(`[GET /users] studentSnap size: ${studentSnap.size}`);
         studentSnap.forEach(doc => {
-          users.push({ id: doc.id, ...doc.data() });
+          const data = doc.data();
+          users.push({ id: doc.id, role: 'STUDENT', ...data });
         });
       }
 
       if (!roleFilter || roleFilter === 'TEACHER') {
         const teacherSnap = await db.collection('teachers').get();
+        console.log(`[GET /users] teacherSnap size: ${teacherSnap.size}`);
         teacherSnap.forEach(doc => {
-          users.push({ id: doc.id, ...doc.data() });
+          const data = doc.data();
+          users.push({ id: doc.id, role: 'TEACHER', ...data });
         });
       }
     }
+    console.log(`[GET /users] total users fetched: ${users.length}`);
 
     // Filter by query
     if (query) {
@@ -234,7 +245,7 @@ router.get('/users', authenticateJWT, requireAdmin, async (req: AuthenticatedReq
       );
     }
 
-    // Sort by name or createdAt
+    // Sort by createdAt descending
     users.sort((a, b) => {
       const dateA = a.createdAt ? (a.createdAt.seconds || new Date(a.createdAt).getTime()) : 0;
       const dateB = b.createdAt ? (b.createdAt.seconds || new Date(b.createdAt).getTime()) : 0;
@@ -327,6 +338,170 @@ router.get('/audit-logs', authenticateJWT, requireAdmin, async (req: Authenticat
   } catch (error: any) {
     console.error('[Admin List Logs Error]', error);
     return res.status(500).json({ success: false, error: error.message || 'Failed to list audit logs.' });
+  }
+});
+
+// 5. List Courses with Details (Admin & Superuser)
+router.get('/courses', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const courses = await prisma.course.findMany({
+      include: {
+        category: true,
+        teachers: {
+          include: { user: { select: { id: true, name: true, email: true } } }
+        },
+        purchases: {
+          include: { user: { select: { id: true, name: true, email: true } } }
+        },
+        _count: { select: { purchases: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return res.status(200).json({ success: true, data: courses });
+  } catch (error: any) {
+    console.error('[Admin List Courses Error]', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to list courses.' });
+  }
+});
+
+// 6. Enroll Student to Course (Admin & Superuser)
+router.post('/courses/:id/enroll', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { studentId } = req.body;
+    const courseId = req.params.id;
+
+    if (!studentId) return res.status(400).json({ success: false, error: 'Student ID is required.' });
+
+    const existingPurchase = await prisma.purchase.findFirst({
+      where: { userId: studentId, courseId }
+    });
+
+    if (existingPurchase) {
+      return res.status(400).json({ success: false, error: 'Student is already enrolled in this course.' });
+    }
+
+    const course = await prisma.course.findUnique({ where: { id: courseId } });
+    if (!course) return res.status(404).json({ success: false, error: 'Course not found.' });
+
+    await prisma.purchase.create({
+      data: {
+        userId: studentId,
+        courseId,
+        amount: course.price,
+        status: 'SUCCESS',
+        razorpayOrderId: `manual_admin_${Date.now()}_${studentId.substring(0,5)}`
+      }
+    });
+
+    // Write to AuditLog
+    await prisma.auditLog.create({
+      data: {
+        action: 'COURSE_ENROLLMENT',
+        userId: studentId,
+        actorId: req.user!.id,
+        details: `Admin enrolled student ${studentId} into course ${course.title}.`,
+      },
+    });
+
+    return res.status(200).json({ success: true, data: { message: 'Student enrolled successfully.' } });
+  } catch (error: any) {
+    console.error('[Admin Enroll Student Error]', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to enroll student.' });
+  }
+});
+
+// Middleware to enforce Superuser for Admin
+function requireAdminSuperuser(req: AuthenticatedRequest, res: Response, next: any) {
+  if (!req.user || !SUPERUSER_PHONES.includes(req.user.phoneNumber)) {
+    return res.status(403).json({ success: false, error: 'Access Denied: Superuser privileges required.' });
+  }
+  next();
+}
+
+// 7. Assign Teacher to Course (Superuser Only)
+router.post('/courses/:id/teachers', authenticateJWT, requireAdmin, requireAdminSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { teacherId } = req.body;
+    const courseId = req.params.id;
+
+    if (!teacherId) return res.status(400).json({ success: false, error: 'Teacher ID is required.' });
+
+    const existing = await prisma.courseTeacher.findUnique({
+      where: { courseId_userId: { courseId, userId: teacherId } }
+    });
+
+    if (existing) return res.status(400).json({ success: false, error: 'Teacher is already assigned to this course.' });
+
+    await prisma.courseTeacher.create({
+      data: { courseId, userId: teacherId }
+    });
+
+    return res.status(200).json({ success: true, data: { message: 'Teacher assigned successfully.' } });
+  } catch (error: any) {
+    console.error('[Assign Teacher Error]', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to assign teacher.' });
+  }
+});
+
+// 8. Remove Teacher from Course (Superuser Only)
+router.delete('/courses/:id/teachers/:teacherId', authenticateJWT, requireAdmin, requireAdminSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id, teacherId } = req.params;
+
+    await prisma.courseTeacher.deleteMany({
+      where: { courseId: id, userId: teacherId }
+    });
+
+    return res.status(200).json({ success: true, data: { message: 'Teacher removed successfully.' } });
+  } catch (error: any) {
+    console.error('[Remove Teacher Error]', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to remove teacher.' });
+  }
+});
+
+const COURSE_CREATOR_PHONE = '+919831754957'; // Shubhadeep Biswas
+
+// 9. Create Course (Restricted to specific Superuser)
+router.post('/courses', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || !req.user.phoneNumber.includes('9831754957')) {
+      return res.status(403).json({ success: false, error: 'Access Denied: Only authorized superusers can create courses.' });
+    }
+
+    const { title, description, thumbnailUrl, price, categoryId, instructorName, learningOutcomes } = req.body;
+
+    if (!title || !description || price === undefined || !categoryId || !instructorName) {
+      return res.status(400).json({ success: false, error: 'Missing required course fields.' });
+    }
+
+    const course = await prisma.course.create({
+      data: {
+        title: title.trim(),
+        description: description.trim(),
+        thumbnailUrl: thumbnailUrl?.trim() || '',
+        price: Number(price),
+        categoryId: categoryId.trim(),
+        instructorName: instructorName.trim(),
+        learningOutcomes: learningOutcomes || '[]',
+        published: true,
+      }
+    });
+
+    // Write to AuditLog
+    await prisma.auditLog.create({
+      data: {
+        action: 'COURSE_CREATED',
+        userId: req.user.id,
+        actorId: req.user.id,
+        details: `Superuser created new course: ${course.title}.`,
+      },
+    });
+
+    return res.status(201).json({ success: true, data: course });
+  } catch (error: any) {
+    console.error('[Create Course Error]', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to create course.' });
   }
 });
 

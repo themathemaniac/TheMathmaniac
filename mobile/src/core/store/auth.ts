@@ -32,11 +32,16 @@ interface AuthState {
   resetPasswordWithToken: (resetToken: string, newPassword: string) => Promise<boolean>;
 
   // Admin Actions
-  adminCreateUser: (name: string, phoneNumber: string, role: string, email?: string, stream?: string, studentClass?: string, faculty?: string, school?: string) => Promise<{ temporaryPassword: string; recoveryPassphrase: string } | null>;
+  adminCreateUser: (name: string, phoneNumber: string, role: string, email?: string, stream?: string, studentClass?: string, faculty?: string, school?: string, subjects?: string) => Promise<{ temporaryPassword: string; recoveryPassphrase: string } | null>;
   adminRecoverUser: (userId: string) => Promise<{ temporaryPassword: string; recoveryPassphrase: string } | null>;
   adminDeleteUser: (userId: string) => Promise<boolean>;
   adminListUsers: (query?: string, role?: string) => Promise<any[]>;
   adminListAuditLogs: () => Promise<any[]>;
+  adminListCourses: () => Promise<any[]>;
+  adminEnrollStudent: (courseId: string, studentId: string) => Promise<boolean>;
+  adminAssignTeacher: (courseId: string, teacherId: string) => Promise<boolean>;
+  adminRemoveTeacher: (courseId: string, teacherId: string) => Promise<boolean>;
+  adminCreateCourse: (data: any) => Promise<boolean>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -190,10 +195,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   // Admin Actions
-  adminCreateUser: async (name, phoneNumber, role, email, stream, studentClass, faculty, school) => {
+  adminCreateUser: async (name, phoneNumber, role, email, stream, studentClass, faculty, school, subjects) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await apiClient.post('/admin/users', { name, phoneNumber, role, email, stream, class: studentClass, faculty, school });
+      const response = await apiClient.post('/admin/users', { name, phoneNumber, role, email, stream, class: studentClass, faculty, school, subjects });
       set({ isLoading: false });
       return {
         temporaryPassword: response.data.data.temporaryPassword,
@@ -260,6 +265,71 @@ export const useAuthStore = create<AuthState>((set) => ({
       const msg = error.response?.data?.error || error.message || 'Failed to fetch audit logs';
       set({ error: msg, isLoading: false });
       return [];
+    }
+  },
+
+  adminListCourses: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await apiClient.get('/admin/courses');
+      set({ isLoading: false });
+      return response.data.data;
+    } catch (error: any) {
+      const msg = error.response?.data?.error || error.message || 'Failed to fetch courses';
+      set({ error: msg, isLoading: false });
+      return [];
+    }
+  },
+
+  adminEnrollStudent: async (courseId, studentId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await apiClient.post(`/admin/courses/${courseId}/enroll`, { studentId });
+      set({ isLoading: false });
+      return true;
+    } catch (error: any) {
+      const msg = error.response?.data?.error || error.message || 'Failed to enroll student';
+      set({ error: msg, isLoading: false });
+      return false;
+    }
+  },
+
+  adminAssignTeacher: async (courseId, teacherId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await apiClient.post(`/admin/courses/${courseId}/teachers`, { teacherId });
+      set({ isLoading: false });
+      return true;
+    } catch (error: any) {
+      const msg = error.response?.data?.error || error.message || 'Failed to assign teacher';
+      set({ error: msg, isLoading: false });
+      return false;
+    }
+  },
+
+  adminRemoveTeacher: async (courseId, teacherId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await apiClient.delete(`/admin/courses/${courseId}/teachers/${teacherId}`);
+      set({ isLoading: false });
+      return true;
+    } catch (error: any) {
+      const msg = error.response?.data?.error || error.message || 'Failed to remove teacher';
+      set({ error: msg, isLoading: false });
+      return false;
+    }
+  },
+
+  adminCreateCourse: async (data: any) => {
+    set({ isLoading: true, error: null });
+    try {
+      await apiClient.post('/admin/courses', data);
+      set({ isLoading: false });
+      return true;
+    } catch (error: any) {
+      const msg = error.response?.data?.error || error.message || 'Failed to create course';
+      set({ error: msg, isLoading: false });
+      return false;
     }
   },
 }));
