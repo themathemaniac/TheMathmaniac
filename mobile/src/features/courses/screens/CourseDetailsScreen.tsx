@@ -6,6 +6,7 @@ import { RootStackParamList } from '../../../navigation/types';
 import { apiClient } from '../../../core/api/client';
 import { Button } from '../../../shared/components/Button';
 import { Skeleton } from '../../../shared/components/Skeleton';
+import { extractThemeColor } from '../../../core/constants/courseThemes';
 
 type CourseDetailsRouteProp = RouteProp<RootStackParamList, 'CourseDetails'>;
 type CourseDetailsNavigationProp = StackNavigationProp<RootStackParamList, 'CourseDetails'>;
@@ -86,6 +87,8 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
   }
 
   const formattedPrice = course.price === 0 ? 'FREE' : `₹${(course.price / 100).toLocaleString('en-IN')}`;
+  const themeColor = extractThemeColor(course.thumbnailUrl);
+  const cardStyle = themeColor ? { borderColor: themeColor } : {};
 
   return (
     <View className="flex-1 bg-slate-950">
@@ -93,7 +96,7 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Course Teaser/Image Block */}
         <View className="relative">
-          <Image source={{ uri: course.thumbnailUrl }} className="w-full h-56" resizeMode="cover" />
+          <Image source={course.thumbnailUrl ? { uri: course.thumbnailUrl } : undefined} className="w-full h-56" resizeMode="cover" />
           <TouchableOpacity
             className="absolute left-6 top-14 w-10 h-10 bg-slate-900/80 rounded-full justify-center items-center border border-slate-700/50"
             onPress={() => navigation.goBack()}
@@ -109,8 +112,8 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
           <Text className="text-slate-100 text-2xl font-black mt-2 leading-8">{course.title}</Text>
 
           {course.teachers && course.teachers.length > 0 && (
-            <View className="mt-4 bg-slate-900 border border-slate-800 rounded-2xl p-4">
-              <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-3">Assigned Faculty</Text>
+            <View className="mt-4 border rounded-2xl p-4" style={[{ backgroundColor: '#0f172a', borderColor: '#1e293b' }, cardStyle]}>
+              <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-3" style={themeColor ? { color: themeColor } : {}}>Assigned Faculty</Text>
               {course.teachers.map((t: any) => (
                 <View key={t.user.id} className="flex-row items-center mb-2">
                   <View className="w-8 h-8 bg-blue-900/50 rounded-full items-center justify-center mr-3 border border-blue-500/30">
@@ -128,8 +131,8 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
           )}
 
           {/* 10-Second Value Outcomes */}
-          <View className="bg-slate-900 border border-slate-800 rounded-3xl p-5 mt-6">
-            <Text className="text-blue-400 text-xs font-bold uppercase tracking-widest mb-3">
+          <View className="border rounded-3xl p-5 mt-6" style={[{ backgroundColor: '#0f172a', borderColor: '#1e293b' }, cardStyle]}>
+            <Text className="text-blue-400 text-xs font-bold uppercase tracking-widest mb-3" style={themeColor ? { color: themeColor } : {}}>
               ⚡ What you will learn
             </Text>
             {course.learningOutcomes.map((outcome: string, idx: number) => (
@@ -152,10 +155,11 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
               <TouchableOpacity
                 key={lecture.id}
                 onPress={() => handleLecturePress(lecture.id)}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-3 flex-row items-center justify-between"
+                className="border rounded-2xl p-4 mb-3 flex-row items-center justify-between"
+                style={[{ backgroundColor: '#0f172a', borderColor: '#1e293b' }, cardStyle]}
               >
                 <View className="flex-1 mr-3">
-                  <Text className="text-slate-500 text-[10px] font-bold">LESSON {lecture.sortOrder}</Text>
+                  <Text className="text-slate-500 text-[10px] font-bold" style={themeColor ? { color: themeColor } : {}}>LESSON {lecture.sortOrder}</Text>
                   <Text className="text-slate-100 text-sm font-bold mt-1" numberOfLines={1}>
                     {lecture.title}
                   </Text>

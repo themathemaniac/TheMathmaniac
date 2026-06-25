@@ -64,6 +64,7 @@ model Course {
   teachers         CourseTeacher[]
   bundleItems      BundleItem[]    @relation("BundleToItem")
   partOfBundles    BundleItem[]    @relation("ItemToBundle")
+  announcements    Announcement[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 }
@@ -199,6 +200,8 @@ model Announcement {
   id        String   @id @default(uuid())
   title     String
   content   String
+  courseId  String?
+  course    Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }
 

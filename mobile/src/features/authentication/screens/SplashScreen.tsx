@@ -1,8 +1,9 @@
-import React, { useEffect } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { useAuthStore } from '../../../core/store/auth';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
+import { useVideoPlayer, VideoView } from 'expo-video';
 
 type SplashScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Splash'>;
 
@@ -11,42 +12,67 @@ interface Props {
 }
 
 export const SplashScreen: React.FC<Props> = ({ navigation }) => {
-  const { initializeAuth, isAuthenticated, isLoading } = useAuthStore();
+  const { initializeAuth, isAuthenticated } = useAuthStore();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [videoFinished, setVideoFinished] = useState(false);
+
+  const videoSource = require('../../../../assets/loading.mp4');
+  const player = useVideoPlayer(videoSource, player => {
+    player.loop = false;
+    player.play();
+  });
 
   useEffect(() => {
     const checkAuth = async () => {
-      // Small timeout for premium branding feel
-      await new Promise((r) => setTimeout(r, 1500));
       await initializeAuth();
+      setAuthChecked(true);
     };
     checkAuth();
   }, []);
 
   useEffect(() => {
-    if (!isLoading) {
+    const subscription = player.addListener('playToEnd', () => {
+      setVideoFinished(true);
+    });
+    return () => {
+      subscription?.remove();
+    };
+  }, [player]);
+
+  useEffect(() => {
+    if (videoFinished && authChecked) {
       if (isAuthenticated) {
         navigation.replace('AppTabs', { screen: 'Home' });
       } else {
-        navigation.replace('Onboarding');
+        navigation.replace('Login');
       }
     }
-  }, [isAuthenticated, isLoading]);
+  }, [videoFinished, authChecked, isAuthenticated]);
 
   return (
-    <View className="flex-1 bg-slate-950 justify-center items-center px-6">
-      <View className="items-center">
-        <View className="w-20 h-20 bg-blue-600 rounded-3xl justify-center items-center shadow-lg shadow-blue-500/30">
-          <Text className="text-white text-4xl font-black italic">M</Text>
-        </View>
-        <Text className="text-slate-100 text-3xl font-bold mt-6 tracking-wide">
-          Mathemaniac
-        </Text>
-        <Text className="text-blue-400 text-sm mt-2 font-medium uppercase tracking-widest">
-          Synapse EduTech
-        </Text>
-      </View>
-
-      <ActivityIndicator size="small" color="#2D8C82" className="absolute bottom-16" />
+    <View style={styles.container}>
+      <VideoView
+        style={styles.video}
+        player={player}
+        contentFit="contain" // Ensures the video is not cropped, so characters are fully visible
+        nativeControls={false}
+      />
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    // Assuming the background of the new video is off-white or white
+    // If it's pure white, change this to #FFFFFF.
+    backgroundColor: '#EAE7DF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  video: {
+    width: '100%',
+    height: '100%', // Allow contain to figure out aspect ratio
+    transform: [{ scale: 1.7 }], // Slight zoom
+  }
+});

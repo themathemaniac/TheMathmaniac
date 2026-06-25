@@ -35,29 +35,27 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         activeOpacity={0.85}
       >
         <LinearGradient
-          colors={['rgba(110, 115, 125, 0.95)', 'rgba(80, 85, 95, 0.85)']}
+          colors={['#1e293b', '#020617']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          className="flex-row p-3 rounded-2xl border border-slate-700/30 relative"
+          className="flex-row p-3 rounded-2xl border border-slate-800 relative"
         >
-          {/* Top highlight shine */}
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255, 255, 255, 0.45)' }} />
           
           <Image
-            source={{ uri: thumbnailUrl }}
+            source={thumbnailUrl ? { uri: thumbnailUrl } : undefined}
             className="w-24 h-24 rounded-xl"
             resizeMode="cover"
           />
           <View className="flex-1 ml-4 justify-between">
             <View>
-              <Text className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{category}</Text>
-              <Text className="text-sm font-semibold text-white mt-1" numberOfLines={2}>
+              <Text className="text-xs font-bold text-amber-500 uppercase tracking-wider">{category}</Text>
+              <Text className="text-sm font-semibold text-slate-100 mt-1" numberOfLines={2}>
                 {title}
               </Text>
             </View>
             <View className="flex-row justify-between items-center mt-2">
-              <Text className="text-xs text-neutral-300">{lectureCount} Lectures</Text>
-              <Text className="text-sm font-bold text-emerald-400">
+              <Text className="text-xs text-slate-400">{lectureCount} Lectures</Text>
+              <Text className="text-sm font-bold text-blue-400">
                 {isPurchased ? 'Unlocked' : formattedPrice}
               </Text>
             </View>
@@ -74,36 +72,34 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       activeOpacity={0.9}
     >
       <LinearGradient
-        colors={['rgba(110, 115, 125, 0.95)', 'rgba(80, 85, 95, 0.85)']}
+        colors={['#1e293b', '#020617']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        className="rounded-3xl border border-slate-700/30 relative h-[330px] justify-between overflow-hidden"
+        className="rounded-3xl border border-slate-800 relative h-[330px] justify-between overflow-hidden"
       >
-        {/* Top highlight shine */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255, 255, 255, 0.45)', zIndex: 10 }} />
 
         <Image
-          source={{ uri: thumbnailUrl }}
+          source={thumbnailUrl ? { uri: thumbnailUrl } : undefined}
           className="w-full h-32"
           resizeMode="cover"
         />
         <View className="p-4 flex-1 justify-between">
           <View>
             <View className="flex-row justify-between items-center">
-              <Text className="text-xs font-bold text-emerald-400 uppercase tracking-wider">{category}</Text>
-              <Text className="text-xs text-neutral-300">{lectureCount} Lectures</Text>
+              <Text className="text-xs font-bold text-amber-500 uppercase tracking-wider">{category}</Text>
+              <Text className="text-xs text-slate-400">{lectureCount} Lectures</Text>
             </View>
-            <Text className="text-base font-semibold text-white mt-2" numberOfLines={2}>
+            <Text className="text-base font-semibold text-slate-100 mt-2" numberOfLines={2}>
               {title}
             </Text>
           </View>
 
-          <View className="flex-row justify-between items-center mt-4 pt-3 border-t border-white/10">
-            <Text className="text-base font-bold text-emerald-400">
+          <View className="flex-row justify-between items-center mt-4 pt-3 border-t border-slate-800">
+            <Text className="text-base font-bold text-blue-400">
               {isPurchased ? 'Unlocked' : formattedPrice}
             </Text>
-            <View className="bg-white/10 px-3 py-1.5 rounded-full border border-white/20">
-              <Text className="text-xs font-semibold text-white">
+            <View className="bg-blue-600/20 px-3 py-1.5 rounded-full border border-blue-500/30">
+              <Text className="text-xs font-semibold text-blue-400">
                 {isPurchased ? 'Start Study' : 'Get Course'}
               </Text>
             </View>

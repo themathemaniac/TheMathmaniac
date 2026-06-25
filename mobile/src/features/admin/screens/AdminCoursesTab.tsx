@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, ActivityIndicator, Modal, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, ActivityIndicator, Modal, SafeAreaView, Image } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { apiClient } from '../../../core/api/client';
 import { useAuthStore } from '../../../core/store/auth';
+import { COURSE_THEMES, getThemeUrl, extractThemeColor } from '../../../core/constants/courseThemes';
+
+const COMMON_SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'English'];
 
 const SUPERUSER_PHONES = ['+917980357754', '+919831754957'];
 
@@ -38,6 +41,9 @@ export const AdminCoursesTab: React.FC = () => {
   const [slotEndTime, setSlotEndTime] = useState(new Date(new Date().setHours(18, 30, 0, 0)));
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+
+  // Theme Dropdown State
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
 
   const handleAddSlot = () => {
     const formatTime = (d: Date) => d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
@@ -271,8 +277,58 @@ export const AdminCoursesTab: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Title</Text>
-              <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-xs mb-3" placeholder="Course Title" placeholderTextColor="#5C5446" value={newCourse.title} onChangeText={(t) => setNewCourse({...newCourse, title: t})} />
+              <View style={{ zIndex: 50 }}>
+                <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Title</Text>
+                <TextInput 
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-3" 
+                  placeholder="Course Title" 
+                  placeholderTextColor="#5C5446" 
+                  value={newCourse.title} 
+                  onChangeText={(t) => {
+                    setNewCourse(prev => {
+                      const matchedCat = categories.find(c => t.toLowerCase().includes(c.name.toLowerCase()));
+                      return {
+                        ...prev, 
+                        title: t,
+                        categoryId: matchedCat ? matchedCat.id : prev.categoryId
+                      };
+                    });
+                  }} 
+                />
+                {(() => {
+                  if (!newCourse.title) return null;
+                  const tLower = newCourse.title.toLowerCase();
+                  
+                  // Collect unique category names from DB categories and COMMON_SUBJECTS
+                  const availableNames = Array.from(new Set([
+                    ...categories.map(c => c.name),
+                    ...COMMON_SUBJECTS
+                  ]));
+
+                  const suggestions = availableNames.filter(name => 
+                    name.toLowerCase().includes(tLower) && name.toLowerCase() !== tLower
+                  );
+
+                  if (suggestions.length === 0) return null;
+
+                  return (
+                    <View className="bg-slate-900 border border-slate-700 rounded-xl mb-3 overflow-hidden shadow-sm shadow-black/20">
+                      {suggestions.map(name => {
+                        const existingCat = categories.find(c => c.name === name);
+                        return (
+                          <TouchableOpacity 
+                            key={name} 
+                            className="px-4 py-3 border-b border-slate-800"
+                            onPress={() => setNewCourse({...newCourse, title: name, categoryId: existingCat ? existingCat.id : newCourse.categoryId})}
+                          >
+                            <Text className="text-slate-200 text-xs font-bold">{name}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  );
+                })()}
+              </View>
 
               {!newCourse.isBundle ? (
                 <View className="mb-4">
@@ -377,13 +433,13 @@ export const AdminCoursesTab: React.FC = () => {
               )}
               
               <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Description</Text>
-              <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-xs mb-3" placeholder="Course Description" placeholderTextColor="#5C5446" value={newCourse.description} onChangeText={(t) => setNewCourse({...newCourse, description: t})} multiline />
+              <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-3" placeholder="Course Description" placeholderTextColor="#5C5446" value={newCourse.description} onChangeText={(t) => setNewCourse({...newCourse, description: t})} multiline />
 
               <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Price (in Rs)</Text>
-              <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-xs mb-3" placeholder="e.g. 500" placeholderTextColor="#5C5446" value={newCourse.price} onChangeText={(t) => setNewCourse({...newCourse, price: t})} keyboardType="number-pad" />
+              <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-3" placeholder="e.g. 500" placeholderTextColor="#5C5446" value={newCourse.price} onChangeText={(t) => setNewCourse({...newCourse, price: t})} keyboardType="number-pad" />
 
               <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Target Class</Text>
-              <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-xs mb-3" placeholder="e.g. 11th" placeholderTextColor="#5C5446" value={newCourse.targetClass} onChangeText={(t) => setNewCourse({...newCourse, targetClass: t})} />
+              <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-3" placeholder="e.g. 11th" placeholderTextColor="#5C5446" value={newCourse.targetClass} onChangeText={(t) => setNewCourse({...newCourse, targetClass: t})} />
 
               <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Branch</Text>
               <View className="flex-row gap-4 mb-3">
@@ -399,30 +455,79 @@ export const AdminCoursesTab: React.FC = () => {
               </View>
 
 
-              <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Course Image (Optional)</Text>
+              <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Course Theme</Text>
               <TouchableOpacity 
-                onPress={handlePickThumbnail} 
-                className="bg-slate-950 border border-slate-800 border-dashed rounded-xl px-4 py-4 mb-3 items-center"
+                onPress={() => setShowThemeSelector(true)} 
+                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-4 mb-3 items-center flex-row justify-center"
               >
-                {newCourse.thumbnailUrl ? (
-                  <Text className="text-emerald-400 text-xs font-bold">Image Selected: {newCourse.thumbnailUrl.substring(newCourse.thumbnailUrl.lastIndexOf('/') + 1)}</Text>
+                {newCourse.thumbnailUrl && (newCourse.thumbnailUrl.includes('unsplash') || newCourse.thumbnailUrl.includes('loremflickr')) ? (
+                  <>
+                    <Image source={newCourse.thumbnailUrl ? { uri: newCourse.thumbnailUrl } : undefined} style={{ width: 40, height: 24, borderRadius: 4, marginRight: 8 }} />
+                    <Text className="text-emerald-400 text-xs font-bold">Theme Selected</Text>
+                  </>
                 ) : (
-                  <Text className="text-slate-400 text-xs font-bold">+ Upload Image</Text>
+                  <Text className="text-blue-400 text-xs font-bold">Select Theme ▼</Text>
                 )}
               </TouchableOpacity>
 
-              {categories.length > 0 && (
-                <View>
-                  <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Category</Text>
-                  <View className="flex-row flex-wrap gap-2 mb-4">
-                    {categories.map(cat => (
-                      <TouchableOpacity key={cat.id} onPress={() => setNewCourse({...newCourse, categoryId: cat.id})} className={`px-3 py-2 rounded-xl border ${newCourse.categoryId === cat.id ? 'bg-blue-600 border-blue-500' : 'bg-slate-950 border-slate-800'}`}>
-                        <Text className={`text-[10px] font-bold ${newCourse.categoryId === cat.id ? 'text-white' : 'text-slate-400'}`}>{cat.name}</Text>
+              {/* Theme Selection Modal */}
+              <Modal visible={showThemeSelector} animationType="slide" transparent onRequestClose={() => setShowThemeSelector(false)}>
+                <View className="flex-1 justify-end bg-black/80">
+                  <View className="bg-slate-900 rounded-t-3xl border-t border-slate-800 pb-10" style={{ maxHeight: '60%' }}>
+                    <View className="flex-row justify-between items-center p-5 border-b border-slate-850">
+                      <Text className="text-slate-100 text-lg font-black">Select a Theme</Text>
+                      <TouchableOpacity onPress={() => setShowThemeSelector(false)} className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700/50">
+                        <Text className="text-slate-300 font-bold text-xs">Done</Text>
                       </TouchableOpacity>
-                    ))}
+                    </View>
+                    <ScrollView className="p-5">
+                      {(() => {
+                        const titleLower = newCourse.title.toLowerCase();
+                        let availableThemes: any[] = [];
+                        if (/\b(computer|cs|tech|programming|coding)\b/.test(titleLower)) availableThemes = COURSE_THEMES.computer;
+                        else if (/\b(physic|physics)\b/.test(titleLower)) availableThemes = COURSE_THEMES.physics;
+                        else if (/\b(chem|chemistry)\b/.test(titleLower)) availableThemes = COURSE_THEMES.chemistry;
+                        else if (/\b(math|maths|mathematics)\b/.test(titleLower)) availableThemes = COURSE_THEMES.maths;
+                        else if (/\b(bio|biology|botany|zoology)\b/.test(titleLower)) availableThemes = COURSE_THEMES.biology;
+                        else availableThemes = [...COURSE_THEMES.computer, ...COURSE_THEMES.physics, ...COURSE_THEMES.chemistry, ...COURSE_THEMES.maths, ...COURSE_THEMES.biology]; // Fallback to all
+
+                        return (
+                          <View className="flex-row flex-wrap justify-between">
+                            {availableThemes.map((theme) => {
+                              const themeUri = getThemeUrl(theme.url, theme.color);
+                              const isSelected = newCourse.thumbnailUrl === themeUri;
+                              return (
+                                <TouchableOpacity
+                                  key={theme.id}
+                                  onPress={() => {
+                                    setNewCourse({ ...newCourse, thumbnailUrl: themeUri });
+                                    setShowThemeSelector(false);
+                                  }}
+                                  className={`rounded-xl overflow-hidden border-2 mb-4 ${isSelected ? 'border-blue-500 shadow-sm shadow-blue-500/50' : 'border-slate-800'}`}
+                                  style={{ width: '48%' }}
+                                >
+                                  <Image source={theme.url ? { uri: theme.url } : undefined} style={{ width: '100%', height: 90 }} resizeMode="cover" />
+                                  <View className="p-2" style={{ backgroundColor: theme.color }}>
+                                    <Text className="text-white text-[10px] font-bold text-center" numberOfLines={1}>{theme.name}</Text>
+                                  </View>
+                                  {isSelected && (
+                                    <View className="absolute top-2 right-2 bg-blue-500 rounded-full w-5 h-5 items-center justify-center">
+                                      <Text className="text-white text-[10px] font-black">✓</Text>
+                                    </View>
+                                  )}
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        );
+                      })()}
+                      <View className="h-10" />
+                    </ScrollView>
                   </View>
                 </View>
-              )}
+              </Modal>
+
+              {/* Categories Section Removed per user request */}
 
               <TouchableOpacity onPress={handleSaveCourse} className="bg-slate-800 border border-slate-700/80 rounded-2xl py-3.5 items-center mt-2 shadow-sm shadow-black/30">
                 <Text className="text-slate-300 text-xs font-bold uppercase tracking-wider">{editingCourseId ? 'Update Course' : 'Publish Course'}</Text>
@@ -602,13 +707,11 @@ export const AdminCoursesTab: React.FC = () => {
                     <View style={{ maxHeight: 160 }} className="bg-slate-950 border border-slate-800 rounded-xl mb-3 overflow-hidden">
                       <ScrollView nestedScrollEnabled className="p-2">
                         {teachers.filter(teacher => {
-                          // If course has no category, or teacher has no subjects, we fallback to showing them
-                          if (!course.category?.name) return true;
+                          if (!course.category?.name || course.category.name.toLowerCase() === 'general') return true;
                           if (!teacher.subjects) return false;
-                          
                           const tSubjects = teacher.subjects.toLowerCase();
                           const cSubject = course.category.name.toLowerCase();
-                          return tSubjects.includes(cSubject);
+                          return tSubjects.includes(cSubject) || cSubject.includes(tSubjects) || course.title.toLowerCase().includes(tSubjects);
                         }).map(teacher => {
                           const isSelected = assignTeacherIds.includes(teacher.id);
                           return (
@@ -632,11 +735,11 @@ export const AdminCoursesTab: React.FC = () => {
                           );
                         })}
                         {teachers.filter(teacher => {
-                          if (!course.category?.name) return true;
+                          if (!course.category?.name || course.category.name.toLowerCase() === 'general') return true;
                           if (!teacher.subjects) return false;
                           const tSubjects = teacher.subjects.toLowerCase();
                           const cSubject = course.category.name.toLowerCase();
-                          return tSubjects.includes(cSubject);
+                          return tSubjects.includes(cSubject) || cSubject.includes(tSubjects) || course.title.toLowerCase().includes(tSubjects);
                         }).length === 0 && (
                           <Text className="text-slate-500 text-xs text-center py-4">No teachers match this subject.</Text>
                         )}

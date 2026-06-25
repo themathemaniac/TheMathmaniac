@@ -179,6 +179,13 @@ export const AdminPanelScreen: React.FC = () => {
       return;
     }
 
+    if (role === 'STUDENT') {
+      if (!stream.trim() || !classText.trim() || !school.trim()) {
+        Alert.alert('Input Error', 'Stream, Class, and School are mandatory for students.');
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     const result = await adminCreateUser(
       name.trim(),
@@ -436,7 +443,7 @@ export const AdminPanelScreen: React.FC = () => {
             {/* Filters */}
             <View className="flex-row gap-3 mb-4">
               <TextInput
-                className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3.5 text-slate-100 text-sm font-semibold"
+                className="flex-1 bg-slate-900 border border-slate-800 rounded-2xl px-4 py-3.5 text-slate-300 text-sm font-semibold"
                 placeholder="Search by name or phone..."
                 placeholderTextColor="#8A8070"
                 value={searchQuery}
@@ -645,16 +652,16 @@ export const AdminPanelScreen: React.FC = () => {
 
             <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Full Name</Text>
             <TextInput
-              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
-              placeholder="e.g. Raunak Dey"
-              placeholderTextColor="#5C5446"
+              className="bg-slate-800 border border-slate-700/50 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
+              placeholder="e.g. Mr. X"
+              placeholderTextColor="#64748b"
               value={name}
               onChangeText={setName}
             />
 
             <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Mobile Number</Text>
             <TextInput
-              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
               placeholder="e.g. 7980357754"
               placeholderTextColor="#5C5446"
               keyboardType="number-pad"
@@ -665,7 +672,7 @@ export const AdminPanelScreen: React.FC = () => {
 
             <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Email Address (Optional)</Text>
             <TextInput
-              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
               placeholder="e.g. student@outlook.com"
               placeholderTextColor="#5C5446"
               keyboardType="email-address"
@@ -705,7 +712,7 @@ export const AdminPanelScreen: React.FC = () => {
               <View className="mb-4">
                 <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Stream (Optional)</Text>
                 <TextInput
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                   placeholder="e.g. Science / Commerce / Arts"
                   placeholderTextColor="#5C5446"
                   value={stream}
@@ -714,7 +721,7 @@ export const AdminPanelScreen: React.FC = () => {
 
                 <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Class (Optional)</Text>
                 <TextInput
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                   placeholder="e.g. 11th / 12th"
                   placeholderTextColor="#5C5446"
                   value={classText}
@@ -723,7 +730,7 @@ export const AdminPanelScreen: React.FC = () => {
 
                 <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">School (Optional)</Text>
                 <TextInput
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                   placeholder="e.g. Delhi Public School"
                   placeholderTextColor="#5C5446"
                   value={school}
@@ -732,7 +739,7 @@ export const AdminPanelScreen: React.FC = () => {
 
                 <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Faculty (Optional)</Text>
                 <TextInput
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                   placeholder="e.g. Prof. S. Sen"
                   placeholderTextColor="#5C5446"
                   value={faculty}
@@ -741,15 +748,42 @@ export const AdminPanelScreen: React.FC = () => {
               </View>
             )}
 
-            <View className="mb-4">
+            <View className="mb-4 z-50">
               <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects (Comma separated)</Text>
               <TextInput
-                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                 placeholder="e.g. Mathematics, Physics"
                 placeholderTextColor="#5C5446"
                 value={subjects}
                 onChangeText={setSubjects}
               />
+              {(() => {
+                const parts = subjects.split(',');
+                const lastPart = parts[parts.length - 1].trim().toLowerCase();
+                if (lastPart.length > 0) {
+                  const suggestions = uniqueSubjects.filter(s => s.toLowerCase().includes(lastPart) && s.toLowerCase() !== lastPart);
+                  if (suggestions.length > 0) {
+                    return (
+                      <View className="bg-slate-800 border border-slate-700 rounded-xl mb-4 overflow-hidden shadow-sm shadow-black/20">
+                        {suggestions.map(s => (
+                          <TouchableOpacity 
+                            key={s} 
+                            className="px-4 py-3 border-b border-slate-700/50"
+                            onPress={() => {
+                              const newParts = [...parts];
+                              newParts[newParts.length - 1] = newParts.length > 1 ? ' ' + s : s;
+                              setSubjects(newParts.join(','));
+                            }}
+                          >
+                            <Text className="text-slate-200 text-xs font-bold">{s}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    );
+                  }
+                }
+                return null;
+              })()}
             </View>
 
             <Button
@@ -890,14 +924,14 @@ export const AdminPanelScreen: React.FC = () => {
             <ScrollView className="flex-1 p-5" contentContainerStyle={{ paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
               <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Full Name</Text>
               <TextInput
-                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                 value={editForm.name}
                 onChangeText={(t) => setEditForm({...editForm, name: t})}
               />
 
               <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Email Address</Text>
               <TextInput
-                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                 value={editForm.email}
                 onChangeText={(t) => setEditForm({...editForm, email: t})}
                 keyboardType="email-address"
@@ -907,28 +941,28 @@ export const AdminPanelScreen: React.FC = () => {
                 <View>
                   <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Stream</Text>
                   <TextInput
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                     value={editForm.stream}
                     onChangeText={(t) => setEditForm({...editForm, stream: t})}
                   />
 
                   <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Class</Text>
                   <TextInput
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                     value={editForm.class}
                     onChangeText={(t) => setEditForm({...editForm, class: t})}
                   />
 
                   <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">School</Text>
                   <TextInput
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                     value={editForm.school}
                     onChangeText={(t) => setEditForm({...editForm, school: t})}
                   />
 
                   <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Faculty</Text>
                   <TextInput
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                     value={editForm.faculty}
                     onChangeText={(t) => setEditForm({...editForm, faculty: t})}
                   />
@@ -937,7 +971,7 @@ export const AdminPanelScreen: React.FC = () => {
 
               <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects (Comma separated)</Text>
               <TextInput
-                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                 value={editForm.subjects}
                 onChangeText={(t) => setEditForm({...editForm, subjects: t})}
               />

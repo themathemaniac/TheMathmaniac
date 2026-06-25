@@ -251,7 +251,7 @@ export const ActiveTestScreen: React.FC<Props> = ({ route }) => {
                 Integer / Numeric Answer
               </Text>
               <TextInput
-                className="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-4 text-slate-100 text-lg font-black text-center"
+                className="bg-slate-900 border border-slate-800 rounded-2xl px-4 py-4 text-slate-300 text-lg font-black text-center"
                 placeholder="Type numeric answer here"
                 placeholderTextColor="#8A8070"
                 keyboardType="numeric"

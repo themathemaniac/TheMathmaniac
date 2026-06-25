@@ -502,11 +502,24 @@ router.post('/courses', authenticateJWT, requireAdmin, async (req: Authenticated
 
     let finalCategoryId = categoryId;
     if (!finalCategoryId || finalCategoryId.trim() === '') {
-      let genCat = await prisma.courseCategory.findFirst({ where: { slug: 'general' } });
-      if (!genCat) {
-        genCat = await prisma.courseCategory.create({ data: { name: 'General', slug: 'general' } });
+      // Auto-detect category from title
+      const subjectKeywords = ['Biology', 'Mathematics', 'Math', 'Physics', 'Chemistry', 'Computer', 'Science', 'English'];
+      let detectedCategory = null;
+      for (const keyword of subjectKeywords) {
+        if (title.toLowerCase().includes(keyword.toLowerCase())) {
+          detectedCategory = keyword;
+          break;
+        }
       }
-      finalCategoryId = genCat.id;
+      
+      let targetSlug = detectedCategory ? detectedCategory.toLowerCase() : 'general';
+      let targetName = detectedCategory ? detectedCategory : 'General';
+
+      let cat = await prisma.courseCategory.findFirst({ where: { slug: targetSlug } });
+      if (!cat) {
+        cat = await prisma.courseCategory.create({ data: { name: targetName, slug: targetSlug } });
+      }
+      finalCategoryId = cat.id;
     }
 
     const course = await prisma.course.create({
@@ -686,3 +699,4 @@ router.put('/users/:id', authenticateJWT, requireAdmin, async (req: Authenticate
 });
 
 export default router;
+ 

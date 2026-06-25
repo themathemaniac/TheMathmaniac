@@ -325,7 +325,7 @@ const TeacherAttendanceCalendar: React.FC = () => {
                     onChangeText={setReason}
                     placeholder="e.g., Student submitted medical slip"
                     placeholderTextColor="#64748B"
-                    className="bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-100 text-xs"
+                    className="bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-300 text-xs"
                   />
                 </View>
               )}

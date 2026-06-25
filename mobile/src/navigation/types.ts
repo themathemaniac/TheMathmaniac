@@ -30,4 +30,5 @@ export type RootStackParamList = {
   FeePaymentCheckout: { feeId: string; month: string; amount: number; orderId: string };
   TeacherAttendanceTracking: undefined;
   SuperuserReports: undefined;
+  TeacherCourseDetails: { courseId: string; courseTitle: string; };
 };

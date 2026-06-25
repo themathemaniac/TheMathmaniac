@@ -62,7 +62,7 @@ export const ForgotPasswordResetScreen: React.FC = () => {
         </Text>
         <View className="flex-row items-center bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 mb-6">
           <TextInput
-            className="flex-1 text-slate-100 text-base font-semibold"
+            className="flex-1 text-slate-300 text-base font-semibold"
             placeholder="•••••••• (Min 6 chars)"
             placeholderTextColor="#8A8070"
             secureTextEntry={!showNewPassword}
@@ -83,7 +83,7 @@ export const ForgotPasswordResetScreen: React.FC = () => {
         </Text>
         <View className="flex-row items-center bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 mb-8">
           <TextInput
-            className="flex-1 text-slate-100 text-base font-semibold"
+            className="flex-1 text-slate-300 text-base font-semibold"
             placeholder="••••••••"
             placeholderTextColor="#8A8070"
             secureTextEntry={!showConfirmPassword}

@@ -445,7 +445,7 @@ export const TeacherTestsScreen: React.FC = () => {
               {/* Title */}
               <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Test Title</Text>
               <TextInput
-                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold mb-4"
+                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                 placeholder="e.g. Mid-Term Geometry Exam"
                 placeholderTextColor="#5C5446"
                 value={newTitle}
@@ -457,7 +457,7 @@ export const TeacherTestsScreen: React.FC = () => {
                 <View className="flex-1">
                   <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Duration (Mins)</Text>
                   <TextInput
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold"
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold"
                     placeholder="e.g. 60"
                     placeholderTextColor="#5C5446"
                     keyboardType="number-pad"
@@ -470,7 +470,7 @@ export const TeacherTestsScreen: React.FC = () => {
                 <View className="flex-1">
                   <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Total Marks</Text>
                   <TextInput
-                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm font-semibold"
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold"
                     placeholder="e.g. 100"
                     placeholderTextColor="#5C5446"
                     keyboardType="number-pad"

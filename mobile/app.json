@@ -4,25 +4,25 @@
     "slug": "mathemaniac-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Mathemaniac_Logo_Padded.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/Mathemaniac_Logo_Padded.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0F172A"
+      "backgroundColor": "#EAE7DF"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0F172A"
+        "foregroundImage": "./assets/Mathemaniac_Logo_Padded.png",
+        "backgroundColor": "#EAE7DF"
       },
       "package": "com.synapseedutech.mathemaniac"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/Mathemaniac_Logo_Padded.png"
     },
     "extra": {
       "eas": {

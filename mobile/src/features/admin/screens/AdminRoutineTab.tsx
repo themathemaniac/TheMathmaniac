@@ -78,8 +78,8 @@ export const AdminRoutineTab: React.FC = () => {
         dayOfWeek: dayOfWeek as DayOfWeek,
         startTime,
         endTime,
-        courseName: course.category?.name || course.title,
-        batchName: `${course.targetClass ? `Class ${course.targetClass}` : course.title} (${teacherNames})`,
+        courseName: course.title,
+        batchName: `${course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'General'} (${teacherNames})`,
         location: course.branch || 'Sodepur',
         color: COLORS[courseIdx % COLORS.length]
       });

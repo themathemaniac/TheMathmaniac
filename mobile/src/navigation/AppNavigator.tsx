@@ -9,7 +9,6 @@ import { useAuthStore } from '../core/store/auth';
 
 // Screens imports
 import { SplashScreen } from '../features/authentication/screens/SplashScreen';
-import { OnboardingScreen } from '../features/authentication/screens/OnboardingScreen';
 import { LoginScreen } from '../features/authentication/screens/LoginScreen';
 import { SignupScreen } from '../features/authentication/screens/SignupScreen';
 import { ForgotPasswordScreen } from '../features/authentication/screens/ForgotPasswordScreen';
@@ -40,6 +39,7 @@ import { TeacherMaterialsScreen } from '../features/teacher/screens/TeacherMater
 import { TeacherProfileScreen } from '../features/teacher/screens/TeacherProfileScreen';
 import { TeacherAttendanceScreen } from '../features/teacher/screens/TeacherAttendanceScreen';
 import { SuperuserReportsScreen } from '../features/teacher/screens/SuperuserReportsScreen';
+import { TeacherCourseDetailsScreen } from '../features/teacher/screens/TeacherCourseDetailsScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<AppTabsParamList>();
@@ -174,7 +174,6 @@ export const AppNavigator = () => {
         initialRouteName="Splash"
       >
         <Stack.Screen name="Splash" component={SplashScreen} />
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
@@ -194,6 +193,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="FeePaymentCheckout" component={FeePaymentCheckoutScreen} />
         <Stack.Screen name="TeacherAttendanceTracking" component={TeacherAttendanceScreen} />
         <Stack.Screen name="SuperuserReports" component={SuperuserReportsScreen} />
+        <Stack.Screen name="TeacherCourseDetails" component={TeacherCourseDetailsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

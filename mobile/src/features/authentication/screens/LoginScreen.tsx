@@ -127,8 +127,8 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         <View className="flex-row items-center bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 mb-6">
           <Text className="text-slate-300 font-semibold mr-2">+91</Text>
           <TextInput
-            className="flex-1 text-slate-100 text-base font-semibold"
-            placeholder="9831754957"
+            className="flex-1 text-slate-300 text-base font-semibold"
+            placeholder="9876543210"
             placeholderTextColor="#8A8070"
             keyboardType="number-pad"
             value={phoneNumber}
@@ -142,7 +142,7 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
         </Text>
         <View className="flex-row items-center bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 mb-3">
           <TextInput
-            className="flex-1 text-slate-100 text-base font-semibold"
+            className="flex-1 text-slate-300 text-base font-semibold"
             placeholder="••••••••"
             placeholderTextColor="#8A8070"
             secureTextEntry={!showPassword}

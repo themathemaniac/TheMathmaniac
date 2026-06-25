@@ -54,7 +54,7 @@ export const ForgotPasswordScreen: React.FC = () => {
         <View className="flex-row items-center bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 mb-6">
           <Text className="text-slate-300 font-semibold mr-2">+91</Text>
           <TextInput
-            className="flex-1 text-slate-100 text-base font-semibold"
+            className="flex-1 text-slate-300 text-base font-semibold"
             placeholder="7980357754"
             placeholderTextColor="#8A8070"
             keyboardType="number-pad"
@@ -68,7 +68,7 @@ export const ForgotPasswordScreen: React.FC = () => {
           Recovery Passphrase
         </Text>
         <TextInput
-          className="bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 text-slate-100 text-base font-semibold mb-8"
+          className="bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 text-slate-300 text-base font-semibold mb-8"
           placeholder="e.g. SUNSET-RIVER-4821"
           placeholderTextColor="#8A8070"
           value={passphrase}

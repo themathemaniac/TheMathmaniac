@@ -11,59 +11,6 @@ type TeacherHomeScreenNavigationProp = StackNavigationProp<RootStackParamList, '
 
 const SUPERUSER_PHONES = ['+917980357754', '+919831754957'];
 
-const MOCK_SESSIONS: RoutineSession[] = [
-  {
-    id: 's1',
-    dayOfWeek: 'Monday',
-    startTime: '04:30 PM',
-    endTime: '06:30 PM',
-    courseName: 'Mathematics',
-    batchName: 'Class 10',
-    location: 'Sodepur',
-    color: '#3CA79B'
-  },
-  {
-    id: 's2',
-    dayOfWeek: 'Monday',
-    startTime: '06:00 PM',
-    endTime: '09:00 PM',
-    courseName: 'Physics',
-    batchName: 'Class 11',
-    location: 'Madhyamgram',
-    color: '#D97706'
-  },
-  {
-    id: 's3',
-    dayOfWeek: 'Tuesday',
-    startTime: '10:00 AM',
-    endTime: '12:00 PM',
-    courseName: 'Chemistry',
-    batchName: 'Batch A',
-    location: 'Sodepur',
-    color: '#2563EB'
-  },
-  {
-    id: 's4',
-    dayOfWeek: 'Thursday',
-    startTime: '01:00 PM',
-    endTime: '03:30 PM',
-    courseName: 'Biology',
-    batchName: 'Batch C',
-    location: 'Madhyamgram',
-    color: '#10B981'
-  },
-  {
-    id: 's5',
-    dayOfWeek: 'Friday',
-    startTime: '11:00 AM',
-    endTime: '01:30 PM',
-    courseName: 'Mathematics',
-    batchName: 'Batch D',
-    location: 'Sodepur',
-    color: '#8B5CF6'
-  }
-];
-
 export const TeacherHomeScreen: React.FC = () => {
   const { user } = useAuthStore();
   const navigation = useNavigation<TeacherHomeScreenNavigationProp>();
@@ -75,6 +22,7 @@ export const TeacherHomeScreen: React.FC = () => {
     totalTests: number;
     totalMaterials: number;
   } | null>(null);
+  const [courses, setCourses] = useState<any[]>([]);
 
   const isSuperuser = user && SUPERUSER_PHONES.includes(user.phoneNumber);
 
@@ -84,6 +32,10 @@ export const TeacherHomeScreen: React.FC = () => {
       const res = await apiClient.get('/profile');
       if (res.data.success) {
         setStats(res.data.data.stats);
+      }
+      const coursesRes = await apiClient.get('/courses?assigned=true');
+      if (coursesRes.data.success) {
+        setCourses(coursesRes.data.data);
       }
     } catch (e) {
       console.log('Error pulling teacher stats:', e);
@@ -95,6 +47,41 @@ export const TeacherHomeScreen: React.FC = () => {
   useEffect(() => {
     loadStats();
   }, []);
+
+  const COLORS = ['#3CA79B', '#D97706', '#2563EB', '#9333EA', '#E11D48'];
+  
+  const mappedSchedules: RoutineSession[] = [];
+  courses.forEach((course, courseIdx) => {
+    let slots: any[] = [];
+    try {
+      slots = typeof course.timeSlots === 'string' ? JSON.parse(course.timeSlots) : (course.timeSlots || []);
+    } catch(e) {}
+
+    slots.forEach((slot: any) => {
+      const dayMap: Record<string, string> = { 'Mon': 'Monday', 'Tue': 'Tuesday', 'Wed': 'Wednesday', 'Thu': 'Thursday', 'Fri': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday' };
+      const dayOfWeek = dayMap[slot.day] || slot.day;
+      
+      let startTime = ''; let endTime = '';
+      if (slot.time) {
+        const parts = slot.time.split('-');
+        startTime = parts[0]?.trim() || '';
+        endTime = parts[1]?.trim() || '';
+      }
+
+      if (!startTime || !endTime) return;
+
+      mappedSchedules.push({
+        id: `${course.id}-${slot.day}-${startTime}`,
+        dayOfWeek: dayOfWeek as any,
+        startTime,
+        endTime,
+        courseName: course.title,
+        batchName: `${course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'General'}`,
+        location: course.branch || 'Sodepur',
+        color: COLORS[courseIdx % COLORS.length]
+      });
+    });
+  });
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -129,29 +116,23 @@ export const TeacherHomeScreen: React.FC = () => {
           </View>
         ) : (
           <View className="pb-12">
-            {/* Welcome Card */}
-            <View className="bg-blue-600/95 border border-blue-500 rounded-3xl p-5 mb-6">
-              <Text className="text-blue-200 text-xs font-bold uppercase tracking-widest">
-                ⚡ Welcome, Instructor
-              </Text>
-              <Text className="text-white text-lg font-black mt-2 leading-6">
-                Mathemaniac Faculty Control Panel
-              </Text>
-              <Text className="text-blue-100 text-xs mt-1 font-medium">
-                Access and manage your courses, study materials, tests, and attendance tracking dynamically.
-              </Text>
-            </View>
+            {/* Welcome Card removed as per user request */}
 
-            {/* Timetable Component directly embedded */}
-            <View className="mb-6">
-              <Timetable 
-                title="Timetable"
-                sessions={MOCK_SESSIONS}
-                onSessionPress={(session) => {
-                  console.log('Pressed session:', session);
-                }}
-              />
-            </View>
+            {mappedSchedules.length > 0 ? (
+              <View className="mb-6">
+                <Timetable 
+                  title="Timetable"
+                  sessions={mappedSchedules}
+                  onSessionPress={(session) => {
+                    console.log('Pressed session:', session);
+                  }}
+                />
+              </View>
+            ) : (
+              <View className="items-center py-10 bg-slate-900/10 border border-dashed border-slate-800 rounded-2xl mb-6">
+                <Text className="text-slate-500 font-bold text-sm">No upcoming classes scheduled.</Text>
+              </View>
+            )}
 
             {/* Geofenced Attendance Card */}
             <View className="bg-slate-900 border border-slate-800 rounded-3xl p-5 mb-6">

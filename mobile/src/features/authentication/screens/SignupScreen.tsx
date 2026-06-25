@@ -87,8 +87,8 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
           Full Name
         </Text>
         <TextInput
-          className="bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 text-slate-100 text-base font-semibold mb-6"
-          placeholder="Raunak Dey"
+          className="bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 text-slate-300 text-base font-semibold mb-6"
+          placeholder="Mr. X"
           placeholderTextColor="#8A8070"
           value={name}
           onChangeText={setName}
@@ -100,8 +100,8 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
         <View className="flex-row items-center bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 mb-6">
           <Text className="text-slate-300 font-semibold mr-2">+91</Text>
           <TextInput
-            className="flex-1 text-slate-100 text-base font-semibold"
-            placeholder="7980357754"
+            className="flex-1 text-slate-300 text-base font-semibold"
+            placeholder="9876543210"
             placeholderTextColor="#8A8070"
             keyboardType="number-pad"
             value={phoneNumber}
@@ -115,7 +115,7 @@ export const SignupScreen: React.FC<Props> = ({ navigation }) => {
         </Text>
         <View className="flex-row items-center bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-4 mb-8">
           <TextInput
-            className="flex-1 text-slate-100 text-base font-semibold"
+            className="flex-1 text-slate-300 text-base font-semibold"
             placeholder="•••••••• (Min 6 chars)"
             placeholderTextColor="#8A8070"
             secureTextEntry={!showPassword}

@@ -52,7 +52,7 @@ export const CoursesExploreScreen: React.FC = () => {
         <View className="bg-slate-900 border border-slate-800 rounded-2xl flex-row items-center px-4 py-3.5 mt-4">
           <Text className="text-slate-500 mr-2">🔍</Text>
           <TextInput
-            className="flex-1 text-slate-100 font-semibold"
+            className="flex-1 text-slate-300 font-semibold"
             placeholder="Search Calculus, NEET Physics..."
             placeholderTextColor="#8A8070"
             value={searchQuery}
