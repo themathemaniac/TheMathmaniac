@@ -5,7 +5,7 @@ import { apiClient } from '../../../core/api/client';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
-import { Timetable, TimeSlot, RoutineSession } from '../../../shared/components/Timetable';
+import { Timetable, RoutineSession } from '../../../shared/components/Timetable';
 
 type TeacherHomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'TeacherAttendanceTracking' | 'SuperuserReports'>;
 
@@ -76,7 +76,7 @@ export const TeacherHomeScreen: React.FC = () => {
         startTime,
         endTime,
         courseName: course.title,
-        batchName: `${course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'General'}`,
+        batchName: `${course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}`,
         location: course.branch || 'Sodepur',
         color: COLORS[courseIdx % COLORS.length]
       });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { RouteProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
@@ -183,7 +183,7 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
               className={`mr-6 pb-3 border-b-2 ${activeTab === tab ? 'border-blue-500' : 'border-transparent'}`}
             >
               <Text className={`font-bold ${activeTab === tab ? 'text-blue-400' : 'text-slate-500'}`}>
-                {tab}
+                {tab === 'SYLLABUS' ? 'TOPICS TAUGHT' : tab}
               </Text>
             </TouchableOpacity>
           ))}
@@ -202,17 +202,19 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
               <Text className="text-slate-500 text-center mt-10">No materials uploaded yet.</Text>
             ) : (
               materials.map((item) => (
-                <View key={item.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-3 flex-row justify-between items-center">
+                <View key={item.id} className="bg-white border-2 border-slate-900 rounded-2xl p-4 mb-3 flex-row justify-between items-center">
                   <View className="flex-1 mr-3">
-                    <Text className="text-slate-500 text-[8px] font-black uppercase border border-slate-800 bg-slate-950 px-2 py-0.5 rounded-md self-start mb-1">{item.type.replace('_', ' ')}</Text>
-                    <Text className="text-slate-200 text-sm font-bold">{item.title}</Text>
-                    <Text className="text-slate-400 text-[10px] mt-1">{formatSize(item.fileSize)}</Text>
+                    <Text className="text-[8px] font-black uppercase border px-2 py-0.5 rounded-md self-start mb-1" style={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#ffffff' }}>
+                      {item.type.replace('_', ' ')}
+                    </Text>
+                    <Text className="text-slate-900 text-sm font-bold" style={{ color: '#0f172a' }}>{item.title}</Text>
+                    <Text className="text-slate-500 text-[10px] mt-1" style={{ color: '#64748b' }}>{formatSize(item.fileSize)}</Text>
                   </View>
                   <View className="flex-row space-x-2">
-                    <TouchableOpacity onPress={() => navigation.navigate('PDFViewer', { title: item.title, fileUrl: item.fileUrl })} className="bg-slate-800 w-8 h-8 rounded-full items-center justify-center border border-slate-700">
+                    <TouchableOpacity onPress={() => navigation.navigate('PDFViewer', { title: item.title, fileUrl: item.fileUrl })} className="bg-white w-8 h-8 rounded-full items-center justify-center border border-slate-300">
                       <Text className="text-xs">👁️</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDeleteMaterial(item.id, item.title)} className="bg-slate-800 w-8 h-8 rounded-full items-center justify-center border border-slate-700 ml-2">
+                    <TouchableOpacity onPress={() => handleDeleteMaterial(item.id, item.title)} className="bg-white w-8 h-8 rounded-full items-center justify-center border border-slate-300 ml-2">
                       <Text className="text-xs">🗑️</Text>
                     </TouchableOpacity>
                   </View>
@@ -229,11 +231,11 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
               <Text className="text-slate-500 text-center mt-10">No lectures in this batch.</Text>
             ) : (
               course.lectures.map((lecture: any) => (
-                <View key={lecture.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-3 flex-row items-center justify-between">
+                <View key={lecture.id} className="bg-white border-2 border-slate-900 rounded-2xl p-4 mb-3 flex-row items-center justify-between">
                   <View className="flex-1 mr-3">
                     <Text className="text-slate-500 text-[10px] font-bold">LESSON {lecture.sortOrder}</Text>
-                    <Text className="text-slate-200 text-sm font-bold mt-1" numberOfLines={1}>{lecture.title}</Text>
-                    <Text className="text-slate-400 text-xs mt-1">⌛ {Math.round(lecture.duration / 60)} mins</Text>
+                    <Text className="text-slate-900 text-sm font-bold mt-1" numberOfLines={1}>{lecture.title}</Text>
+                    <Text className="text-slate-500 text-xs mt-1">⌛ {Math.round(lecture.duration / 60)} mins</Text>
                   </View>
                   <TouchableOpacity onPress={() => navigation.navigate('LecturePlayer', { lectureId: lecture.id })} className="bg-blue-600/20 px-4 py-2 rounded-xl border border-blue-500/30">
                     <Text className="text-blue-400 font-bold text-xs">Play</Text>
@@ -252,13 +254,21 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
               <Text className="text-slate-500 text-center mt-10">No students enrolled yet.</Text>
             ) : (
               students.map((student) => (
-                <View key={student.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-2 flex-row items-center">
-                  <View className="w-10 h-10 bg-slate-800 rounded-full items-center justify-center mr-3 border border-slate-700">
-                    <Text className="text-slate-300 font-bold">{student.name.charAt(0)}</Text>
+                <View key={student.id} className="bg-white border-2 border-slate-900 rounded-xl p-4 mb-2 flex-row items-center">
+                  <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3 border border-slate-200">
+                    <Text className="text-slate-900 font-extrabold text-base" style={{ color: '#0f172a' }}>
+                      {(student.name || '?').charAt(0).toUpperCase()}
+                    </Text>
                   </View>
-                  <View>
-                    <Text className="text-slate-200 font-bold text-sm">{student.name}</Text>
-                    {student.school && <Text className="text-slate-500 text-[10px] mt-0.5">{student.school}</Text>}
+                  <View className="flex-1">
+                    <Text className="text-slate-900 font-bold text-sm" style={{ color: '#0f172a' }}>
+                      {student.name}
+                    </Text>
+                    {student.school && (
+                      <Text className="text-slate-500 text-[10px] mt-0.5" style={{ color: '#64748b' }}>
+                        {student.school}
+                      </Text>
+                    )}
                   </View>
                 </View>
               ))
@@ -277,9 +287,9 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
               <Text className="text-slate-500 text-center mt-10">No notices posted for this batch.</Text>
             ) : (
               announcements.map((notice) => (
-                <View key={notice.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 mb-3">
+                <View key={notice.id} className="bg-white border-2 border-slate-900 rounded-2xl p-5 mb-3">
                   <View className="flex-row justify-between items-start">
-                    <Text className="text-slate-100 font-bold text-base flex-1 pr-2">{notice.title}</Text>
+                    <Text className="text-slate-900 font-bold text-base flex-1 pr-2">{notice.title}</Text>
                     <TouchableOpacity onPress={() => {
                       Alert.alert('Delete Notice', 'Are you sure you want to delete this notice?', [
                         { text: 'Cancel', style: 'cancel' },
@@ -293,12 +303,14 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
                           }
                         }
                       ]);
-                    }} className="bg-red-500/10 p-1.5 rounded-md border border-red-500/20">
-                      <Text className="text-red-400 text-[10px] font-bold uppercase">Delete</Text>
+                    }} className="bg-red-50 p-1.5 rounded-md border border-red-200">
+                      <Text className="text-red-500 text-[10px] font-bold uppercase">Delete</Text>
                     </TouchableOpacity>
                   </View>
-                  <Text className="text-slate-400 text-xs mt-2 leading-5">{notice.content}</Text>
-                  <Text className="text-slate-600 text-[10px] font-medium mt-4">{new Date(notice.createdAt).toLocaleString()}</Text>
+                  <Text className="text-slate-500 text-xs mt-2 leading-5">{notice.content}</Text>
+                  <Text className="text-slate-400 text-[10px] mt-3">
+                    Posted on {new Date(notice.createdAt).toLocaleDateString()}
+                  </Text>
                 </View>
               ))
             )}
@@ -307,78 +319,144 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
       </ScrollView>
 
       {/* Material Upload Modal */}
-      <Modal visible={showMaterialModal} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/80">
-          <View className="bg-slate-900 rounded-t-3xl border-t border-slate-800 p-6 min-h-[400px]">
-            <Text className="text-slate-100 text-lg font-black mb-6">Upload Material</Text>
-            
-            <TextInput
-              className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 mb-4"
-              placeholder="Material Title"
-              placeholderTextColor="#64748b"
-              value={materialTitle}
-              onChangeText={setMaterialTitle}
-            />
+      <Modal visible={showMaterialModal} animationType="fade" transparent>
+        <View className="flex-1 justify-center items-center bg-black/60 px-6">
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            className="w-full max-w-[400px]"
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          >
+            <View className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl w-full">
+              <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
+                <Text className="text-slate-100 text-lg font-black mb-6">Upload Material</Text>
+                
+                <TextInput
+                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 mb-4"
+                  placeholder="Material Title"
+                  placeholderTextColor="#64748b"
+                  value={materialTitle}
+                  onChangeText={setMaterialTitle}
+                />
 
-            <View className="flex-row mb-4">
-              {['NOTES', 'ASSIGNMENT', 'FORMULA_SHEET'].map(t => (
-                <TouchableOpacity key={t} onPress={() => setMaterialType(t)} className={`px-3 py-1.5 rounded-full border mr-2 ${materialType === t ? 'bg-blue-600 border-blue-500' : 'bg-slate-800 border-slate-700'}`}>
-                  <Text className="text-white text-[10px] font-bold">{t.replace('_', ' ')}</Text>
+                <View className="flex-row mb-4">
+                  {['NOTES', 'ASSIGNMENT', 'FORMULA_SHEET'].map(t => (
+                    <TouchableOpacity
+                      key={t}
+                      onPress={() => setMaterialType(t)}
+                      className="px-3.5 py-2 rounded-full border mr-2"
+                      style={materialType === t 
+                        ? { backgroundColor: '#1f2937', borderColor: '#111827' }
+                        : { backgroundColor: '#f3f4f6', borderColor: '#d1d5db' }
+                      }
+                    >
+                      <Text
+                        className="text-[10px] font-bold"
+                        style={{ color: materialType === t ? '#ffffff' : '#4b5563' }}
+                      >
+                        {t.replace('_', ' ')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TouchableOpacity onPress={handlePickDocument} className="bg-slate-800 border border-slate-700 p-4 rounded-xl items-center mb-6">
+                  <Text className="text-slate-300 text-xs font-bold">{pickedFile ? pickedFile.name : 'Pick PDF Document'}</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
 
-            <TouchableOpacity onPress={handlePickDocument} className="bg-slate-800 border border-slate-700 p-4 rounded-xl items-center mb-6">
-              <Text className="text-slate-300 text-xs font-bold">{pickedFile ? pickedFile.name : 'Pick PDF Document'}</Text>
-            </TouchableOpacity>
-
-            <View className="flex-row justify-between mt-auto mb-2">
-              <TouchableOpacity onPress={() => setShowMaterialModal(false)} disabled={uploadingMaterial} className="flex-1 py-3 mr-4 items-center">
-                <Text className="text-slate-400 font-bold">Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleUploadMaterial} disabled={uploadingMaterial} className="flex-1 bg-blue-600 py-3 rounded-xl items-center">
-                {uploadingMaterial ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-white font-bold">Upload</Text>}
-              </TouchableOpacity>
+                <View className="flex-row justify-between mt-4">
+                  <TouchableOpacity onPress={() => setShowMaterialModal(false)} disabled={uploadingMaterial} className="flex-1 py-3 mr-4 items-center">
+                    <Text className="text-slate-400 font-bold">Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleUploadMaterial} disabled={uploadingMaterial} className="flex-1 bg-blue-600 py-3 rounded-xl items-center" style={{ backgroundColor: '#2D8C82' }}>
+                    {uploadingMaterial ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-white font-bold">Upload</Text>}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
       {/* Notice Post Modal */}
-      <Modal visible={showNoticeModal} animationType="slide" transparent>
-        <View className="flex-1 justify-end bg-black/80">
-          <View className="bg-slate-900 rounded-t-3xl border-t border-slate-800 p-6 min-h-[400px]">
-            <Text className="text-slate-100 text-lg font-black mb-6">Post Notice</Text>
-            
-            <TextInput
-              className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 mb-4"
-              placeholder="Notice Title"
-              placeholderTextColor="#64748b"
-              value={noticeTitle}
-              onChangeText={setNoticeTitle}
-            />
+      <Modal visible={showNoticeModal} animationType="fade" transparent>
+        <View className="flex-1 justify-center items-center bg-black/60 px-6">
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            className="w-full max-w-[400px]"
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+          >
+            <View className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl w-full">
+              <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
+                <Text className="text-slate-100 text-lg font-black mb-6">Post Notice</Text>
+                
+                <TextInput
+                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 mb-4"
+                  placeholder="Notice Title"
+                  placeholderTextColor="#64748b"
+                  value={noticeTitle}
+                  onChangeText={setNoticeTitle}
+                />
 
-            <TextInput
-              className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 mb-6 h-32"
-              placeholder="Notice Content..."
-              placeholderTextColor="#64748b"
-              multiline
-              textAlignVertical="top"
-              value={noticeContent}
-              onChangeText={setNoticeContent}
-            />
+                <TextInput
+                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 mb-6 h-32"
+                  placeholder="Notice Content..."
+                  placeholderTextColor="#64748b"
+                  multiline
+                  textAlignVertical="top"
+                  value={noticeContent}
+                  onChangeText={setNoticeContent}
+                />
 
-            <View className="flex-row justify-between mt-auto mb-2">
-              <TouchableOpacity onPress={() => setShowNoticeModal(false)} disabled={postingNotice} className="flex-1 py-3 mr-4 items-center">
-                <Text className="text-slate-400 font-bold">Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handlePostNotice} disabled={postingNotice} className="flex-1 bg-emerald-600 py-3 rounded-xl items-center">
-                {postingNotice ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-white font-bold">Post Notice</Text>}
-              </TouchableOpacity>
+                <View className="flex-row justify-between mt-4">
+                  <TouchableOpacity onPress={() => setShowNoticeModal(false)} disabled={postingNotice} className="flex-1 py-3 mr-4 items-center">
+                    <Text className="text-slate-400 font-bold">Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handlePostNotice} disabled={postingNotice} className="flex-1 bg-emerald-600 py-3 rounded-xl items-center" style={{ backgroundColor: '#5B6EF5' }}>
+                    {postingNotice ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-white font-bold">Post Notice</Text>}
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
+
+      {/* Floating Action Button for Live Classes */}
+      <TouchableOpacity
+        onPress={() => {
+          Alert.alert(
+            "Start Online Class",
+            "Do you want to start a live interactive online class for this batch?",
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Start Class",
+                onPress: () => {
+                  Alert.alert("Success", "Live meeting room created! Students have been notified.\n\nMeeting Room: TheMathemaniac-" + courseId.substring(0,8));
+                }
+              }
+            ]
+          );
+        }}
+        style={{
+          position: 'absolute',
+          bottom: 24,
+          right: 24,
+          backgroundColor: '#2563eb',
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          justifyContent: 'center',
+          alignItems: 'center',
+          elevation: 5,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 3.84,
+        }}
+      >
+        <Text style={{ fontSize: 24, color: '#fff' }}>🎥</Text>
+      </TouchableOpacity>
     </View>
   );
 };

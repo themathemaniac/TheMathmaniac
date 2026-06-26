@@ -116,11 +116,12 @@ export const CoursesExploreScreen: React.FC = () => {
                 key={course.id}
                 id={course.id}
                 title={course.title}
-                category={course.category.name}
+                category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
                 price={course.price}
                 thumbnailUrl={course.thumbnailUrl}
                 lectureCount={course.lectureCount}
                 isPurchased={course.isPurchased}
+                teacherName={course.teachers && course.teachers.length > 0 ? course.teachers.map((t: any) => t.user?.name).filter(Boolean).join(', ') : course.instructorName}
                 onPress={() => navigation.navigate('CourseDetails', { courseId: course.id })}
                 horizontal
               />

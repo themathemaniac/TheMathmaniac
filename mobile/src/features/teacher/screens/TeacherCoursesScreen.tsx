@@ -73,43 +73,46 @@ export const TeacherCoursesScreen: React.FC = () => {
               courses.map((course) => {
                 const themeColor = extractThemeColor(course.thumbnailUrl);
                 return (
-                <TouchableOpacity
-                  key={course.id}
-                  onPress={() => navigation.navigate('TeacherCourseDetails', { courseId: course.id, courseTitle: course.title })}
-                  className="bg-slate-900 border rounded-2xl p-5 mb-4 active:bg-slate-800/80 shadow-sm"
-                  style={{ borderColor: themeColor || '#1e293b', shadowColor: themeColor || '#000' }}
-                >
-                  <Text 
-                    className="text-slate-500 text-[9px] font-black tracking-widest uppercase border bg-slate-950 px-2 py-0.5 rounded-md mr-2 self-start"
-                    style={{ borderColor: themeColor ? `${themeColor}50` : '#1e293b', color: themeColor || '#64748b' }}
+                  <TouchableOpacity
+                    key={course.id}
+                    onPress={() => navigation.navigate('TeacherCourseDetails', { courseId: course.id, courseTitle: course.title })}
+                    className="mb-4 rounded-2xl overflow-hidden active:opacity-90 shadow-lg border bg-white"
+                    style={{ borderColor: themeColor || '#e2e8f0' }}
+                    activeOpacity={0.85}
                   >
-                    {course.category?.name || 'General'}
-                  </Text>
-                  
-                  <Text className="text-slate-100 text-base font-bold mt-3">
-                    {course.title}
-                  </Text>
-
-                  <View className="flex-row mt-4 pt-3 border-t border-slate-800/80 justify-between">
-                    <View>
-                      <Text className="text-slate-500 text-[9px] uppercase font-bold">Instructor</Text>
-                      <Text className="text-slate-200 text-sm font-bold mt-0.5">👤 {course.instructorName}</Text>
+                    <View className="flex-row p-3 rounded-2xl relative">
+                      <Image
+                        source={course.thumbnailUrl ? { uri: course.thumbnailUrl } : undefined}
+                        className="w-24 h-24 rounded-xl bg-slate-200"
+                        resizeMode="cover"
+                      />
+                      <View className="flex-1 ml-4 justify-between">
+                        <View>
+                          <Text className="text-xs font-bold text-amber-600 uppercase tracking-wider" style={{ color: themeColor || '#d97706' }}>
+                            {course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
+                          </Text>
+                          <Text className="text-sm font-semibold text-slate-900 mt-1" numberOfLines={2} style={{ color: '#0f172a' }}>
+                            {course.title}
+                          </Text>
+                          <Text className="text-xs text-slate-500 mt-1 font-medium" style={{ color: '#64748b' }}>
+                            Instructor: {course.instructorName}
+                          </Text>
+                        </View>
+                        <View className="flex-row justify-between items-center mt-2">
+                          <Text className="text-xs text-slate-500 font-medium" style={{ color: '#64748b' }}>{course.lectureCount} Lectures</Text>
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              setSelectedCourseForTheme(course);
+                              setShowThemeSelector(true);
+                            }}
+                            className="bg-blue-50 border border-blue-200 px-3 py-1 rounded-full"
+                          >
+                            <Text className="text-[10px] font-bold text-blue-600 uppercase">Theme</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
                     </View>
-                    <View className="items-end">
-                      <Text className="text-slate-500 text-[9px] uppercase font-bold">Video Lectures</Text>
-                      <Text className="text-slate-200 text-sm font-bold mt-0.5">🎬 {course.lectureCount} Lectures</Text>
-                    </View>
-                  </View>
-                  
-                  <TouchableOpacity 
-                    onPress={() => {
-                      setSelectedCourseForTheme(course);
-                      setShowThemeSelector(true);
-                    }}
-                    className="bg-slate-800 border border-slate-700/80 rounded-xl py-2.5 items-center mt-3 shadow-sm shadow-black/30"
-                  >
-                    <Text className="text-slate-300 text-xs font-bold uppercase tracking-wider">Change Theme</Text>
-                  </TouchableOpacity>
                   </TouchableOpacity>
                 );
               })

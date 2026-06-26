@@ -19,7 +19,7 @@ export type RootStackParamList = {
   ChangePassword: undefined;
   AdminPanel: undefined;
   AppTabs: NavigatorScreenParams<AppTabsParamList>;
-  CourseDetails: { courseId: string };
+  CourseDetails: { courseId: string; initialTab?: 'VIDEOS' | 'MATERIALS' | 'NOTICES' };
   PurchaseWebview: { courseId: string; amount: number; orderId: string; title: string };
   LecturePlayer: { lectureId: string };
   PDFViewer: { fileUrl: string; title: string };

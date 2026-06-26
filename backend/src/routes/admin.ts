@@ -444,8 +444,8 @@ function requireAdminSuperuser(req: AuthenticatedRequest, res: Response, next: a
   next();
 }
 
-// 7. Assign Teacher to Course (Superuser Only)
-router.post('/courses/:id/teachers', authenticateJWT, requireAdmin, requireAdminSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+// 7. Assign Teacher to Course (Allowed for all Admins)
+router.post('/courses/:id/teachers', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { teacherId } = req.body;
     const courseId = req.params.id;
@@ -469,8 +469,8 @@ router.post('/courses/:id/teachers', authenticateJWT, requireAdmin, requireAdmin
   }
 });
 
-// 8. Remove Teacher from Course (Superuser Only)
-router.delete('/courses/:id/teachers/:teacherId', authenticateJWT, requireAdmin, requireAdminSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+// 8. Remove Teacher from Course (Allowed for all Admins)
+router.delete('/courses/:id/teachers/:teacherId', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id, teacherId } = req.params;
 
@@ -487,17 +487,14 @@ router.delete('/courses/:id/teachers/:teacherId', authenticateJWT, requireAdmin,
 
 const COURSE_CREATOR_PHONE = '+919831754957'; // Shubhadeep Biswas
 
-// 9. Create Course (Restricted to specific Superuser)
+// 9. Create Course (Allowed for all Admins)
 router.post('/courses', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.user || !req.user.phoneNumber.includes('9831754957')) {
-      return res.status(403).json({ success: false, error: 'Access Denied: Only authorized superusers can create courses.' });
-    }
+    const { title, price, categoryId, learningOutcomes, timeSlots, branch, targetClass, isBundle, bundleCourseIds, thumbnailUrl } = req.body;
+    let description = req.body.description || '';
 
-    const { title, description, thumbnailUrl, price, categoryId, learningOutcomes, timeSlots, branch, targetClass, isBundle, bundleCourseIds } = req.body;
-
-    if (!title || !description || price === undefined) {
-      return res.status(400).json({ success: false, error: 'Missing required course fields (title, description, price).' });
+    if (!title || price === undefined) {
+      return res.status(400).json({ success: false, error: 'Missing required course fields (title, price).' });
     }
 
     let finalCategoryId = categoryId;
@@ -512,8 +509,8 @@ router.post('/courses', authenticateJWT, requireAdmin, async (req: Authenticated
         }
       }
       
-      let targetSlug = detectedCategory ? detectedCategory.toLowerCase() : 'general';
-      let targetName = detectedCategory ? detectedCategory : 'General';
+      let targetSlug = detectedCategory ? detectedCategory.toLowerCase() : 'program';
+      let targetName = detectedCategory ? detectedCategory : 'Program';
 
       let cat = await prisma.courseCategory.findFirst({ where: { slug: targetSlug } });
       if (!cat) {
@@ -547,8 +544,8 @@ router.post('/courses', authenticateJWT, requireAdmin, async (req: Authenticated
     await prisma.auditLog.create({
       data: {
         action: 'COURSE_CREATED',
-        userId: req.user.id,
-        actorId: req.user.id,
+        userId: req.user!.id,
+        actorId: req.user!.id,
         details: `Superuser created new course: ${course.title}.`,
       },
     });
@@ -560,13 +557,9 @@ router.post('/courses', authenticateJWT, requireAdmin, async (req: Authenticated
   }
 });
 
-// Delete course (Superusers only)
-router.delete('/courses/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+// Delete course (Allowed for all Admins)
+router.delete('/courses/:id', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (req.user?.phoneNumber !== '+917980357754' && req.user?.phoneNumber !== '+919831754957') {
-      return res.status(403).json({ success: false, error: 'Access Denied: Only authorized superusers can delete courses.' });
-    }
-
     const { id } = req.params;
 
     // Delete associated records first (cascade deletes could also be configured in Prisma)
@@ -585,18 +578,15 @@ router.delete('/courses/:id', authenticateJWT, async (req: AuthenticatedRequest,
   }
 });
 
-// Update course (Superusers only)
-router.put('/courses/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+// Update course (Allowed for all Admins)
+router.put('/courses/:id', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (req.user?.phoneNumber !== '+917980357754' && req.user?.phoneNumber !== '+919831754957') {
-      return res.status(403).json({ success: false, error: 'Access Denied: Only authorized superusers can update courses.' });
-    }
-
     const { id } = req.params;
-    const { title, description, price, thumbnailUrl, categoryId, timeSlots, branch, targetClass, isBundle, bundleCourseIds } = req.body;
+    const { title, price, thumbnailUrl, categoryId, timeSlots, branch, targetClass, isBundle, bundleCourseIds } = req.body;
+    let description = req.body.description || '';
 
-    if (!title || !description || price === undefined) {
-      return res.status(400).json({ success: false, error: 'Title, description, and price are required.' });
+    if (!title || price === undefined) {
+      return res.status(400).json({ success: false, error: 'Title and price are required.' });
     }
 
     // Prepare update data
@@ -638,8 +628,8 @@ router.put('/courses/:id', authenticateJWT, async (req: AuthenticatedRequest, re
     await prisma.auditLog.create({
       data: {
         action: 'COURSE_UPDATED',
-        userId: req.user.id,
-        actorId: req.user.id,
+        userId: req.user!.id,
+        actorId: req.user!.id,
         details: `Superuser updated course: ${updatedCourse.title}.`,
       },
     });

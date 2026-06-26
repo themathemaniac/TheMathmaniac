@@ -19,14 +19,25 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
   const { courseId } = route.params;
   const navigation = useNavigation<CourseDetailsNavigationProp>();
   const [course, setCourse] = useState<any | null>(null);
+  const [materials, setMaterials] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'VIDEOS' | 'MATERIALS' | 'NOTICES'>(
+    route.params?.initialTab || 'VIDEOS'
+  );
   const [loading, setLoading] = useState(true);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
 
   const fetchCourseDetails = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get(`/courses/${courseId}`);
-      setCourse(response.data.data);
+      const [courseRes, materialsRes, announcementsRes] = await Promise.all([
+        apiClient.get(`/courses/${courseId}`),
+        apiClient.get(`/materials`, { params: { courseId } }).catch(() => ({ data: { data: [] } })),
+        apiClient.get(`/courses/${courseId}/announcements`).catch(() => ({ data: { data: [] } }))
+      ]);
+      setCourse(courseRes.data.data);
+      setMaterials(materialsRes.data.data || []);
+      setAnnouncements(announcementsRes.data.data || []);
     } catch (e) {
       console.log('Error fetching course details:', e);
     } finally {
@@ -38,11 +49,25 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
     fetchCourseDetails();
   }, [courseId]);
 
+  useEffect(() => {
+    if (route.params?.initialTab) {
+      setActiveTab(route.params.initialTab);
+    }
+  }, [route.params?.initialTab]);
+
   const handleLecturePress = (lectureId: string) => {
     if (course?.isPurchased || course?.price === 0) {
       navigation.navigate('LecturePlayer', { lectureId });
     } else {
-      Alert.alert('Course Locked', 'Please enroll in the course to unlock video lectures and study resources.');
+      Alert.alert('Course Locked', 'Please enroll in the course to unlock video lectures.');
+    }
+  };
+
+  const handleMaterialPress = (item: any) => {
+    if (item.isAccessible && item.fileUrl) {
+      navigation.navigate('PDFViewer', { title: item.title, fileUrl: item.fileUrl });
+    } else {
+      Alert.alert('Resource Locked', 'Please enroll in the course to unlock this study resource.');
     }
   };
 
@@ -107,22 +132,46 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
 
         <View className="p-6">
           <Text className="text-xs font-bold text-blue-400 uppercase tracking-widest">
-            {course.category.name}
+            {course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
           </Text>
           <Text className="text-slate-100 text-2xl font-black mt-2 leading-8">{course.title}</Text>
 
+          {/* Inline Purchase Banner if not purchased and price > 0 */}
+          {!course.isPurchased && course.price > 0 && (
+            <View className="bg-slate-900 border border-slate-800 rounded-2xl p-5 mt-4 flex-row justify-between items-center">
+              <View>
+                <Text className="text-slate-400 text-xs font-semibold">Course Fee</Text>
+                <Text className="text-slate-100 text-2xl font-black mt-1">{formattedPrice}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={handlePurchase}
+                disabled={purchaseLoading}
+                className="bg-blue-600 px-6 py-3 rounded-xl items-center justify-center flex-row"
+              >
+                {purchaseLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text className="text-white font-extrabold text-sm">Enroll Now</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Assigned Faculty */}
           {course.teachers && course.teachers.length > 0 && (
-            <View className="mt-4 border rounded-2xl p-4" style={[{ backgroundColor: '#0f172a', borderColor: '#1e293b' }, cardStyle]}>
-              <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-3" style={themeColor ? { color: themeColor } : {}}>Assigned Faculty</Text>
+            <View className="mt-4 border rounded-2xl p-4 bg-white" style={cardStyle}>
+              <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3" style={themeColor ? { color: themeColor } : { color: '#475569' }}>Assigned Faculty</Text>
               {course.teachers.map((t: any) => (
                 <View key={t.user.id} className="flex-row items-center mb-2">
-                  <View className="w-8 h-8 bg-blue-900/50 rounded-full items-center justify-center mr-3 border border-blue-500/30">
-                    <Text className="text-blue-400 font-bold text-xs">{t.user.name.charAt(0)}</Text>
+                  <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-3 border border-blue-200">
+                    <Text className="text-blue-600 font-bold text-xs" style={{ color: '#2563eb' }}>
+                      {(t.user.name || '?').charAt(0).toUpperCase()}
+                    </Text>
                   </View>
-                  <View>
-                    <Text className="text-slate-200 font-bold text-xs">{t.user.name}</Text>
+                  <View className="flex-1">
+                    <Text className="text-slate-900 font-bold text-xs" style={{ color: '#0f172a' }}>{t.user.name}</Text>
                     {t.user.subjects && (
-                      <Text className="text-blue-400 text-[10px] font-medium">{t.user.subjects}</Text>
+                      <Text className="text-blue-600 text-[10px] font-medium" style={{ color: '#2563eb' }}>{t.user.subjects}</Text>
                     )}
                   </View>
                 </View>
@@ -131,84 +180,163 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
           )}
 
           {/* 10-Second Value Outcomes */}
-          <View className="border rounded-3xl p-5 mt-6" style={[{ backgroundColor: '#0f172a', borderColor: '#1e293b' }, cardStyle]}>
-            <Text className="text-blue-400 text-xs font-bold uppercase tracking-widest mb-3" style={themeColor ? { color: themeColor } : {}}>
-              ⚡ What you will learn
-            </Text>
-            {course.learningOutcomes.map((outcome: string, idx: number) => (
-              <View key={idx} className="flex-row items-start mt-2">
-                <Text className="text-emerald-400 text-sm font-bold mr-2">✓</Text>
-                <Text className="text-slate-200 text-xs leading-5 flex-1">{outcome}</Text>
-              </View>
-            ))}
-          </View>
+          {course.learningOutcomes && course.learningOutcomes.length > 0 && (
+            <View className="border rounded-3xl p-5 mt-6 bg-white" style={cardStyle}>
+              <Text className="text-blue-600 text-xs font-bold uppercase tracking-widest mb-3" style={themeColor ? { color: themeColor } : { color: '#2563eb' }}>
+                ⚡ What you will learn
+              </Text>
+              {course.learningOutcomes.map((outcome: string, idx: number) => (
+                <View key={idx} className="flex-row items-start mt-2">
+                  <Text className="text-emerald-500 text-sm font-bold mr-2" style={{ color: '#10b981' }}>✓</Text>
+                  <Text className="text-slate-800 text-xs leading-5 flex-1" style={{ color: '#1e293b' }}>{outcome}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Description */}
           <Text className="text-slate-100 text-base font-bold mt-8">About Course</Text>
           <Text className="text-slate-400 text-xs leading-6 mt-3">{course.description}</Text>
 
-          {/* Syllabus Outline */}
-          <Text className="text-slate-100 text-base font-bold mt-8 mb-4">Syllabus ({course.lectureCount} Lessons)</Text>
-          {course.lectures.map((lecture: any) => {
-            const hasAccess = course.isPurchased || course.price === 0;
-            return (
-              <TouchableOpacity
-                key={lecture.id}
-                onPress={() => handleLecturePress(lecture.id)}
-                className="border rounded-2xl p-4 mb-3 flex-row items-center justify-between"
-                style={[{ backgroundColor: '#0f172a', borderColor: '#1e293b' }, cardStyle]}
-              >
-                <View className="flex-1 mr-3">
-                  <Text className="text-slate-500 text-[10px] font-bold" style={themeColor ? { color: themeColor } : {}}>LESSON {lecture.sortOrder}</Text>
-                  <Text className="text-slate-100 text-sm font-bold mt-1" numberOfLines={1}>
-                    {lecture.title}
-                  </Text>
-                  <Text className="text-slate-400 text-xs mt-1">
-                    ⌛ {Math.round(lecture.duration / 60)} mins
-                  </Text>
-                </View>
+          {/* Tabs for Videos, Materials & Notices */}
+          <View className="flex-row border-b border-slate-800 mb-6 mt-8">
+            <TouchableOpacity
+              onPress={() => setActiveTab('VIDEOS')}
+              className={`flex-1 pb-3 border-b-2 items-center ${activeTab === 'VIDEOS' ? 'border-blue-500' : 'border-transparent'}`}
+            >
+              <Text className={`font-bold text-xs ${activeTab === 'VIDEOS' ? 'text-blue-400' : 'text-slate-500'}`}>
+                VIDEOS ({course.lectureCount})
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setActiveTab('MATERIALS')}
+              className={`flex-1 pb-3 border-b-2 items-center ${activeTab === 'MATERIALS' ? 'border-blue-500' : 'border-transparent'}`}
+            >
+              <Text className={`font-bold text-xs ${activeTab === 'MATERIALS' ? 'text-blue-400' : 'text-slate-500'}`}>
+                MATERIALS ({materials.length})
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setActiveTab('NOTICES')}
+              className={`flex-1 pb-3 border-b-2 items-center ${activeTab === 'NOTICES' ? 'border-blue-500' : 'border-transparent'}`}
+            >
+              <Text className={`font-bold text-xs ${activeTab === 'NOTICES' ? 'text-blue-400' : 'text-slate-500'}`}>
+                NOTICES ({announcements.length})
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-                {/* Status Indicator */}
-                <View className="items-center">
-                  {!hasAccess ? (
-                    <Text className="text-slate-600 text-base">🔒</Text>
-                  ) : lecture.completed ? (
-                    <Text className="text-emerald-500 text-base">✓</Text>
-                  ) : (
-                    <Text className="text-blue-400 text-xs font-semibold">Play</Text>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {/* Tab content */}
+          {activeTab === 'VIDEOS' && (
+            <View className="pb-10">
+              {course.lectures.length === 0 ? (
+                <Text className="text-slate-500 text-center mt-6">No videos in this course.</Text>
+              ) : (
+                course.lectures.map((lecture: any) => {
+                  const hasAccess = course.isPurchased || course.price === 0;
+                  return (
+                    <TouchableOpacity
+                      key={lecture.id}
+                      onPress={() => handleLecturePress(lecture.id)}
+                      className="border rounded-2xl p-4 mb-3 flex-row items-center justify-between bg-white"
+                      style={cardStyle}
+                    >
+                      <View className="flex-1 mr-3">
+                        <Text className="text-slate-500 text-[10px] font-bold" style={themeColor ? { color: themeColor } : { color: '#64748b' }}>LESSON {lecture.sortOrder}</Text>
+                        <Text className="text-slate-900 text-sm font-bold mt-1" numberOfLines={1} style={{ color: '#0f172a' }}>
+                          {lecture.title}
+                        </Text>
+                        <Text className="text-slate-500 text-xs mt-1" style={{ color: '#64748b' }}>
+                          ⌛ {Math.round(lecture.duration / 60)} mins
+                        </Text>
+                      </View>
+                      <View className="items-center">
+                        {!hasAccess ? (
+                          <Text className="text-slate-400 text-base">🔒</Text>
+                        ) : lecture.completed ? (
+                          <Text className="text-emerald-500 text-base" style={{ color: '#10b981' }}>✓</Text>
+                        ) : (
+                          <Text className="text-blue-600 text-xs font-semibold" style={{ color: '#2563eb' }}>Play</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+          )}
+
+          {activeTab === 'MATERIALS' && (
+            <View className="pb-10">
+              {materials.length === 0 ? (
+                <Text className="text-slate-500 text-center mt-6">No study materials in this course.</Text>
+              ) : (
+                materials.map((item: any) => {
+                  const hasAccess = item.isAccessible;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => handleMaterialPress(item)}
+                      className="border rounded-2xl p-4 mb-3 flex-row items-center justify-between bg-white"
+                      style={cardStyle}
+                    >
+                      <View className="flex-1 mr-3">
+                        <Text className="text-[8px] font-black uppercase border px-2 py-0.5 rounded-md self-start mb-1" style={{ backgroundColor: '#1f2937', borderColor: '#374151', color: '#ffffff' }}>
+                          {item.type.replace('_', ' ')}
+                        </Text>
+                        <Text className="text-slate-900 text-sm font-bold mt-1" numberOfLines={1} style={{ color: '#0f172a' }}>
+                          {item.title}
+                        </Text>
+                        <Text className="text-slate-500 text-[10px] mt-1" style={{ color: '#64748b' }}>
+                          {item.fileSize ? `${(item.fileSize / 1024).toFixed(1)} KB` : ''}
+                        </Text>
+                      </View>
+                      <View className="items-center">
+                        {!hasAccess ? (
+                          <Text className="text-slate-400 text-base">🔒</Text>
+                        ) : (
+                          <Text className="text-blue-600 text-xs font-semibold" style={{ color: '#2563eb' }}>View PDF 👁️</Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+          )}
+
+          {activeTab === 'NOTICES' && (
+            <View className="pb-10">
+              {announcements.length === 0 ? (
+                <Text className="text-slate-500 text-center mt-6">No announcements in this course.</Text>
+              ) : (
+                announcements.map((item: any) => (
+                  <View
+                    key={item.id}
+                    className="border rounded-2xl p-4 mb-3 bg-white"
+                    style={cardStyle}
+                  >
+                    <View className="flex-row justify-between items-baseline mb-2">
+                      <Text className="text-[10px] font-bold" style={{ color: '#64748b' }}>
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </Text>
+                      <Text className="text-[10px] font-bold" style={themeColor ? { color: themeColor } : { color: '#2563eb' }}>
+                        👤 {item.authorName || course.instructorName || 'Instructor'}
+                      </Text>
+                    </View>
+                    <Text className="text-slate-900 text-sm font-bold mt-1" style={{ color: '#0f172a' }}>
+                      {item.title}
+                    </Text>
+                    <Text className="text-slate-600 text-xs mt-2 leading-5" style={{ color: '#334155' }}>
+                      {item.content}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
         </View>
-        <View className="h-28" />
       </ScrollView>
-
-      {/* Sticky Bottom Action */}
-      <View className="absolute bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 px-6 py-5 flex-row justify-between items-center">
-        <View>
-          <Text className="text-slate-400 text-xs font-semibold">Total Price</Text>
-          <Text className="text-slate-100 text-2xl font-black mt-1">{formattedPrice}</Text>
-        </View>
-
-        {course.isPurchased || course.price === 0 ? (
-          <Button
-            title="Resume Study"
-            onPress={() => handleLecturePress(course.lectures[0]?.id)}
-            variant="secondary"
-            className="flex-1 ml-6"
-          />
-        ) : (
-          <Button
-            title="Enroll Now"
-            onPress={handlePurchase}
-            loading={purchaseLoading}
-            variant="primary"
-            className="flex-1 ml-6"
-          />
-        )}
-      </View>
     </View>
   );
 };

@@ -60,6 +60,11 @@ router.get('/', async (req, res) => {
       where: whereClause,
       include: {
         category: true,
+        teachers: {
+          include: {
+            user: { select: { name: true } }
+          }
+        },
         _count: {
           select: { lectures: true },
         },
@@ -258,9 +263,32 @@ router.get('/:id/announcements', authenticateJWT, async (req: AuthenticatedReque
     const { id } = req.params;
     const announcements = await prisma.announcement.findMany({
       where: { courseId: id },
+      include: {
+        course: {
+          include: {
+            teachers: {
+              include: {
+                user: {
+                  select: { name: true }
+                }
+              }
+            }
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
-    return res.status(200).json({ success: true, data: announcements });
+
+    const mapped = announcements.map((announce) => {
+      const courseTeachers = announce.course?.teachers || [];
+      const fallbackTeacher = courseTeachers.length > 0 ? courseTeachers[0].user?.name : 'Teacher';
+      return {
+        ...announce,
+        authorName: announce.authorName || announce.course?.instructorName || fallbackTeacher
+      };
+    });
+
+    return res.status(200).json({ success: true, data: mapped });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }
@@ -282,11 +310,19 @@ router.post('/:id/announcements', authenticateJWT, async (req: AuthenticatedRequ
       return res.status(400).json({ success: false, error: 'Title and content are required' });
     }
 
-    const announcement = await prisma.announcement.create({
+    // Look up the name of the user who is posting the announcement
+    const user = await prisma.user.findUnique({
+      where: { id: req.user?.id },
+      select: { name: true }
+    });
+    const authorName = user?.name || 'Instructor';
+
+    const announcement = await (prisma.announcement as any).create({
       data: {
         title,
         content,
-        courseId: id
+        courseId: id,
+        authorName
       }
     });
 

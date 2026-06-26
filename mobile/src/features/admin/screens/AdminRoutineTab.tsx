@@ -79,7 +79,7 @@ export const AdminRoutineTab: React.FC = () => {
         startTime,
         endTime,
         courseName: course.title,
-        batchName: `${course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'General'} (${teacherNames})`,
+        batchName: `${course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'} (${teacherNames})`,
         location: course.branch || 'Sodepur',
         color: COLORS[courseIdx % COLORS.length]
       });

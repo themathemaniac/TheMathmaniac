@@ -130,15 +130,52 @@ router.get('/courses', authenticateJWT, async (req: AuthenticatedRequest, res: R
   }
 });
 
-// 3. Get Announcements Feed
+// 3. Get Announcements Feed (For Student Purchased Batches)
 router.get('/announcements', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    // Get courses purchased by the user
+    const purchases = await prisma.purchase.findMany({
+      where: { userId, status: 'SUCCESS' },
+      select: { courseId: true }
+    });
+    const purchasedCourseIds = purchases.map((p) => p.courseId);
+
     const announcements = await prisma.announcement.findMany({
+      where: {
+        courseId: { in: purchasedCourseIds }
+      },
+      include: {
+        course: {
+          include: {
+            teachers: {
+              include: {
+                user: {
+                  select: { name: true }
+                }
+              }
+            }
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' },
       take: 15,
     });
 
-    return res.status(200).json({ success: true, data: announcements });
+    const mapped = announcements.map((announce) => {
+      const courseTeachers = announce.course?.teachers || [];
+      const fallbackTeacher = courseTeachers.length > 0 ? courseTeachers[0].user?.name : 'Teacher';
+      return {
+        ...announce,
+        authorName: announce.authorName || announce.course?.instructorName || fallbackTeacher
+      };
+    });
+
+    return res.status(200).json({ success: true, data: mapped });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
   }

@@ -105,7 +105,7 @@ export const AdminCoursesTab: React.FC = () => {
   };
 
   const handleSaveCourse = async () => {
-    if (!newCourse.title || !newCourse.description || !newCourse.price) {
+    if (!newCourse.title || !newCourse.price) {
       Alert.alert('Error', 'Please fill in all required fields.');
       return;
     }
@@ -240,7 +240,7 @@ export const AdminCoursesTab: React.FC = () => {
 
   return (
     <View className="flex-1">
-      {/* Create Course Section (Shubhadeep Biswas Only) */}
+      {/* Create Course Section */}
       {isCourseCreator && (
         <View className="mb-6">
           <TouchableOpacity 
@@ -432,8 +432,6 @@ export const AdminCoursesTab: React.FC = () => {
                 </View>
               )}
               
-              <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Description</Text>
-              <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-3" placeholder="Course Description" placeholderTextColor="#5C5446" value={newCourse.description} onChangeText={(t) => setNewCourse({...newCourse, description: t})} multiline />
 
               <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Price (in Rs)</Text>
               <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-3" placeholder="e.g. 500" placeholderTextColor="#5C5446" value={newCourse.price} onChangeText={(t) => setNewCourse({...newCourse, price: t})} keyboardType="number-pad" />
@@ -707,7 +705,7 @@ export const AdminCoursesTab: React.FC = () => {
                     <View style={{ maxHeight: 160 }} className="bg-slate-950 border border-slate-800 rounded-xl mb-3 overflow-hidden">
                       <ScrollView nestedScrollEnabled className="p-2">
                         {teachers.filter(teacher => {
-                          if (!course.category?.name || course.category.name.toLowerCase() === 'general') return true;
+                          if (!course.category?.name || course.category.name.toLowerCase() === 'program' || course.category.name.toLowerCase() === 'general') return true;
                           if (!teacher.subjects) return false;
                           const tSubjects = teacher.subjects.toLowerCase();
                           const cSubject = course.category.name.toLowerCase();
@@ -735,7 +733,7 @@ export const AdminCoursesTab: React.FC = () => {
                           );
                         })}
                         {teachers.filter(teacher => {
-                          if (!course.category?.name || course.category.name.toLowerCase() === 'general') return true;
+                          if (!course.category?.name || course.category.name.toLowerCase() === 'program' || course.category.name.toLowerCase() === 'general') return true;
                           if (!teacher.subjects) return false;
                           const tSubjects = teacher.subjects.toLowerCase();
                           const cSubject = course.category.name.toLowerCase();

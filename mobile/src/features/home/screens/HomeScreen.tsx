@@ -195,7 +195,7 @@ export const HomeScreen: React.FC = () => {
             )}
 
             {/* 1. Continue Learning Banner */}
-            {dashboardData.resumeLecture ? (
+            {dashboardData.resumeLecture && (
               <View className="bg-blue-600/95 border border-blue-500 rounded-3xl p-5 mb-6 shadow-md shadow-blue-900/20">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-blue-200 text-xs font-bold uppercase tracking-widest">
@@ -228,24 +228,48 @@ export const HomeScreen: React.FC = () => {
                   </TouchableOpacity>
                 </View>
               </View>
-            ) : (
-              <View className="bg-slate-900 border border-slate-800 rounded-3xl p-5 mb-6">
-                <Text className="text-slate-500 text-xs font-bold uppercase tracking-widest">
-                  🎓 Welcome Back!
-                </Text>
-                <Text className="text-slate-100 text-base font-bold mt-2 leading-5">
-                  Pick a program to start your visual learning.
-                </Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('AppTabs', { screen: 'Courses' })}
-                  className="bg-blue-600 self-start px-4 py-2 rounded-xl mt-4"
-                >
-                  <Text className="text-white font-bold text-xs">Explore Programs</Text>
-                </TouchableOpacity>
-              </View>
             )}
 
-            {/* 2. Recommended Courses Carousel */}
+            {/* 2. Your Courses Carousel */}
+            <View className="mb-6">
+              <View className="flex-row justify-between items-baseline mb-3">
+                <Text className="text-slate-100 text-lg font-bold">Your Courses</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('AppTabs', { screen: 'Courses' })}>
+                  <Text className="text-blue-600 text-xs font-bold">See All</Text>
+                </TouchableOpacity>
+              </View>
+
+              {dashboardData.courses.filter(c => c.isPurchased).length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-1">
+                  {dashboardData.courses.filter(c => c.isPurchased).map((course) => (
+                    <CourseCard
+                      key={course.id}
+                      id={course.id}
+                      title={course.title}
+                      category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
+                      price={course.price}
+                      thumbnailUrl={course.thumbnailUrl}
+                      lectureCount={course.lectureCount}
+                      isPurchased={course.isPurchased}
+                      teacherName={course.teachers && course.teachers.length > 0 ? course.teachers.map((t: any) => t.user?.name).filter(Boolean).join(', ') : course.instructorName}
+                      onPress={() => navigation.navigate('CourseDetails', { courseId: course.id })}
+                    />
+                  ))}
+                </ScrollView>
+              ) : (
+                <View className="bg-slate-900 border border-slate-800 rounded-2xl p-6 items-center justify-center">
+                  <Text className="text-3xl mb-2">📚</Text>
+                  <Text className="text-slate-300 font-semibold text-center">
+                    You have not enrolled in any course yet.
+                  </Text>
+                  <Text className="text-slate-500 text-xs text-center mt-1">
+                    Explore our programs below to get started!
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* 2b. Recommended Courses Carousel */}
             <View className="mb-6">
               <View className="flex-row justify-between items-baseline mb-3">
                 <Text className="text-slate-100 text-lg font-bold">Recommended Programs</Text>
@@ -260,11 +284,12 @@ export const HomeScreen: React.FC = () => {
                     key={course.id}
                     id={course.id}
                     title={course.title}
-                    category={course.category.name}
+                    category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
                     price={course.price}
                     thumbnailUrl={course.thumbnailUrl}
                     lectureCount={course.lectureCount}
                     isPurchased={course.isPurchased}
+                    teacherName={course.teachers && course.teachers.length > 0 ? course.teachers.map((t: any) => t.user?.name).filter(Boolean).join(', ') : course.instructorName}
                     onPress={() => navigation.navigate('CourseDetails', { courseId: course.id })}
                   />
                 ))}
@@ -305,30 +330,53 @@ export const HomeScreen: React.FC = () => {
               ))}
             </View>
 
-
-
             {/* 5. Recent Announcements */}
             <View className="mb-6">
               <Text className="text-slate-100 text-lg font-bold mb-3">Recent Announcements</Text>
-              {dashboardData.announcements.map((item) => (
-                <View key={item.id} className="rounded-2xl overflow-hidden mb-3 shadow-md">
-                  <LinearGradient
-                    colors={['rgba(110, 115, 125, 0.95)', 'rgba(80, 85, 95, 0.85)']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    className="p-4 border border-slate-700/30 relative"
+              {(() => {
+                const courseAnnouncements = dashboardData.announcements.filter(
+                  (item) => item.courseId && item.course
+                );
+                if (courseAnnouncements.length === 0) {
+                  return <Text className="text-slate-500 text-xs italic">No recent announcements.</Text>;
+                }
+                return courseAnnouncements.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => {
+                      if (item.courseId) {
+                        navigation.navigate('CourseDetails', { courseId: item.courseId, initialTab: 'NOTICES' });
+                      }
+                    }}
+                    className="rounded-2xl border p-4 mb-3 active:opacity-90 shadow-sm"
+                    style={{
+                      backgroundColor: '#1e293b', // Dark Slate bg
+                      borderColor: '#334155',     // Slate border
+                    }}
                   >
-                    {/* Top highlight shine */}
-                    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1.5, backgroundColor: 'rgba(255, 255, 255, 0.45)' }} />
-
-                    <Text className="text-white text-sm font-bold">{item.title}</Text>
-                    <Text className="text-neutral-300 text-xs mt-2 leading-5">{item.content}</Text>
-                    <Text className="text-neutral-400 text-[10px] mt-3 font-semibold">
-                      Published: {new Date(item.createdAt).toLocaleDateString()}
-                    </Text>
-                  </LinearGradient>
-                </View>
-              ))}
+                    <View className="flex-row justify-between items-baseline mb-2">
+                      <Text className="text-xs font-black uppercase tracking-wider" style={{ color: '#60a5fa' }}>
+                        {item.course?.title || 'Announcement'}
+                      </Text>
+                      <Text className="text-[9px] font-bold" style={{ color: '#94a3b8' }}>
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    
+                    <Text className="font-extrabold text-sm" style={{ color: '#f8fafc' }}>{item.title}</Text>
+                    <Text className="text-xs mt-2 leading-5" style={{ color: '#cbd5e1' }}>{item.content}</Text>
+                    
+                    <View className="mt-3 pt-2 border-t border-slate-700 flex-row justify-between items-center">
+                      <Text className="text-[10px] font-bold" style={{ color: '#94a3b8' }}>
+                        👤 Teacher: {item.authorName || item.course?.instructorName || 'Instructor'}
+                      </Text>
+                      <Text className="text-[9px] font-bold" style={{ color: '#60a5fa' }}>
+                        View in Batch →
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ));
+              })()}
             </View>
           </View>
         )}
