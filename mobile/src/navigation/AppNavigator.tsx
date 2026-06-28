@@ -19,7 +19,6 @@ import { AdminPanelScreen } from '../features/admin/screens/AdminPanelScreen';
 import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { CoursesExploreScreen } from '../features/courses/screens/CoursesExploreScreen';
 import { CourseDetailsScreen } from '../features/courses/screens/CourseDetailsScreen';
-import { PurchaseWebviewScreen } from '../features/courses/screens/PurchaseWebviewScreen';
 import { LecturePlayerScreen } from '../features/lectures/screens/LecturePlayerScreen';
 import { MaterialsListScreen } from '../features/materials/screens/MaterialsListScreen';
 import { PDFViewerScreen } from '../features/materials/screens/PDFViewerScreen';
@@ -29,7 +28,6 @@ import { ActiveTestScreen } from '../features/tests/screens/ActiveTestScreen';
 import { TestResultScreen } from '../features/tests/screens/TestResultScreen';
 import { ProfileHomeScreen } from '../features/profile/screens/ProfileHomeScreen';
 import { FeePaymentScreen } from '../features/profile/screens/FeePaymentScreen';
-import { FeePaymentCheckoutScreen } from '../features/profile/screens/FeePaymentCheckoutScreen';
 
 // Teacher Screens imports
 import { TeacherHomeScreen } from '../features/teacher/screens/TeacherHomeScreen';
@@ -40,6 +38,7 @@ import { TeacherProfileScreen } from '../features/teacher/screens/TeacherProfile
 import { TeacherAttendanceScreen } from '../features/teacher/screens/TeacherAttendanceScreen';
 import { SuperuserReportsScreen } from '../features/teacher/screens/SuperuserReportsScreen';
 import { TeacherCourseDetailsScreen } from '../features/teacher/screens/TeacherCourseDetailsScreen';
+import { TeacherPaymentsScreen } from '../features/teacher/screens/TeacherPaymentsScreen';
 
 const Stack = createStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<AppTabsParamList>();
@@ -183,17 +182,16 @@ export const AppNavigator = () => {
         <Stack.Screen name="AdminPanel" component={AdminPanelScreen} />
         <Stack.Screen name="AppTabs" component={AppTabsWrapper} />
         <Stack.Screen name="CourseDetails" component={CourseDetailsScreen} />
-        <Stack.Screen name="PurchaseWebview" component={PurchaseWebviewScreen} />
         <Stack.Screen name="LecturePlayer" component={LecturePlayerScreen} />
         <Stack.Screen name="PDFViewer" component={PDFViewerScreen} />
         <Stack.Screen name="TestInstructions" component={TestInstructionsScreen} />
         <Stack.Screen name="ActiveTest" component={ActiveTestScreen} />
         <Stack.Screen name="TestResult" component={TestResultScreen} />
-        <Stack.Screen name="FeePayment" component={FeePaymentScreen} />
-        <Stack.Screen name="FeePaymentCheckout" component={FeePaymentCheckoutScreen} />
         <Stack.Screen name="TeacherAttendanceTracking" component={TeacherAttendanceScreen} />
         <Stack.Screen name="SuperuserReports" component={SuperuserReportsScreen} />
         <Stack.Screen name="TeacherCourseDetails" component={TeacherCourseDetailsScreen} />
+        <Stack.Screen name="TeacherPayments" component={TeacherPaymentsScreen} />
+        <Stack.Screen name="FeePayment" component={FeePaymentScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

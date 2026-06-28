@@ -4,15 +4,18 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
 import { useAuthStore } from '../../../core/store/auth';
+import { Eye, EyeOff } from 'lucide-react-native';
 
 type ChangePasswordNavigationProp = StackNavigationProp<RootStackParamList, 'ChangePassword'>;
 
 export const ChangePasswordScreen: React.FC = () => {
   const navigation = useNavigation<ChangePasswordNavigationProp>();
   const { changePassword } = useAuthStore();
-  
+
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
@@ -44,36 +47,56 @@ export const ChangePasswordScreen: React.FC = () => {
       className="flex-1 bg-[#FAFBF8] px-6 pt-16"
     >
       <View className="mb-8">
-        <TouchableOpacity onPress={() => navigation.goBack()} className="mb-6 w-10 h-10 rounded-full bg-slate-100 items-center justify-center">
-          <Text className="text-xl font-bold text-slate-600">←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} className="mb-6">
+          <Text className="text-xl font-bold" style={{ color: '#090d16' }}>←</Text>
         </TouchableOpacity>
-        
-        <Text className="text-3xl font-black text-slate-900 mb-2">Change Password</Text>
-        <Text className="text-slate-500 font-medium">Create a new, secure password for your account.</Text>
+
+        <Text className="text-3xl font-black mb-2" style={{ color: '#090d16' }}>Change Password</Text>
+        <Text className="font-semibold" style={{ color: '#334155' }}>Create a new, secure password for your account.</Text>
       </View>
 
       <View className="mb-4">
-        <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">New Password</Text>
-        <TextInput
-          className="bg-white border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 text-sm font-semibold shadow-sm shadow-slate-100"
-          placeholder="Enter new password"
-          placeholderTextColor="#9CA3AF"
-          secureTextEntry
-          value={newPassword}
-          onChangeText={setNewPassword}
-        />
+        <Text className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#090d16' }}>New Password</Text>
+        <View className="flex-row items-center bg-white border border-slate-350 rounded-2xl px-5 shadow-sm shadow-slate-100">
+          <TextInput
+            className="flex-1 py-4 text-sm font-semibold"
+            style={{ color: '#090d16' }}
+            placeholder="Enter new password"
+            placeholderTextColor="#6B7280"
+            secureTextEntry={!showNewPassword}
+            value={newPassword}
+            onChangeText={setNewPassword}
+          />
+          <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} className="pl-2 pr-1">
+            {showNewPassword ? (
+              <EyeOff color="#475569" size={20} />
+            ) : (
+              <Eye color="#475569" size={20} />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
-
+ 
       <View className="mb-8">
-        <Text className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Confirm Password</Text>
-        <TextInput
-          className="bg-white border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 text-sm font-semibold shadow-sm shadow-slate-100"
-          placeholder="Re-enter new password"
-          placeholderTextColor="#9CA3AF"
-          secureTextEntry
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-        />
+        <Text className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#090d16' }}>Confirm Password</Text>
+        <View className="flex-row items-center bg-white border border-slate-350 rounded-2xl px-5 shadow-sm shadow-slate-100">
+          <TextInput
+            className="flex-1 py-4 text-sm font-semibold"
+            style={{ color: '#090d16' }}
+            placeholder="Re-enter new password"
+            placeholderTextColor="#6B7280"
+            secureTextEntry={!showConfirmPassword}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+          <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} className="pl-2 pr-1">
+            {showConfirmPassword ? (
+              <EyeOff color="#475569" size={20} />
+            ) : (
+              <Eye color="#475569" size={20} />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <TouchableOpacity

@@ -200,7 +200,6 @@ export const ProfileHomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [attendanceLoading, setAttendanceLoading] = useState(true);
-  const [hasPendingFee, setHasPendingFee] = useState(false);
 
   const fetchProfile = async () => {
     try {
@@ -228,28 +227,14 @@ export const ProfileHomeScreen: React.FC = () => {
     }
   };
 
-  const fetchFees = async () => {
-    try {
-      const response = await apiClient.get('/payments/fees');
-      if (response.data.success) {
-        const feesList = response.data.data || [];
-        const pending = feesList.some((f: any) => f.status === 'PENDING');
-        setHasPendingFee(pending);
-      }
-    } catch (e) {
-      console.log('Error fetching fees in profile:', e);
-    }
-  };
-
   useEffect(() => {
     fetchProfile();
     fetchAttendance();
-    fetchFees();
   }, []);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchProfile(), fetchAttendance(), fetchFees()]);
+    await Promise.all([fetchProfile(), fetchAttendance()]);
     setRefreshing(false);
   };
 
@@ -367,26 +352,18 @@ export const ProfileHomeScreen: React.FC = () => {
                   </Text>
                 </View>
               </View>
-
               {/* Fee Billings Option */}
               <TouchableOpacity
                 onPress={() => navigation.navigate('FeePayment')}
                 className="mt-4 pt-4 border-t border-slate-800/80 flex-row justify-between items-center active:opacity-80"
               >
                 <View>
-                  <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Monthly Fee Payments</Text>
-                  <Text className="text-slate-300 text-xs font-bold mt-1">View history & clear dues</Text>
+                  <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Fee Payment Receipts</Text>
+                  <Text className="text-slate-300 text-xs font-bold mt-1">View logged monthly fee receipts</Text>
                 </View>
-                {hasPendingFee ? (
-                  <View className="bg-red-500/20 px-3 py-1 rounded-full border border-red-500/20 flex-row items-center gap-1">
-                    <View className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    <Text className="text-red-400 text-[9px] font-bold uppercase tracking-wider">Dues Pending</Text>
-                  </View>
-                ) : (
-                  <View className="bg-emerald-600/20 px-3 py-1 rounded-full border border-emerald-500/20">
-                    <Text className="text-emerald-400 text-[9px] font-bold uppercase tracking-wider">Clear</Text>
-                  </View>
-                )}
+                <View className="bg-emerald-600/20 px-3 py-1 rounded-full border border-emerald-500/20">
+                  <Text className="text-emerald-400 text-[9px] font-bold uppercase tracking-wider">View 📄</Text>
+                </View>
               </TouchableOpacity>
             </View>
 

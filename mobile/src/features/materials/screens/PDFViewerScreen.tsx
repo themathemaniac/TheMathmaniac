@@ -5,6 +5,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
 import { WebView } from 'react-native-webview';
 
+import { apiClient } from '../../../core/api/client';
+
 type PDFViewerRouteProp = RouteProp<RootStackParamList, 'PDFViewer'>;
 type PDFViewerNavigationProp = StackNavigationProp<RootStackParamList, 'PDFViewer'>;
 
@@ -15,6 +17,16 @@ interface Props {
 export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
   const { title, fileUrl } = route.params;
   const navigation = useNavigation<PDFViewerNavigationProp>();
+
+  // Dynamically resolve local server IP changes for uploaded files
+  let resolvedFileUrl = fileUrl;
+  if (fileUrl && fileUrl.includes('/uploads/')) {
+    const apiBase = apiClient.defaults.baseURL || '';
+    const rootUrl = apiBase.replace('/api/v1', '');
+    const uploadPath = fileUrl.substring(fileUrl.indexOf('/uploads/'));
+    resolvedFileUrl = `${rootUrl}${uploadPath}`;
+  }
+
   const [downloading, setDownloading] = useState(false);
   const [webViewError, setWebViewError] = useState(false);
 
@@ -27,7 +39,7 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
   };
 
   const handleOpenNatively = () => {
-    Linking.openURL(fileUrl).catch(() => {
+    Linking.openURL(resolvedFileUrl).catch(() => {
       Alert.alert('Error', 'Unable to open this PDF on your device.');
     });
   };
@@ -53,7 +65,7 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
   <div id="pdf-container"></div>
 
   <script>
-    const url = '${fileUrl}';
+    const url = '${resolvedFileUrl}';
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     const loadingTask = pdfjsLib.getDocument(url);
@@ -90,7 +102,7 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
 
   const webViewSource = isAndroid
     ? { html: htmlSource, baseUrl: '' }
-    : { uri: fileUrl };
+    : { uri: resolvedFileUrl };
 
   const showWebView = !webViewError;
 

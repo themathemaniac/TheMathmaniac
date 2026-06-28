@@ -15,7 +15,7 @@ function setupCollectionListener(collectionName: string, defaultRole: 'STUDENT' 
 
       if (change.type === 'added' || change.type === 'modified') {
         try {
-          const { name, role, email, firstLogin, stream, faculty, school } = docData;
+          const { name, role, email, phoneNumber, firstLogin, stream, faculty, school } = docData;
           const studentClass = docData.class;
 
           // Force the role based on the collection source
@@ -34,6 +34,7 @@ function setupCollectionListener(collectionName: string, defaultRole: 'STUDENT' 
               user.name !== name ||
               user.role !== finalRole ||
               user.email !== (email || null) ||
+              user.phoneNumber !== (phoneNumber || null) ||
               user.firstLogin !== (firstLogin !== undefined ? firstLogin : true) ||
               user.stream !== (stream || null) ||
               user.class !== (studentClass || null) ||
@@ -50,6 +51,7 @@ function setupCollectionListener(collectionName: string, defaultRole: 'STUDENT' 
                   name: name || 'Mathemaniac User',
                   role: finalRole,
                   email: email || null,
+                  phoneNumber: phoneNumber || null,
                   firstLogin: firstLogin !== undefined ? firstLogin : true,
                   stream: stream || null,
                   class: studentClass || null,
@@ -67,6 +69,7 @@ function setupCollectionListener(collectionName: string, defaultRole: 'STUDENT' 
                 name: name || 'Mathemaniac User',
                 role: finalRole,
                 email: email || null,
+                phoneNumber: phoneNumber || null,
                 firstLogin: firstLogin !== undefined ? firstLogin : true,
                 stream: stream || null,
                 class: studentClass || null,

@@ -23,14 +23,7 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
       return res.status(404).json({ success: false, error: 'Lecture not found' });
     }
 
-    // Verify course is purchased
-    const purchase = await prisma.purchase.findFirst({
-      where: { userId, courseId: lecture.courseId, status: 'SUCCESS' },
-    });
 
-    if (!purchase && lecture.course.price > 0) {
-      return res.status(403).json({ success: false, error: 'You must purchase this course to view this lecture' });
-    }
 
     // Fetch user progress
     const progress = await prisma.lectureProgress.findUnique({

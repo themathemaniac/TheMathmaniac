@@ -502,6 +502,16 @@ export const TeacherProfileScreen: React.FC = () => {
 
           {/* Action Buttons */}
           <View className="mb-4 gap-y-4">
+
+
+            {/* Payment Ledger / Register Button for Admin/Superuser only */}
+            {(user?.role === 'ADMIN' || (user?.phoneNumber && ['+917980357754', '+919831754957'].includes(user.phoneNumber))) && (
+              <Button
+                title="Manual Payment Register"
+                onPress={() => navigation.navigate('TeacherPayments' as any)}
+              />
+            )}
+
             <Button
               title="Change Password"
               onPress={() => navigation.navigate('ChangePassword')}

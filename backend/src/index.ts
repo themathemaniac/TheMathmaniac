@@ -10,10 +10,10 @@ import courseRoutes from './routes/courses';
 import lectureRoutes from './routes/lectures';
 import materialRoutes from './routes/materials';
 import testRoutes from './routes/tests';
-import paymentRoutes from './routes/payments';
 import profileRoutes from './routes/profile';
 import attendanceRoutes from './routes/attendance';
 import superuserRoutes from './routes/superuser';
+import paymentRoutes from './routes/payments';
 import { startFirestoreListener } from './services/firestoreListener';
 import { startScheduler } from './services/scheduler';
 
@@ -47,10 +47,10 @@ app.use('/api/v1/courses', courseRoutes);
 app.use('/api/v1/lectures', lectureRoutes);
 app.use('/api/v1/materials', materialRoutes);
 app.use('/api/v1/tests', testRoutes);
-app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/attendance', attendanceRoutes);
 app.use('/api/v1/superuser', superuserRoutes);
+app.use('/api/v1/payments', paymentRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

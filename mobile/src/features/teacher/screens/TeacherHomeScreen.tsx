@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import { useAuthStore } from '../../../core/store/auth';
 import { apiClient } from '../../../core/api/client';
 import { useNavigation } from '@react-navigation/native';
@@ -49,18 +49,18 @@ export const TeacherHomeScreen: React.FC = () => {
   }, []);
 
   const COLORS = ['#3CA79B', '#D97706', '#2563EB', '#9333EA', '#E11D48'];
-  
+
   const mappedSchedules: RoutineSession[] = [];
   courses.forEach((course, courseIdx) => {
     let slots: any[] = [];
     try {
       slots = typeof course.timeSlots === 'string' ? JSON.parse(course.timeSlots) : (course.timeSlots || []);
-    } catch(e) {}
+    } catch (e) { }
 
     slots.forEach((slot: any) => {
       const dayMap: Record<string, string> = { 'Mon': 'Monday', 'Tue': 'Tuesday', 'Wed': 'Wednesday', 'Thu': 'Thursday', 'Fri': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday' };
       const dayOfWeek = dayMap[slot.day] || slot.day;
-      
+
       let startTime = ''; let endTime = '';
       if (slot.time) {
         const parts = slot.time.split('-');
@@ -92,7 +92,7 @@ export const TeacherHomeScreen: React.FC = () => {
   return (
     <View className="flex-1 bg-slate-950">
       {/* Header */}
-      <View className="bg-slate-900 border-b border-slate-800/80 px-6 pt-14 pb-4 flex-row justify-between items-center">
+      <View className="bg-slate-900 border-b border-slate-800/80 pl-6 pr-2 pt-14 pb-4 flex-row justify-between items-center">
         <View>
           <Text className="text-slate-500 text-xs font-semibold tracking-widest uppercase">
             Mathemaniac Faculty
@@ -101,9 +101,11 @@ export const TeacherHomeScreen: React.FC = () => {
             Hey, {user?.name || 'Instructor'}! 👨‍🏫
           </Text>
         </View>
-        <View className="w-10 h-10 bg-slate-800 border border-slate-700/60 rounded-full justify-center items-center">
-          <Text className="text-lg">👨‍🏫</Text>
-        </View>
+        <Image
+          source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+          className="w-20 h-14 rounded-full border border-slate-700/60"
+          resizeMode="cover"
+        />
       </View>
 
       <ScrollView
@@ -120,7 +122,7 @@ export const TeacherHomeScreen: React.FC = () => {
 
             {mappedSchedules.length > 0 ? (
               <View className="mb-6">
-                <Timetable 
+                <Timetable
                   title="Timetable"
                   sessions={mappedSchedules}
                   onSessionPress={(session) => {

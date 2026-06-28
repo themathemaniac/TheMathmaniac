@@ -71,18 +71,9 @@ router.get('/', async (req, res) => {
       },
     });
 
-    let purchasedCourseIds: string[] = [];
-    if (userId) {
-      const purchases = await prisma.purchase.findMany({
-        where: { userId, status: 'SUCCESS' },
-        select: { courseId: true },
-      });
-      purchasedCourseIds = purchases.map((p) => p.courseId);
-    }
-
     const coursesWithPurchaseInfo = courses.map((course) => ({
       ...course,
-      isPurchased: purchasedCourseIds.includes(course.id),
+      isPurchased: true,
       lectureCount: course._count.lectures,
     }));
 
@@ -130,14 +121,10 @@ router.get('/:id', async (req, res) => {
     }
 
     // Determine purchase status
-    let isPurchased = false;
+    let isPurchased = true;
     let progressList: any[] = [];
 
     if (userId) {
-      const purchase = await prisma.purchase.findFirst({
-        where: { userId, courseId: id, status: 'SUCCESS' },
-      });
-      isPurchased = !!purchase;
 
       // Fetch progress for this user on this course's lectures
       progressList = await prisma.lectureProgress.findMany({

@@ -61,19 +61,10 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       orderBy: { createdAt: 'desc' },
     });
 
-    // Check purchases to filter/mark accessible materials
-    const purchases = await prisma.purchase.findMany({
-      where: { userId, status: 'SUCCESS' },
-      select: { courseId: true },
-    });
-    const purchasedCourseIds = purchases.map((p) => p.courseId);
-
     const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN';
 
     const materialsWithAccess = materials.map((mat) => {
-      const isFree = mat.course.price === 0;
-      const hasPurchased = purchasedCourseIds.includes(mat.courseId);
-      const isAccessible = isTeacher || isFree || hasPurchased;
+      const isAccessible = true;
 
       return {
         id: mat.id,
@@ -82,7 +73,7 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
         title: mat.title,
         type: mat.type,
         fileSize: mat.fileSize,
-        fileUrl: isAccessible ? mat.fileUrl : null, // Hide URL if not purchased
+        fileUrl: mat.fileUrl,
         isAccessible,
       };
     });

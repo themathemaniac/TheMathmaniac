@@ -22,52 +22,39 @@ export const HomeScreen: React.FC = () => {
     tests: any[];
     stats: any;
     resumeLecture: any | null;
+    feeStatus: {
+      hasPendingPayment: boolean;
+      unpaidCourses: string[];
+    };
   }>({
     courses: [],
     announcements: [],
     tests: [],
     stats: null,
     resumeLecture: null,
+    feeStatus: {
+      hasPendingPayment: false,
+      unpaidCourses: [],
+    },
   });
-  const [feeStatus, setFeeStatus] = useState<{
-    hasPendingFee: boolean;
-    pendingFeeMonth: string;
-    pendingFeeAmount: number;
-    pendingFeeFine: number;
-    pendingFeeTotal: number;
-  } | null>(null);
+
 
   const loadDashboard = async () => {
     try {
       setLoading(true);
       // Fetch details in parallel
-      const [coursesRes, profileRes, announceRes, testsRes, feesRes] = await Promise.all([
+      const [coursesRes, profileRes, announceRes, testsRes] = await Promise.all([
         apiClient.get('/courses'),
         apiClient.get('/profile'),
         apiClient.get('/profile/announcements'),
         apiClient.get('/tests'),
-        apiClient.get('/payments/fees'),
       ]);
 
       const courses = coursesRes.data.data;
       const stats = profileRes.data.data.stats;
+      const feeStatus = profileRes.data.data.feeStatus || { hasPendingPayment: false, unpaidCourses: [] };
       const announcements = announceRes.data.data;
       const tests = testsRes.data.data;
-      const fees = feesRes.data.data || [];
-
-      // Find the first pending fee (representing the most urgent overdue/pending fee)
-      const firstPending = fees.find((f: any) => f.status === 'PENDING');
-      if (firstPending) {
-        setFeeStatus({
-          hasPendingFee: true,
-          pendingFeeMonth: firstPending.month,
-          pendingFeeAmount: firstPending.amount,
-          pendingFeeFine: firstPending.fine,
-          pendingFeeTotal: firstPending.totalAmount,
-        });
-      } else {
-        setFeeStatus(null);
-      }
 
       // Extract resume lecture from purchased courses progress
       let resumeLecture = null;
@@ -93,6 +80,7 @@ export const HomeScreen: React.FC = () => {
         tests,
         stats,
         resumeLecture,
+        feeStatus,
       });
     } catch (e) {
       console.log('Error pulling dashboard data:', e);
@@ -114,7 +102,7 @@ export const HomeScreen: React.FC = () => {
   return (
     <View className="flex-1 bg-slate-950">
       {/* Header */}
-      <View className="bg-slate-900 border-b border-slate-800/80 px-6 pt-14 pb-4 flex-row justify-between items-center">
+      <View className="bg-slate-900 border-b border-slate-800/80 pl-6 pr-2 pt-14 pb-4 flex-row justify-between items-center">
         <View>
           <Text className="text-slate-500 text-xs font-semibold tracking-widest uppercase">
             Mathemaniac
@@ -123,12 +111,11 @@ export const HomeScreen: React.FC = () => {
             Hey, {user?.name.split(' ')[0] || 'Student'}! 👋
           </Text>
         </View>
-        <TouchableOpacity
-          className="w-10 h-10 bg-slate-800 border border-slate-700/60 rounded-full justify-center items-center active:bg-slate-700"
-          onPress={() => navigation.navigate('AppTabs', { screen: 'Profile' })}
-        >
-          <Text className="text-lg">👤</Text>
-        </TouchableOpacity>
+        <Image
+          source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+          className="w-20 h-14 rounded-full border border-slate-700/60"
+          resizeMode="cover"
+        />
       </View>
 
       <ScrollView
@@ -144,54 +131,31 @@ export const HomeScreen: React.FC = () => {
           </View>
         ) : (
           <View className="pb-12">
-            {/* Fee Payment Reminder Banners */}
-            {feeStatus?.hasPendingFee && (
-              (() => {
-                const [year, monthNum] = feeStatus.pendingFeeMonth.split('-');
-                const monthNames = [
-                  'January', 'February', 'March', 'April', 'May', 'June',
-                  'July', 'August', 'September', 'October', 'November', 'December'
-                ];
-                const monthName = monthNames[parseInt(monthNum, 10) - 1] || 'Month';
-                const hasFine = feeStatus.pendingFeeFine > 0;
-                
-                return (
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('FeePayment')}
-                    className={`rounded-3xl p-5 mb-6 shadow-md border ${
-                      hasFine 
-                        ? 'bg-red-950/90 border-red-800 shadow-red-900/10' 
-                        : 'bg-yellow-950/90 border-yellow-800 shadow-yellow-900/10'
-                    }`}
-                  >
-                    <View className="flex-row items-center justify-between">
-                      <Text className={`text-xs font-black uppercase tracking-widest ${
-                        hasFine ? 'text-red-400' : 'text-yellow-400'
-                      }`}>
-                        {hasFine ? '🚨 Overdue Fee Alert' : '⚠️ Monthly Fee Reminder'}
-                      </Text>
-                      <Text className="text-white text-xs font-bold font-mono">
-                        ₹{(feeStatus.pendingFeeTotal / 100).toLocaleString('en-IN')}
-                      </Text>
-                    </View>
-                    <Text className="text-white text-[13px] mt-2 font-bold leading-5">
-                      {hasFine
-                        ? `Your fee for ${monthName} ${year} is overdue! A late payment fine of ₹50 has been applied.`
-                        : `Please pay your tuition fee for ${monthName} ${year} by the 10th to avoid a late fee penalty of ₹50.`}
+            {/* Unpaid Fee Warning Banner */}
+            {dashboardData.feeStatus?.hasPendingPayment && new Date().getDate() >= 8 && (
+              <View className="bg-amber-200 border border-amber-500 rounded-3xl p-5 mb-6">
+                <Text className="text-gray-900 text-xs font-black uppercase tracking-widest mb-1.5">
+                  ⚠️ {new Date().getDate() > 10 ? 'Fee Overdue' : 'Fee Payment Due'}
+                </Text>
+                <Text className="text-gray-900 text-sm font-semibold leading-relaxed">
+                  {new Date().getDate() > 10 ? (
+                    <Text>
+                      Your monthly tuition fee for <Text className="font-extrabold">{dashboardData.feeStatus.unpaidCourses.join(', ')}</Text> is overdue (due date was the 10th). A late fine of <Text className="font-extrabold">₹50/week</Text> is now active.
                     </Text>
-                    <View className="flex-row justify-between items-center mt-4 pt-3 border-t border-white/10">
-                      <Text className="text-slate-400 text-[10px] font-semibold">
-                        Click here to view invoice & clear dues
-                      </Text>
-                      <View className={`px-3 py-1 rounded-full ${hasFine ? 'bg-red-500/20' : 'bg-yellow-500/20'}`}>
-                        <Text className={`text-[10px] font-bold ${hasFine ? 'text-red-400' : 'text-yellow-400'}`}>
-                          Pay Now
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })()
+                  ) : (
+                    <Text>
+                      Your monthly tuition fee for <Text className="font-extrabold">{dashboardData.feeStatus.unpaidCourses.join(', ')}</Text> is pending. Please complete the payment by the <Text className="font-extrabold">10th</Text> of this month to avoid a late fine of ₹50/week.
+                    </Text>
+                  )}
+                </Text>
+
+                {/* Paid recently disclaimer */}
+                <View className="mt-3.5 pt-3 border-t border-amber-600/20">
+                  <Text className="text-gray-700 text-[10.5px] italic leading-relaxed">
+                    ℹ️ Paid already? Manual payment verification and ledger updates can take 2-3 days. Thank you for your patience.
+                  </Text>
+                </View>
+              </View>
             )}
 
             {/* 1. Continue Learning Banner */}
@@ -362,10 +326,10 @@ export const HomeScreen: React.FC = () => {
                         {new Date(item.createdAt).toLocaleDateString()}
                       </Text>
                     </View>
-                    
+
                     <Text className="font-extrabold text-sm" style={{ color: '#f8fafc' }}>{item.title}</Text>
                     <Text className="text-xs mt-2 leading-5" style={{ color: '#cbd5e1' }}>{item.content}</Text>
-                    
+
                     <View className="mt-3 pt-2 border-t border-slate-700 flex-row justify-between items-center">
                       <Text className="text-[10px] font-bold" style={{ color: '#94a3b8' }}>
                         👤 Teacher: {item.authorName || item.course?.instructorName || 'Instructor'}

@@ -11,6 +11,7 @@ model User {
   id                  String               @id @default(uuid())
   name                String
   email               String?              @unique
+  phoneNumber         String?
   googleId            String?
   firstLogin          Boolean              @default(true)
   role                String               @default("STUDENT")
@@ -65,6 +66,7 @@ model Course {
   bundleItems      BundleItem[]    @relation("BundleToItem")
   partOfBundles    BundleItem[]    @relation("ItemToBundle")
   announcements    Announcement[]
+  feePayments      FeePayment[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 }
@@ -246,11 +248,15 @@ model FeePayment {
   id                String    @id @default(uuid())
   userId            String
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId          String?
+  course            Course?   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   month             String // Format: YYYY-MM
   amount            Int // Base fee in Paisa
   fine              Int // Fine in Paisa
   totalAmount       Int // amount + fine in Paisa
-  status            String // "PENDING", "SUCCESS", "FAILED"
+  status            String // "PENDING", "SUCCESS", "FAILED", "PENDING_VERIFICATION"
+  paymentMode       String?   // "ONLINE_UPI", "OFFLINE_CASH", "OFFLINE_CHEQUE"
+  transactionNote   String?
   razorpayOrderId   String?   @unique
   razorpayPaymentId String?
   paidAt            DateTime?
@@ -258,6 +264,7 @@ model FeePayment {
   updatedAt         DateTime  @updatedAt
 
   @@index([userId])
+  @@index([courseId])
 }
 
 model TeacherSchedule {

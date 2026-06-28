@@ -53,9 +53,7 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
         totalMaterials,
       };
     } else {
-      const totalPurchased = await prisma.purchase.count({
-        where: { userId, status: 'SUCCESS' },
-      });
+      const totalPurchased = await prisma.course.count();
 
       const completedProgress = await prisma.lectureProgress.count({
         where: { userId, completed: true },
@@ -79,11 +77,52 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       };
     }
 
+    let feeStatus = {
+      hasPendingPayment: false,
+      unpaidCourses: [] as string[]
+    };
+
+    if (user.role === 'STUDENT') {
+      const now = new Date();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const currentMonth = `${now.getFullYear()}-${mm}`;
+
+      const purchases = await prisma.purchase.findMany({
+        where: { userId, status: 'SUCCESS' },
+        include: { course: true }
+      });
+
+      const unpaid: string[] = [];
+
+      for (const purchase of purchases) {
+        const payment = await prisma.feePayment.findFirst({
+          where: {
+            userId,
+            courseId: purchase.courseId,
+            month: currentMonth,
+            status: 'SUCCESS'
+          }
+        });
+
+        if (!payment) {
+          unpaid.push(purchase.course.title);
+        }
+      }
+
+      if (unpaid.length > 0) {
+        feeStatus = {
+          hasPendingPayment: true,
+          unpaidCourses: unpaid
+        };
+      }
+    }
+
     return res.status(200).json({
       success: true,
       data: {
         profile: userWithPhone,
         stats,
+        feeStatus,
       },
     });
   } catch (error: any) {
@@ -99,21 +138,15 @@ router.get('/courses', authenticateJWT, async (req: AuthenticatedRequest, res: R
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const purchases = await prisma.purchase.findMany({
-      where: { userId, status: 'SUCCESS' },
+    const courses = await prisma.course.findMany({
       include: {
-        course: {
-          include: {
-            _count: {
-              select: { lectures: true },
-            },
-          },
+        _count: {
+          select: { lectures: true },
         },
       },
     });
 
-    const courseList = purchases.map((purchase) => {
-      const course = purchase.course;
+    const courseList = courses.map((course) => {
       return {
         id: course.id,
         title: course.title,
@@ -138,12 +171,11 @@ router.get('/announcements', authenticateJWT, async (req: AuthenticatedRequest, 
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    // Get courses purchased by the user
-    const purchases = await prisma.purchase.findMany({
-      where: { userId, status: 'SUCCESS' },
-      select: { courseId: true }
+    // Get all courses
+    const courses = await prisma.course.findMany({
+      select: { id: true }
     });
-    const purchasedCourseIds = purchases.map((p) => p.courseId);
+    const purchasedCourseIds = courses.map((c) => c.id);
 
     const announcements = await prisma.announcement.findMany({
       where: {

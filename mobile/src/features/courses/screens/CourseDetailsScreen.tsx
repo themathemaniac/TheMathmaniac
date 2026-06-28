@@ -25,7 +25,6 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
     route.params?.initialTab || 'VIDEOS'
   );
   const [loading, setLoading] = useState(true);
-  const [purchaseLoading, setPurchaseLoading] = useState(false);
 
   const fetchCourseDetails = async () => {
     try {
@@ -56,41 +55,18 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
   }, [route.params?.initialTab]);
 
   const handleLecturePress = (lectureId: string) => {
-    if (course?.isPurchased || course?.price === 0) {
-      navigation.navigate('LecturePlayer', { lectureId });
-    } else {
-      Alert.alert('Course Locked', 'Please enroll in the course to unlock video lectures.');
-    }
+    navigation.navigate('LecturePlayer', { lectureId });
   };
 
   const handleMaterialPress = (item: any) => {
-    if (item.isAccessible && item.fileUrl) {
+    if (item.fileUrl) {
       navigation.navigate('PDFViewer', { title: item.title, fileUrl: item.fileUrl });
     } else {
-      Alert.alert('Resource Locked', 'Please enroll in the course to unlock this study resource.');
+      Alert.alert('Resource Locked', 'This material does not have a valid document URL.');
     }
   };
 
-  const handlePurchase = async () => {
-    if (!course) return;
-    try {
-      setPurchaseLoading(true);
-      const response = await apiClient.post('/payments/order', { courseId });
-      const { orderId, amount, courseTitle } = response.data.data;
 
-      // Navigate to web checkout simulator
-      navigation.navigate('PurchaseWebview', {
-        courseId,
-        orderId,
-        amount,
-        title: courseTitle,
-      });
-    } catch (e: any) {
-      Alert.alert('Payment Order Error', e.response?.data?.error || 'Unable to create payment order.');
-    } finally {
-      setPurchaseLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -136,26 +112,7 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
           </Text>
           <Text className="text-slate-100 text-2xl font-black mt-2 leading-8">{course.title}</Text>
 
-          {/* Inline Purchase Banner if not purchased and price > 0 */}
-          {!course.isPurchased && course.price > 0 && (
-            <View className="bg-slate-900 border border-slate-800 rounded-2xl p-5 mt-4 flex-row justify-between items-center">
-              <View>
-                <Text className="text-slate-400 text-xs font-semibold">Course Fee</Text>
-                <Text className="text-slate-100 text-2xl font-black mt-1">{formattedPrice}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={handlePurchase}
-                disabled={purchaseLoading}
-                className="bg-blue-600 px-6 py-3 rounded-xl items-center justify-center flex-row"
-              >
-                {purchaseLoading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text className="text-white font-extrabold text-sm">Enroll Now</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
+
 
           {/* Assigned Faculty */}
           {course.teachers && course.teachers.length > 0 && (
@@ -233,7 +190,7 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
                 <Text className="text-slate-500 text-center mt-6">No videos in this course.</Text>
               ) : (
                 course.lectures.map((lecture: any) => {
-                  const hasAccess = course.isPurchased || course.price === 0;
+                  const hasAccess = true;
                   return (
                     <TouchableOpacity
                       key={lecture.id}
@@ -272,7 +229,7 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
                 <Text className="text-slate-500 text-center mt-6">No study materials in this course.</Text>
               ) : (
                 materials.map((item: any) => {
-                  const hasAccess = item.isAccessible;
+                  const hasAccess = true;
                   return (
                     <TouchableOpacity
                       key={item.id}
