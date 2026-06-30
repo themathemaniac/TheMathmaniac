@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Modal, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Modal, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useNavigation } from '@react-navigation/native';
@@ -330,37 +330,44 @@ export const AdminPanelScreen: React.FC = () => {
     >
       {/* Header */}
       <View className="flex-row justify-between items-center mb-6">
-        <View>
+        <View className="flex-1 mr-4">
           <Text className="text-slate-100 text-2xl font-black">Admin Panel</Text>
           <Text className="text-slate-400 text-xs mt-1">LMS Account & Recovery Management</Text>
         </View>
-        {navigation.canGoBack() ? (
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            className="bg-slate-900 border border-slate-800 px-4 py-2.5 rounded-xl"
-          >
-            <Text className="text-slate-300 text-xs font-bold">Back</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            onPress={() => {
-              Alert.alert('Confirm Logout', 'Are you sure you want to sign out?', [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Sign Out',
-                  onPress: async () => {
-                    await logout();
-                    navigation.replace('Login');
+        <View className="flex-row items-center gap-x-2">
+          {navigation.canGoBack() ? (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              className="bg-slate-900 border border-slate-800 px-4 py-2.5 rounded-xl"
+            >
+              <Text className="text-slate-300 text-xs font-bold">Back</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert('Confirm Logout', 'Are you sure you want to sign out?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Sign Out',
+                    onPress: async () => {
+                      await logout();
+                      navigation.replace('Login');
+                    },
+                    style: 'destructive',
                   },
-                  style: 'destructive',
-                },
-              ]);
-            }}
-            className="bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl"
-          >
-            <Text className="text-red-400 text-xs font-bold">Sign Out</Text>
-          </TouchableOpacity>
-        )}
+                ]);
+              }}
+              className="bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl"
+            >
+              <Text className="text-red-400 text-xs font-bold">Sign Out</Text>
+            </TouchableOpacity>
+          )}
+          <Image
+            source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+            className="w-20 h-14 rounded-full border border-slate-700/60"
+            resizeMode="cover"
+          />
+        </View>
       </View>
 
       {/* Content Area */}

@@ -254,6 +254,19 @@ export const ProfileHomeScreen: React.FC = () => {
 
   return (
     <View className="flex-1 bg-slate-950 px-5 pt-14">
+      {/* Header */}
+      <View className="flex-row justify-between items-center mb-6">
+        <View>
+          <Text className="text-slate-100 text-2xl font-black">Student Profile</Text>
+          <Text className="text-slate-400 text-xs mt-1">Academics & Account Overview</Text>
+        </View>
+        <Image
+          source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+          className="w-20 h-14 rounded-full border border-slate-700/60"
+          resizeMode="cover"
+        />
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2D8C82" />}

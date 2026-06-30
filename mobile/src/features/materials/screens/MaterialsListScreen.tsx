@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
 import { apiClient } from '../../../core/api/client';
 import { Skeleton } from '../../../shared/components/Skeleton';
 import { useNavigation } from '@react-navigation/native';
@@ -71,7 +71,14 @@ export const MaterialsListScreen: React.FC = () => {
     <View className="flex-1 bg-slate-950 px-5 pt-14">
       {/* Header */}
       <View className="mb-4">
-        <Text className="text-slate-100 text-2xl font-black">Study Resources</Text>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-slate-100 text-2xl font-black">Study Resources</Text>
+          <Image
+            source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+            className="w-20 h-14 rounded-full border border-slate-700/60"
+            resizeMode="cover"
+          />
+        </View>
         {/* Search */}
         <View className="bg-slate-900 border border-slate-800 rounded-2xl flex-row items-center px-4 py-3.5 mt-4">
           <Text className="text-slate-400 mr-2">🔍</Text>

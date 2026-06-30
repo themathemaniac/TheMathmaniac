@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, ActivityIndicator, Image } from 'react-native';
 import { apiClient } from '../../../core/api/client';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -62,9 +62,16 @@ export const TeacherMaterialsScreen: React.FC = () => {
 
   return (
     <View className="flex-1 bg-slate-950 px-5 pt-14">
-      <View className="mb-4">
-        <Text className="text-slate-100 text-2xl font-black">All Study Resources</Text>
-        <Text className="text-slate-400 text-xs mt-1">Manage all your uploaded materials across batches</Text>
+      <View className="flex-row justify-between items-center mb-4">
+        <View className="flex-1">
+          <Text className="text-slate-100 text-2xl font-black">All Study Resources</Text>
+          <Text className="text-slate-400 text-xs mt-1">Manage all your uploaded materials across batches</Text>
+        </View>
+        <Image
+          source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+          className="w-20 h-14 rounded-full border border-slate-700/60 ml-2"
+          resizeMode="cover"
+        />
       </View>
 
       <TextInput

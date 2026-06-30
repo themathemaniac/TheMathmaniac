@@ -25,7 +25,7 @@ backend/uploads/
 uploads/
 
 # Expo / React Native files
-.expo/
+**/.expo/
 **/web-build/
 **/.tsbuildinfo
 
@@ -39,3 +39,19 @@ yarn-error.log*
 .DS_Store
 .idea/
 .vscode/
+
+# Mobile native build folders (Expo dynamic prebuilds)
+**/android/
+**/ios/
+
+# Keystores, certificates & credentials (do not commit secrets)
+*.jks
+*.keystore
+*.p12
+*.p8
+*.mobileprovision
+
+# Native build packages & binaries
+*.apk
+*.aab
+*.ipa

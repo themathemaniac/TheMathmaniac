@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator, RefreshControl, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, Modal, ActivityIndicator, RefreshControl, TextInput, Image } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { apiClient } from '../../../core/api/client';
 import { useNavigation } from '@react-navigation/native';
@@ -239,12 +239,19 @@ export const TeacherTestsScreen: React.FC = () => {
             Manage question papers and evaluate student submissions
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => setCreateModalVisible(true)}
-          className="bg-blue-600 px-4 py-2.5 rounded-xl border border-blue-500 shadow-md shadow-blue-500/20"
-        >
-          <Text className="text-white text-xs font-bold">+ Add Test</Text>
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-x-2">
+          <TouchableOpacity
+            onPress={() => setCreateModalVisible(true)}
+            className="bg-blue-600 px-4 py-2.5 rounded-xl border border-blue-500 shadow-md shadow-blue-500/20"
+          >
+            <Text className="text-white text-xs font-bold">+ Add Test</Text>
+          </TouchableOpacity>
+          <Image
+            source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+            className="w-20 h-14 rounded-full border border-slate-700/60"
+            resizeMode="cover"
+          />
+        </View>
       </View>
 
       {loading ? (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Alert, Modal, TouchableOpacity, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, ScrollView, Alert, Modal, TouchableOpacity, ActivityIndicator, TextInput, Image } from 'react-native';
 import { useAuthStore } from '../../../core/store/auth';
 import { Button } from '../../../shared/components/Button';
 import { useNavigation } from '@react-navigation/native';
@@ -442,6 +442,19 @@ export const TeacherProfileScreen: React.FC = () => {
 
   return (
     <View className="flex-1 bg-slate-950 px-5 pt-14">
+      {/* Header */}
+      <View className="flex-row justify-between items-center mb-6">
+        <View>
+          <Text className="text-slate-100 text-2xl font-black">Instructor Profile</Text>
+          <Text className="text-slate-400 text-xs mt-1">Faculty Info & Ledger Status</Text>
+        </View>
+        <Image
+          source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+          className="w-20 h-14 rounded-full border border-slate-700/60"
+          resizeMode="cover"
+        />
+      </View>
+
       <ScrollView showsVerticalScrollIndicator={false}>
         <View className="pb-24">
           {/* User Details */}

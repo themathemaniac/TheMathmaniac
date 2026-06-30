@@ -55,8 +55,16 @@ export const TeacherCoursesScreen: React.FC = () => {
 
   return (
     <View className="flex-1 bg-slate-950 px-5 pt-14">
-      <View className="mb-4">
-        <Text className="text-slate-100 text-2xl font-black">My Active Batches</Text>
+      <View className="flex-row justify-between items-center mb-6">
+        <View>
+          <Text className="text-slate-100 text-2xl font-black">My Active Batches</Text>
+          <Text className="text-slate-400 text-xs mt-1">Class Rosters & Student Enrolls</Text>
+        </View>
+        <Image
+          source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+          className="w-20 h-14 rounded-full border border-slate-700/60"
+          resizeMode="cover"
+        />
       </View>
 
       {loading && !refreshing ? (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, ScrollView, RefreshControl, TouchableOpacity, Image } from 'react-native';
 import { apiClient } from '../../../core/api/client';
 import { CourseCard } from '../../../shared/components/CourseCard';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -48,7 +48,14 @@ export const CoursesExploreScreen: React.FC = () => {
     <View className="flex-1 bg-slate-950 px-5 pt-14">
       {/* Search Header */}
       <View className="mb-4">
-        <Text className="text-slate-100 text-2xl font-black">Explore Programs</Text>
+        <View className="flex-row justify-between items-center">
+          <Text className="text-slate-100 text-2xl font-black">Explore Programs</Text>
+          <Image
+            source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+            className="w-20 h-14 rounded-full border border-slate-700/60"
+            resizeMode="cover"
+          />
+        </View>
         <View className="bg-slate-900 border border-slate-800 rounded-2xl flex-row items-center px-4 py-3.5 mt-4">
           <Text className="text-slate-500 mr-2">🔍</Text>
           <TextInput

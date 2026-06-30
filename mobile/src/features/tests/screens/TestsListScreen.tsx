@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { apiClient } from '../../../core/api/client';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -39,11 +39,18 @@ export const TestsListScreen: React.FC = () => {
 
   return (
     <View className="flex-1 bg-slate-950 px-5 pt-14">
-      <View className="mb-6">
-        <Text className="text-slate-100 text-2xl font-black">Practice Tests</Text>
-        <Text className="text-slate-400 text-sm mt-1 font-medium">
-          Challenge yourself with instant scoring quizzes
-        </Text>
+      <View className="flex-row justify-between items-center mb-6">
+        <View className="flex-1">
+          <Text className="text-slate-100 text-2xl font-black">Practice Tests</Text>
+          <Text className="text-slate-400 text-sm mt-1 font-medium">
+            Challenge yourself with quizzes
+          </Text>
+        </View>
+        <Image
+          source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
+          className="w-20 h-14 rounded-full border border-slate-700/60 ml-2"
+          resizeMode="cover"
+        />
       </View>
 
       <ScrollView

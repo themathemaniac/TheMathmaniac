@@ -7,7 +7,6 @@
     "icon": "./assets/Mathemaniac_Logo_Padded.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/Mathemaniac_Logo_Padded.png",
       "resizeMode": "contain",
       "backgroundColor": "#EAE7DF"
     },
