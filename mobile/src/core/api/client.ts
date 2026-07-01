@@ -6,19 +6,24 @@ import { secureStorage } from '../storage/secure';
 // If running in Expo Go on a physical device, localhost / 10.0.2.2 will not resolve to the host.
 // We dynamically resolve the Metro packager host's IP address.
 const getBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  if (__DEV__) {
+    if (process.env.EXPO_PUBLIC_API_URL) {
+      return process.env.EXPO_PUBLIC_API_URL;
+    }
+    
+    // hostUri yields e.g. "192.168.1.5:8081"
+    const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
+    let ip = hostUri ? hostUri.split(':')[0] : 'localhost';
+    
+    if (ip === 'localhost' && Platform.OS === 'android') {
+      ip = '10.0.2.2';
+    }
+    
+    return `http://${ip}:3000/api/v1`;
   }
-  
-  // hostUri yields e.g. "192.168.1.5:8081"
-  const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
-  let ip = hostUri ? hostUri.split(':')[0] : 'localhost';
-  
-  if (ip === 'localhost' && Platform.OS === 'android') {
-    ip = '10.0.2.2';
-  }
-  
-  return `http://${ip}:3000/api/v1`;
+
+  // Live production backend on Render
+  return 'https://themathmaniac.onrender.com/api/v1';
 };
 
 export const apiClient = axios.create({
