@@ -210,7 +210,7 @@ export const HomeScreen: React.FC = () => {
                       key={course.id}
                       id={course.id}
                       title={course.title}
-                      category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
+                      category={course.targetClass && course.category?.name ? `${course.category.name} • Class ${course.targetClass}` : (course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program')}
                       price={course.price}
                       thumbnailUrl={course.thumbnailUrl}
                       lectureCount={course.lectureCount}
@@ -249,7 +249,7 @@ export const HomeScreen: React.FC = () => {
                       key={course.id}
                       id={course.id}
                       title={course.title}
-                      category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
+                      category={course.targetClass && course.category?.name ? `${course.category.name} • Class ${course.targetClass}` : (course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program')}
                       price={course.price}
                       thumbnailUrl={course.thumbnailUrl}
                       lectureCount={course.lectureCount}
