@@ -704,13 +704,7 @@ export const AdminCoursesTab: React.FC = () => {
                     
                     <View style={{ maxHeight: 160 }} className="bg-slate-950 border border-slate-800 rounded-xl mb-3 overflow-hidden">
                       <ScrollView nestedScrollEnabled className="p-2">
-                        {teachers.filter(teacher => {
-                          if (!course.category?.name || course.category.name.toLowerCase() === 'program' || course.category.name.toLowerCase() === 'general') return true;
-                          if (!teacher.subjects) return false;
-                          const tSubjects = teacher.subjects.toLowerCase();
-                          const cSubject = course.category.name.toLowerCase();
-                          return tSubjects.includes(cSubject) || cSubject.includes(tSubjects) || course.title.toLowerCase().includes(tSubjects);
-                        }).map(teacher => {
+                        {teachers.map(teacher => {
                           const isSelected = assignTeacherIds.includes(teacher.id);
                           return (
                             <TouchableOpacity 
@@ -732,14 +726,8 @@ export const AdminCoursesTab: React.FC = () => {
                             </TouchableOpacity>
                           );
                         })}
-                        {teachers.filter(teacher => {
-                          if (!course.category?.name || course.category.name.toLowerCase() === 'program' || course.category.name.toLowerCase() === 'general') return true;
-                          if (!teacher.subjects) return false;
-                          const tSubjects = teacher.subjects.toLowerCase();
-                          const cSubject = course.category.name.toLowerCase();
-                          return tSubjects.includes(cSubject) || cSubject.includes(tSubjects) || course.title.toLowerCase().includes(tSubjects);
-                        }).length === 0 && (
-                          <Text className="text-slate-500 text-xs text-center py-4">No teachers match this subject.</Text>
+                        {teachers.length === 0 && (
+                          <Text className="text-slate-500 text-xs text-center py-4">No teachers found.</Text>
                         )}
                       </ScrollView>
                     </View>
