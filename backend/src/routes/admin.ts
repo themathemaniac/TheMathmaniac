@@ -76,6 +76,7 @@ router.post('/users', authenticateJWT, requireAdmin, async (req: AuthenticatedRe
       data: {
         name: name.trim(),
         email: email ? email.trim() : null,
+        phoneNumber: formattedPhone,
         role,
         firstLogin: true,
         stream: role === 'STUDENT' && stream ? stream.trim() : null,
@@ -207,30 +208,45 @@ router.get('/users', authenticateJWT, requireAdmin, async (req: AuthenticatedReq
     const query = (req.query.q as string || '').trim().toLowerCase();
     const roleFilter = req.query.role as string || '';
 
-    let users: any[] = [];
+    // Retrieve users from PostgreSQL (Prisma) as the primary source of truth
+    let users = await prisma.user.findMany({
+      where: roleFilter ? { role: roleFilter } : undefined,
+      orderBy: { createdAt: 'desc' }
+    }) as any[];
 
-    console.log('[GET /users] DB Status:', db ? 'Initialized' : 'NULL');
+    console.log(`[GET /users] total users from Prisma: ${users.length}`);
 
+    // Self-healing backfill: if Firestore is enabled, fetch phone numbers for users having null/empty phoneNumber in SQLite/Postgres
     if (db) {
-      if (!roleFilter || roleFilter === 'STUDENT') {
-        const studentSnap = await db.collection('students').get();
-        console.log(`[GET /users] studentSnap size: ${studentSnap.size}`);
-        studentSnap.forEach(doc => {
-          const data = doc.data();
-          users.push({ id: doc.id, role: 'STUDENT', ...data });
-        });
-      }
+      try {
+        const studentSnap = (!roleFilter || roleFilter === 'STUDENT') ? await db.collection('students').get() : null;
+        const teacherSnap = (!roleFilter || roleFilter === 'TEACHER') ? await db.collection('teachers').get() : null;
 
-      if (!roleFilter || roleFilter === 'TEACHER') {
-        const teacherSnap = await db.collection('teachers').get();
-        console.log(`[GET /users] teacherSnap size: ${teacherSnap.size}`);
-        teacherSnap.forEach(doc => {
-          const data = doc.data();
-          users.push({ id: doc.id, role: 'TEACHER', ...data });
-        });
+        const firestoreUsersMap = new Map<string, any>();
+        if (studentSnap) {
+          studentSnap.forEach(doc => firestoreUsersMap.set(doc.id, doc.data()));
+        }
+        if (teacherSnap) {
+          teacherSnap.forEach(doc => firestoreUsersMap.set(doc.id, doc.data()));
+        }
+
+        for (let u of users) {
+          const fsUser = firestoreUsersMap.get(u.id);
+          if (fsUser && fsUser.phoneNumber) {
+            // If local phoneNumber is empty/null, save it
+            if (!u.phoneNumber) {
+              u.phoneNumber = fsUser.phoneNumber;
+              await prisma.user.update({
+                where: { id: u.id },
+                data: { phoneNumber: fsUser.phoneNumber }
+              });
+            }
+          }
+        }
+      } catch (fsErr) {
+        console.error('[Get Users Firestore Sync Error]', fsErr);
       }
     }
-    console.log(`[GET /users] total users fetched: ${users.length}`);
 
     // Filter by query
     if (query) {
@@ -241,16 +257,10 @@ router.get('/users', authenticateJWT, requireAdmin, async (req: AuthenticatedReq
         (u.class && u.class.toLowerCase().includes(query)) ||
         (u.stream && u.stream.toLowerCase().includes(query)) ||
         (u.faculty && u.faculty.toLowerCase().includes(query)) ||
-        (u.school && u.school.toLowerCase().includes(query))
+        (u.school && u.school.toLowerCase().includes(query)) ||
+        (u.subjects && u.subjects.toLowerCase().includes(query))
       );
     }
-
-    // Sort by createdAt descending
-    users.sort((a, b) => {
-      const dateA = a.createdAt ? (a.createdAt.seconds || new Date(a.createdAt).getTime()) : 0;
-      const dateB = b.createdAt ? (b.createdAt.seconds || new Date(b.createdAt).getTime()) : 0;
-      return dateB - dateA;
-    });
 
     return res.status(200).json({
       success: true,

@@ -38,6 +38,28 @@ app.use((req, res, next) => {
   };
   next();
 });
+import { generateDailyReport } from './services/reportBuilder';
+import fs from 'fs';
+
+// Routes Bindings
+app.get('/uploads/reports/:filename', async (req, res, next) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(__dirname, '../uploads/reports', filename);
+    if (!fs.existsSync(filePath)) {
+      const match = filename.match(/^attendance-report-(\d{4}-\d{2}-\d{2})\.pdf$/);
+      if (match) {
+        const date = match[1];
+        console.log(`[Report Rebuilder] Regenerating missing daily report for date: ${date}`);
+        await generateDailyReport(date);
+      }
+    }
+  } catch (error) {
+    console.error('[Report Rebuilder Error]', error);
+  }
+  next();
+});
+
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes Bindings

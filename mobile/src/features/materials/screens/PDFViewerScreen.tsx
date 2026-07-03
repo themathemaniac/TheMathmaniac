@@ -18,11 +18,12 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
   const { title, fileUrl } = route.params;
   const navigation = useNavigation<PDFViewerNavigationProp>();
 
+  const apiBase = apiClient.defaults.baseURL || '';
+  const rootUrl = apiBase.replace('/api/v1', '');
+
   // Dynamically resolve local server IP changes for uploaded files
   let resolvedFileUrl = fileUrl;
   if (fileUrl && fileUrl.includes('/uploads/')) {
-    const apiBase = apiClient.defaults.baseURL || '';
-    const rootUrl = apiBase.replace('/api/v1', '');
     const uploadPath = fileUrl.substring(fileUrl.indexOf('/uploads/'));
     resolvedFileUrl = `${rootUrl}${uploadPath}`;
   }
@@ -101,7 +102,7 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
   `;
 
   const webViewSource = isAndroid
-    ? { html: htmlSource, baseUrl: '' }
+    ? { html: htmlSource, baseUrl: rootUrl }
     : { uri: resolvedFileUrl };
 
   const showWebView = !webViewError;

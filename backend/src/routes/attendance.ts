@@ -354,7 +354,7 @@ router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, async (r
     // Map schedules to include campus coordinates
     const schedulesWithCoords = schedules.map(s => ({
       ...s,
-      campusCoords: CAMPUSES[s.campus] || CAMPUSES['Campus A']
+      campusCoords: CAMPUSES[s.campus] || CAMPUSES['Madhyamgram']
     }));
 
     return res.status(200).json({

@@ -113,9 +113,14 @@ export const TeacherAttendanceScreen: React.FC = () => {
         const fetchedSchedules = scheduleRes.data.data;
         setSchedules(fetchedSchedules);
         if (fetchedSchedules.length > 0) {
-          const todayStr = new Date().toISOString().split('T')[0];
-          const todaysSchedule = fetchedSchedules.find((s: any) => s.date === todayStr);
-          setActiveSchedule(todaysSchedule || null);
+          const localDate = new Date();
+          const year = localDate.getFullYear();
+          const month = String(localDate.getMonth() + 1).padStart(2, '0');
+          const day = String(localDate.getDate()).padStart(2, '0');
+          const localDateStr = `${year}-${month}-${day}`;
+          
+          const todaysSchedule = fetchedSchedules.find((s: any) => s.date === localDateStr);
+          setActiveSchedule(todaysSchedule || fetchedSchedules[0] || null);
         }
       }
 
@@ -607,32 +612,45 @@ export const TeacherAttendanceScreen: React.FC = () => {
                 <Text className="text-slate-500 text-xs font-semibold">No assigned routines found.</Text>
               </View>
             ) : (
-              schedules.map((record) => (
-                <View
-                  key={record.id}
-                  className="bg-slate-900 border border-slate-800 rounded-3xl p-5 mb-3.5"
-                >
-                  <View className="flex-row justify-between items-start">
-                    <View className="flex-1 mr-4">
-                      <Text className="text-slate-100 text-sm font-bold">
-                        {record.title}
-                      </Text>
-                      <Text className="text-slate-500 text-[10px] mt-1 font-semibold">
-                        📅 Date: {record.date} | ⏱️ {record.startTime} - {record.endTime}
-                      </Text>
-                      {(record.class || record.subject) && (
-                        <Text className="text-slate-500 text-[10px] mt-0.5 font-semibold">
-                          {record.class ? `📚 Class: ${record.class} ` : ''}
-                          {record.subject ? `📖 Subject: ${record.subject}` : ''}
+              schedules.map((record) => {
+                const isActive = activeSchedule?.id === record.id;
+                return (
+                  <TouchableOpacity
+                    key={record.id}
+                    onPress={() => {
+                      if (isLogging) {
+                        Alert.alert('Tracking Active', 'Please pause or check out of the current session before changing the schedule.');
+                        return;
+                      }
+                      setActiveSchedule(record);
+                      Alert.alert('Schedule Selected', `Active session set to: ${record.title}`);
+                    }}
+                    className={`bg-slate-900 rounded-3xl p-5 mb-3.5 border ${
+                      isActive ? 'border-[#2D8C82] shadow-md shadow-teal-500/10' : 'border-slate-800'
+                    }`}
+                  >
+                    <View className="flex-row justify-between items-start">
+                      <View className="flex-1 mr-4">
+                        <Text className={`text-sm font-bold ${isActive ? 'text-[#2D8C82]' : 'text-slate-100'}`}>
+                          {record.title} {isActive ? ' (Selected)' : ''}
                         </Text>
-                      )}
+                        <Text className="text-slate-500 text-[10px] mt-1 font-semibold">
+                          📅 Date: {record.date} | ⏱️ {record.startTime} - {record.endTime}
+                        </Text>
+                        {(record.class || record.subject) && (
+                          <Text className="text-slate-500 text-[10px] mt-0.5 font-semibold">
+                            {record.class ? `📚 Class: ${record.class} ` : ''}
+                            {record.subject ? `📖 Subject: ${record.subject}` : ''}
+                          </Text>
+                         )}
+                      </View>
+                      <View className={`px-2.5 py-1 rounded-full border ${isActive ? 'bg-[#2D8C82]/20 border-[#2D8C82]' : 'bg-blue-900/20 border-blue-500/30'}`}>
+                        <Text className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-[#2D8C82]' : 'text-blue-400'}`}>{record.campus}</Text>
+                      </View>
                     </View>
-                    <View className="px-2.5 py-1 rounded-full border bg-blue-900/20 border-blue-500/30">
-                      <Text className="text-[9px] font-black uppercase tracking-wider text-blue-400">{record.campus}</Text>
-                    </View>
-                  </View>
-                </View>
-              ))
+                  </TouchableOpacity>
+                );
+              })
             )}
 
             {/* Completed Sessions Attendance History */}
