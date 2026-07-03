@@ -14,6 +14,9 @@ node_modules/
 backend/dist/
 backend/dist-ts/
 
+# Mobile build outputs
+mobile/dist/
+
 # SQLite Database and journaling
 backend/prisma/*.db
 backend/prisma/*.db-journal
