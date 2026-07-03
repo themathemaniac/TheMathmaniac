@@ -49,6 +49,12 @@ const router = (0, express_1.Router)();
 const JWT_SECRET = process.env.JWT_SECRET || 'mathemaniac_secret_key';
 const REFRESH_SECRET = process.env.REFRESH_SECRET || 'mathemaniac_refresh_key';
 const RESET_TOKEN_SECRET = JWT_SECRET + '_reset';
+function requireAdmin(req, res, next) {
+    if (req.user?.role !== 'ADMIN') {
+        return res.status(403).json({ success: false, error: 'Administrator access required.' });
+    }
+    next();
+}
 async function syncUserToFirestore(user, creds) {
     if (firebase_1.isFirebaseEnabled && firebase_1.db) {
         try {
@@ -72,6 +78,7 @@ async function syncUserToFirestore(user, creds) {
                 class: fullUser.class || null,
                 faculty: fullUser.faculty || null,
                 school: fullUser.school || null,
+                subjects: fullUser.subjects || null,
                 createdAt: fullUser.createdAt,
                 updatedAt: fullUser.updatedAt,
             };
@@ -330,6 +337,7 @@ router.post('/forgot-password/reset', async (req, res) => {
                         class: fData.class || null,
                         faculty: fData.faculty || null,
                         school: fData.school || null,
+                        subjects: fData.subjects || null,
                     }
                 });
             }

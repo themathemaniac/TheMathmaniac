@@ -73,11 +73,45 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
                 averageTestAccuracy: Math.round(averageAccuracy),
             };
         }
+        let feeStatus = {
+            hasPendingPayment: false,
+            unpaidCourses: []
+        };
+        if (user.role === 'STUDENT') {
+            const now = new Date();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const currentMonth = `${now.getFullYear()}-${mm}`;
+            const purchases = await db_1.default.purchase.findMany({
+                where: { userId, status: 'SUCCESS' },
+                include: { course: true }
+            });
+            const unpaid = [];
+            for (const purchase of purchases) {
+                const payment = await db_1.default.feePayment.findFirst({
+                    where: {
+                        userId,
+                        courseId: purchase.courseId,
+                        month: currentMonth,
+                        status: 'SUCCESS'
+                    }
+                });
+                if (!payment) {
+                    unpaid.push(purchase.course.title);
+                }
+            }
+            if (unpaid.length > 0) {
+                feeStatus = {
+                    hasPendingPayment: true,
+                    unpaidCourses: unpaid
+                };
+            }
+        }
         return res.status(200).json({
             success: true,
             data: {
                 profile: userWithPhone,
                 stats,
+                feeStatus,
             },
         });
     }
@@ -93,7 +127,10 @@ router.get('/courses', auth_1.authenticateJWT, async (req, res) => {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
         const purchases = await db_1.default.purchase.findMany({
-            where: { userId, status: 'SUCCESS' },
+            where: {
+                userId,
+                status: 'SUCCESS',
+            },
             include: {
                 course: {
                     include: {
@@ -104,8 +141,8 @@ router.get('/courses', auth_1.authenticateJWT, async (req, res) => {
                 },
             },
         });
-        const courseList = purchases.map((purchase) => {
-            const course = purchase.course;
+        const courseList = purchases.map((p) => {
+            const course = p.course;
             return {
                 id: course.id,
                 title: course.title,
@@ -121,14 +158,53 @@ router.get('/courses', auth_1.authenticateJWT, async (req, res) => {
         return res.status(500).json({ success: false, error: error.message });
     }
 });
-// 3. Get Announcements Feed
+// 3. Get Announcements Feed (For Student Purchased Batches)
 router.get('/announcements', auth_1.authenticateJWT, async (req, res) => {
     try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+        // Get purchased courses
+        const purchases = await db_1.default.purchase.findMany({
+            where: {
+                userId,
+                status: 'SUCCESS',
+            },
+            select: {
+                courseId: true,
+            },
+        });
+        const purchasedCourseIds = purchases.map((p) => p.courseId);
         const announcements = await db_1.default.announcement.findMany({
+            where: {
+                courseId: { in: purchasedCourseIds }
+            },
+            include: {
+                course: {
+                    include: {
+                        teachers: {
+                            include: {
+                                user: {
+                                    select: { name: true }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             orderBy: { createdAt: 'desc' },
             take: 15,
         });
-        return res.status(200).json({ success: true, data: announcements });
+        const mapped = announcements.map((announce) => {
+            const courseTeachers = announce.course?.teachers || [];
+            const fallbackTeacher = courseTeachers.length > 0 ? courseTeachers[0].user?.name : 'Teacher';
+            return {
+                ...announce,
+                authorName: announce.authorName || announce.course?.instructorName || fallbackTeacher
+            };
+        });
+        return res.status(200).json({ success: true, data: mapped });
     }
     catch (error) {
         return res.status(500).json({ success: false, error: error.message });

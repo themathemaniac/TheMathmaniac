@@ -47,10 +47,10 @@ const courses_1 = __importDefault(require("./routes/courses"));
 const lectures_1 = __importDefault(require("./routes/lectures"));
 const materials_1 = __importDefault(require("./routes/materials"));
 const tests_1 = __importDefault(require("./routes/tests"));
-const payments_1 = __importDefault(require("./routes/payments"));
 const profile_1 = __importDefault(require("./routes/profile"));
 const attendance_1 = __importDefault(require("./routes/attendance"));
 const superuser_1 = __importDefault(require("./routes/superuser"));
+const payments_1 = __importDefault(require("./routes/payments"));
 const firestoreListener_1 = require("./services/firestoreListener");
 const scheduler_1 = require("./services/scheduler");
 const app = (0, express_1.default)();
@@ -79,10 +79,10 @@ app.use('/api/v1/courses', courses_1.default);
 app.use('/api/v1/lectures', lectures_1.default);
 app.use('/api/v1/materials', materials_1.default);
 app.use('/api/v1/tests', tests_1.default);
-app.use('/api/v1/payments', payments_1.default);
 app.use('/api/v1/profile', profile_1.default);
 app.use('/api/v1/attendance', attendance_1.default);
 app.use('/api/v1/superuser', superuser_1.default);
+app.use('/api/v1/payments', payments_1.default);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });

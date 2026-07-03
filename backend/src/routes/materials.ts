@@ -63,8 +63,22 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
 
     const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN';
 
+    let purchasedCourseIds: string[] = [];
+    if (userId && !isTeacher) {
+      const purchases = await prisma.purchase.findMany({
+        where: {
+          userId,
+          status: 'SUCCESS',
+        },
+        select: {
+          courseId: true,
+        },
+      });
+      purchasedCourseIds = purchases.map((p) => p.courseId);
+    }
+
     const materialsWithAccess = materials.map((mat) => {
-      const isAccessible = true;
+      const isAccessible = isTeacher || mat.course.price === 0 || purchasedCourseIds.includes(mat.courseId);
 
       return {
         id: mat.id,

@@ -234,31 +234,33 @@ export const HomeScreen: React.FC = () => {
             </View>
 
             {/* 2b. Recommended Courses Carousel */}
-            <View className="mb-6">
-              <View className="flex-row justify-between items-baseline mb-3">
-                <Text className="text-slate-100 text-lg font-bold">Recommended Programs</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('AppTabs', { screen: 'Courses' })}>
-                  <Text className="text-blue-600 text-xs font-bold">See All</Text>
-                </TouchableOpacity>
-              </View>
+            {dashboardData.courses.filter(c => !c.isPurchased).length > 0 && (
+              <View className="mb-6">
+                <View className="flex-row justify-between items-baseline mb-3">
+                  <Text className="text-slate-100 text-lg font-bold">Recommended Programs</Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('AppTabs', { screen: 'Courses' })}>
+                    <Text className="text-blue-600 text-xs font-bold">See All</Text>
+                  </TouchableOpacity>
+                </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-1">
-                {dashboardData.courses.map((course) => (
-                  <CourseCard
-                    key={course.id}
-                    id={course.id}
-                    title={course.title}
-                    category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
-                    price={course.price}
-                    thumbnailUrl={course.thumbnailUrl}
-                    lectureCount={course.lectureCount}
-                    isPurchased={course.isPurchased}
-                    teacherName={course.teachers && course.teachers.length > 0 ? course.teachers.map((t: any) => t.user?.name).filter(Boolean).join(', ') : course.instructorName}
-                    onPress={() => navigation.navigate('CourseDetails', { courseId: course.id })}
-                  />
-                ))}
-              </ScrollView>
-            </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-1">
+                  {dashboardData.courses.filter(c => !c.isPurchased).map((course) => (
+                    <CourseCard
+                      key={course.id}
+                      id={course.id}
+                      title={course.title}
+                      category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
+                      price={course.price}
+                      thumbnailUrl={course.thumbnailUrl}
+                      lectureCount={course.lectureCount}
+                      isPurchased={course.isPurchased}
+                      teacherName={course.teachers && course.teachers.length > 0 ? course.teachers.map((t: any) => t.user?.name).filter(Boolean).join(', ') : course.instructorName}
+                      onPress={() => navigation.navigate('CourseDetails', { courseId: course.id })}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             {/* 3. Upcoming Tests */}
             <View className="mb-6">

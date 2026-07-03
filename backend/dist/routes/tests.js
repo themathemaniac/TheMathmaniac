@@ -41,18 +41,44 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
     try {
         const userRole = req.user?.role;
         const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN';
-        const whereClause = {};
-        if (!isTeacher) {
-            whereClause.published = true;
-        }
-        const tests = await db_1.default.test.findMany({
-            where: whereClause,
-            include: {
-                course: {
-                    select: { title: true },
+        const userId = req.user?.id;
+        let tests;
+        if (isTeacher) {
+            tests = await db_1.default.test.findMany({
+                include: {
+                    course: {
+                        select: { title: true },
+                    },
                 },
-            },
-        });
+            });
+        }
+        else {
+            // Find user's purchased/enrolled courses
+            const purchases = await db_1.default.purchase.findMany({
+                where: {
+                    userId,
+                    status: 'SUCCESS',
+                },
+                select: {
+                    courseId: true,
+                },
+            });
+            const purchasedCourseIds = purchases.map((p) => p.courseId);
+            tests = await db_1.default.test.findMany({
+                where: {
+                    published: true,
+                    OR: [
+                        { courseId: null },
+                        { courseId: { in: purchasedCourseIds } }
+                    ]
+                },
+                include: {
+                    course: {
+                        select: { title: true },
+                    },
+                },
+            });
+        }
         return res.status(200).json({ success: true, data: tests });
     }
     catch (error) {

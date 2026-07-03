@@ -58,17 +58,22 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
             },
             orderBy: { createdAt: 'desc' },
         });
-        // Check purchases to filter/mark accessible materials
-        const purchases = await db_1.default.purchase.findMany({
-            where: { userId, status: 'SUCCESS' },
-            select: { courseId: true },
-        });
-        const purchasedCourseIds = purchases.map((p) => p.courseId);
         const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN';
+        let purchasedCourseIds = [];
+        if (userId && !isTeacher) {
+            const purchases = await db_1.default.purchase.findMany({
+                where: {
+                    userId,
+                    status: 'SUCCESS',
+                },
+                select: {
+                    courseId: true,
+                },
+            });
+            purchasedCourseIds = purchases.map((p) => p.courseId);
+        }
         const materialsWithAccess = materials.map((mat) => {
-            const isFree = mat.course.price === 0;
-            const hasPurchased = purchasedCourseIds.includes(mat.courseId);
-            const isAccessible = isTeacher || isFree || hasPurchased;
+            const isAccessible = isTeacher || mat.course.price === 0 || purchasedCourseIds.includes(mat.courseId);
             return {
                 id: mat.id,
                 courseId: mat.courseId,
@@ -76,7 +81,7 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
                 title: mat.title,
                 type: mat.type,
                 fileSize: mat.fileSize,
-                fileUrl: isAccessible ? mat.fileUrl : null, // Hide URL if not purchased
+                fileUrl: mat.fileUrl,
                 isAccessible,
             };
         });

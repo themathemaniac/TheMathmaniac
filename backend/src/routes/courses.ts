@@ -6,13 +6,19 @@ import { AuthenticatedRequest, authenticateJWT } from '../middleware/auth';
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'mathemaniac_secret_key';
 
-// Helper to check token optionally
-function getOptionalUserId(authHeader: string | undefined): string | null {
+interface DecodedToken {
+  id: string;
+  phoneNumber: string;
+  role: string;
+}
+
+// Helper to check token optionally and return full user info
+function getOptionalUserInfo(authHeader: string | undefined): DecodedToken | null {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     try {
       const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-      return decoded.id;
+      const decoded = jwt.verify(token, JWT_SECRET) as DecodedToken;
+      return decoded;
     } catch (e) {
       return null;
     }
@@ -48,7 +54,9 @@ router.get('/', async (req, res) => {
     }
 
     // Always check if current user purchased these courses
-    const userId = getOptionalUserId(req.headers.authorization);
+    const userInfo = getOptionalUserInfo(req.headers.authorization);
+    const userId = userInfo?.id;
+    const userRole = userInfo?.role;
 
     if (assigned === 'true' && userId) {
       whereClause.teachers = {
@@ -71,9 +79,27 @@ router.get('/', async (req, res) => {
       },
     });
 
+    let purchasedCourseIds: string[] = [];
+    if (userId) {
+      if (userRole === 'ADMIN' || userRole === 'TEACHER') {
+        purchasedCourseIds = courses.map((c) => c.id);
+      } else {
+        const purchases = await prisma.purchase.findMany({
+          where: {
+            userId: userId,
+            status: 'SUCCESS',
+          },
+          select: {
+            courseId: true,
+          },
+        });
+        purchasedCourseIds = purchases.map((p) => p.courseId);
+      }
+    }
+
     const coursesWithPurchaseInfo = courses.map((course) => ({
       ...course,
-      isPurchased: true,
+      isPurchased: userId ? purchasedCourseIds.includes(course.id) : false,
       lectureCount: course._count.lectures,
     }));
 
@@ -87,7 +113,9 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = getOptionalUserId(req.headers.authorization);
+    const userInfo = getOptionalUserInfo(req.headers.authorization);
+    const userId = userInfo?.id;
+    const userRole = userInfo?.role;
 
     const course = await prisma.course.findUnique({
       where: { id },
@@ -121,10 +149,22 @@ router.get('/:id', async (req, res) => {
     }
 
     // Determine purchase status
-    let isPurchased = true;
+    let isPurchased = false;
     let progressList: any[] = [];
 
     if (userId) {
+      if (userRole === 'ADMIN' || userRole === 'TEACHER') {
+        isPurchased = true;
+      } else {
+        const purchase = await prisma.purchase.findFirst({
+          where: {
+            userId,
+            courseId: id,
+            status: 'SUCCESS',
+          },
+        });
+        isPurchased = !!purchase;
+      }
 
       // Fetch progress for this user on this course's lectures
       progressList = await prisma.lectureProgress.findMany({

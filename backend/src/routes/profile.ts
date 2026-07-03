@@ -53,7 +53,9 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
         totalMaterials,
       };
     } else {
-      const totalPurchased = await prisma.course.count();
+      const totalPurchased = await prisma.purchase.count({
+        where: { userId, status: 'SUCCESS' },
+      });
 
       const completedProgress = await prisma.lectureProgress.count({
         where: { userId, completed: true },
@@ -138,15 +140,24 @@ router.get('/courses', authenticateJWT, async (req: AuthenticatedRequest, res: R
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const courses = await prisma.course.findMany({
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        userId,
+        status: 'SUCCESS',
+      },
       include: {
-        _count: {
-          select: { lectures: true },
+        course: {
+          include: {
+            _count: {
+              select: { lectures: true },
+            },
+          },
         },
       },
     });
 
-    const courseList = courses.map((course) => {
+    const courseList = purchases.map((p) => {
+      const course = p.course;
       return {
         id: course.id,
         title: course.title,
@@ -171,11 +182,17 @@ router.get('/announcements', authenticateJWT, async (req: AuthenticatedRequest, 
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    // Get all courses
-    const courses = await prisma.course.findMany({
-      select: { id: true }
+    // Get purchased courses
+    const purchases = await prisma.purchase.findMany({
+      where: {
+        userId,
+        status: 'SUCCESS',
+      },
+      select: {
+        courseId: true,
+      },
     });
-    const purchasedCourseIds = courses.map((c) => c.id);
+    const purchasedCourseIds = purchases.map((p) => p.courseId);
 
     const announcements = await prisma.announcement.findMany({
       where: {

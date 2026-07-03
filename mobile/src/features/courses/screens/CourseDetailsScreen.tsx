@@ -54,11 +54,19 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
     }
   }, [route.params?.initialTab]);
 
-  const handleLecturePress = (lectureId: string) => {
+  const handleLecturePress = (lectureId: string, hasAccess: boolean) => {
+    if (!hasAccess) {
+      Alert.alert('Access Denied', 'You need to be enrolled in this program to watch the lectures.');
+      return;
+    }
     navigation.navigate('LecturePlayer', { lectureId });
   };
 
-  const handleMaterialPress = (item: any) => {
+  const handleMaterialPress = (item: any, hasAccess: boolean) => {
+    if (!hasAccess) {
+      Alert.alert('Access Denied', 'You need to be enrolled in this program to view study materials.');
+      return;
+    }
     if (item.fileUrl) {
       navigation.navigate('PDFViewer', { title: item.title, fileUrl: item.fileUrl });
     } else {
@@ -190,11 +198,11 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
                 <Text className="text-slate-500 text-center mt-6">No videos in this course.</Text>
               ) : (
                 course.lectures.map((lecture: any) => {
-                  const hasAccess = true;
+                  const hasAccess = !!course?.isPurchased;
                   return (
                     <TouchableOpacity
                       key={lecture.id}
-                      onPress={() => handleLecturePress(lecture.id)}
+                      onPress={() => handleLecturePress(lecture.id, hasAccess)}
                       className="border rounded-2xl p-4 mb-3 flex-row items-center justify-between bg-white"
                       style={cardStyle}
                     >
@@ -229,11 +237,11 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
                 <Text className="text-slate-500 text-center mt-6">No study materials in this course.</Text>
               ) : (
                 materials.map((item: any) => {
-                  const hasAccess = true;
+                  const hasAccess = !!course?.isPurchased;
                   return (
                     <TouchableOpacity
                       key={item.id}
-                      onPress={() => handleMaterialPress(item)}
+                      onPress={() => handleMaterialPress(item, hasAccess)}
                       className="border rounded-2xl p-4 mb-3 flex-row items-center justify-between bg-white"
                       style={cardStyle}
                     >

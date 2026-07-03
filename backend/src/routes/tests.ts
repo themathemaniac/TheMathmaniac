@@ -40,19 +40,45 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
   try {
     const userRole = req.user?.role;
     const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN';
-    const whereClause: any = {};
-    if (!isTeacher) {
-      whereClause.published = true;
-    }
+    const userId = req.user?.id;
 
-    const tests = await prisma.test.findMany({
-      where: whereClause,
-      include: {
-        course: {
-          select: { title: true },
+    let tests;
+    if (isTeacher) {
+      tests = await prisma.test.findMany({
+        include: {
+          course: {
+            select: { title: true },
+          },
         },
-      },
-    });
+      });
+    } else {
+      // Find user's purchased/enrolled courses
+      const purchases = await prisma.purchase.findMany({
+        where: {
+          userId,
+          status: 'SUCCESS',
+        },
+        select: {
+          courseId: true,
+        },
+      });
+      const purchasedCourseIds = purchases.map((p) => p.courseId);
+
+      tests = await prisma.test.findMany({
+        where: {
+          published: true,
+          OR: [
+            { courseId: null },
+            { courseId: { in: purchasedCourseIds } }
+          ]
+        },
+        include: {
+          course: {
+            select: { title: true },
+          },
+        },
+      });
+    }
 
     return res.status(200).json({ success: true, data: tests });
   } catch (error: any) {
