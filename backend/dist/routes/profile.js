@@ -44,11 +44,23 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
             const totalCourses = await db_1.default.course.count();
             const totalTests = await db_1.default.test.count();
             const totalMaterials = await db_1.default.studyMaterial.count();
+            // Aggregate teaching hours
+            const teacherAttendance = await db_1.default.teacherAttendance.findMany({
+                where: { userId },
+                select: { teachingHours: true }
+            });
+            const teachingHoursSum = teacherAttendance.reduce((acc, row) => acc + (row.teachingHours || 0), 0);
+            // Count unique assigned courses (batches)
+            const batchesManaged = await db_1.default.courseTeacher.count({
+                where: { userId }
+            });
             stats = {
                 totalStudents,
                 totalCourses,
                 totalTests,
                 totalMaterials,
+                teachingHours: Math.round(teachingHoursSum * 10) / 10,
+                batchesManaged,
             };
         }
         else {

@@ -404,6 +404,38 @@ router.post('/teacher/ping', authenticateJWT, requireTeacherOrAdmin, async (req:
       },
     });
 
+    // Check if TeacherAttendance already exists for this schedule
+    const existingAttendance = await prisma.teacherAttendance.findFirst({
+      where: { scheduleId }
+    });
+
+    if (!existingAttendance) {
+      // First ping marks the login time / check-in
+      await prisma.teacherAttendance.create({
+        data: {
+          userId,
+          scheduleId,
+          date: schedule.date,
+          status: 'PARTIAL',
+          presenceRatio: isInside ? 1.0 : 0.0,
+          totalPings: 1,
+          insidePings: isInside ? 1 : 0,
+          loginTime: new Date(),
+        }
+      });
+      console.log(`[Geofence Ping] User ${userId} first ping. Initialized TeacherAttendance with loginTime.`);
+    } else {
+      // Update counts incrementally for accurate real-time logging
+      await prisma.teacherAttendance.update({
+        where: { id: existingAttendance.id },
+        data: {
+          totalPings: { increment: 1 },
+          insidePings: isInside ? { increment: 1 } : undefined,
+          presenceRatio: (existingAttendance.insidePings + (isInside ? 1 : 0)) / (existingAttendance.totalPings + 1)
+        }
+      });
+    }
+
     console.log(`[Geofence Ping] User ${userId} pinged lat:${latitude}, lon:${longitude} - Dist: ${distance.toFixed(1)}m | Inside: ${isInside}`);
 
     return res.status(200).json({
@@ -461,6 +493,12 @@ router.post('/teacher/checkout', authenticateJWT, requireTeacherOrAdmin, async (
 
     let attendance;
     if (existingAttendance) {
+      // Calculate teaching hours duration
+      const logoutTime = new Date();
+      const loginTime = existingAttendance.loginTime || existingAttendance.createdAt || new Date();
+      const durationHours = (logoutTime.getTime() - new Date(loginTime).getTime()) / (1000 * 60 * 60);
+      const roundedHours = Math.round(durationHours * 10) / 10; // Round to 1 decimal
+
       attendance = await prisma.teacherAttendance.update({
         where: { id: existingAttendance.id },
         data: {
@@ -468,9 +506,16 @@ router.post('/teacher/checkout', authenticateJWT, requireTeacherOrAdmin, async (
           presenceRatio,
           totalPings,
           insidePings,
+          logoutTime,
+          teachingHours: roundedHours > 0 ? roundedHours : 0.1, // Minimum 0.1 hours
         },
       });
     } else {
+      // Fallback: if they never pinged but somehow hit checkout directly
+      const logoutTime = new Date();
+      const loginTime = new Date(new Date().setMinutes(new Date().getMinutes() - 60)); // assume 1 hour ago
+      const durationHours = 1.0;
+
       attendance = await prisma.teacherAttendance.create({
         data: {
           userId,
@@ -480,6 +525,9 @@ router.post('/teacher/checkout', authenticateJWT, requireTeacherOrAdmin, async (
           presenceRatio,
           totalPings,
           insidePings,
+          loginTime,
+          logoutTime,
+          teachingHours: durationHours,
         },
       });
     }

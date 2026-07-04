@@ -214,7 +214,7 @@ export const AdminCoursesTab: React.FC = () => {
     
     setNewCourse(prev => ({
       ...prev,
-      timeSlots: [...prev.timeSlots, { day: slotDay, time: timeStr }]
+      timeSlots: [...prev.timeSlots, { day: slotDay, time: timeStr, startTime: startTimeStr, endTime: endTimeStr }]
     }));
   };
 

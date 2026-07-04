@@ -46,11 +46,25 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       const totalTests = await prisma.test.count();
       const totalMaterials = await prisma.studyMaterial.count();
 
+      // Aggregate teaching hours
+      const teacherAttendance = await prisma.teacherAttendance.findMany({
+        where: { userId },
+        select: { teachingHours: true }
+      });
+      const teachingHoursSum = teacherAttendance.reduce((acc, row) => acc + (row.teachingHours || 0), 0);
+
+      // Count unique assigned courses (batches)
+      const batchesManaged = await prisma.courseTeacher.count({
+        where: { userId }
+      });
+
       stats = {
         totalStudents,
         totalCourses,
         totalTests,
         totalMaterials,
+        teachingHours: Math.round(teachingHoursSum * 10) / 10,
+        batchesManaged,
       };
     } else {
       const totalPurchased = await prisma.purchase.count({

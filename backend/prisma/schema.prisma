@@ -313,6 +313,9 @@ model TeacherAttendance {
   presenceRatio Float // fraction of inside pings vs total pings
   totalPings    Int
   insidePings   Int
+  loginTime     DateTime?
+  logoutTime    DateTime?
+  teachingHours Float?
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 

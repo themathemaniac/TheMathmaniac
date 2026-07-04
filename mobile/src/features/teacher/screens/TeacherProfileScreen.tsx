@@ -425,6 +425,25 @@ const TeacherAttendanceCalendar: React.FC = () => {
 export const TeacherProfileScreen: React.FC = () => {
   const navigation = useNavigation<TeacherProfileNavigationProp>();
   const { user, logout } = useAuthStore();
+  const [profileStats, setProfileStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState<boolean>(true);
+
+  const fetchStats = async () => {
+    try {
+      const res = await apiClient.get('/profile');
+      if (res.data.success) {
+        setProfileStats(res.data.stats);
+      }
+    } catch (e) {
+      console.log('Error fetching profile stats:', e);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
 
   const handleLogout = () => {
     Alert.alert('Confirm Logout', 'Are you sure you want to sign out?', [
@@ -478,7 +497,9 @@ export const TeacherProfileScreen: React.FC = () => {
           <View className="flex-row flex-wrap justify-between mb-8">
             <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
               <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Batches Managed</Text>
-              <Text className="text-slate-100 text-2xl font-black mt-2">0</Text>
+              <Text className="text-slate-100 text-2xl font-black mt-2">
+                {loadingStats ? '...' : (profileStats?.batchesManaged ?? 0)}
+              </Text>
             </View>
             <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
               <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Avg Ratings</Text>
@@ -490,7 +511,9 @@ export const TeacherProfileScreen: React.FC = () => {
             </View>
             <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
               <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Teaching Hours</Text>
-              <Text className="text-slate-100 text-2xl font-black mt-2">0 hrs</Text>
+              <Text className="text-slate-100 text-2xl font-black mt-2">
+                {loadingStats ? '...' : (profileStats?.teachingHours ?? 0)} hrs
+              </Text>
             </View>
           </View>
 

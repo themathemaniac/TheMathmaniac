@@ -261,12 +261,12 @@ export const TeacherAttendanceScreen: React.FC = () => {
     }
   };
 
-  // Recursive randomized ping scheduler: 5-15 mins (Teachers) or 30-90 mins (Admins)
+  // Recursive randomized ping scheduler: 25-30 mins (Teachers only)
   const scheduleNextPing = () => {
-    if (!isLoggingRef.current) return;
+    if (!isLoggingRef.current || isAdmin) return; // Admins do not run background loops
 
-    const minDelay = isAdmin ? 30 * 60 * 1000 : 5 * 60 * 1000;  // 30 mins vs 5 mins
-    const maxDelay = isAdmin ? 90 * 60 * 1000 : 15 * 60 * 1000;  // 90 mins vs 15 mins
+    const minDelay = 25 * 60 * 1000;  // 25 mins
+    const maxDelay = 30 * 60 * 1000;  // 30 mins
     const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay + 1) + minDelay);
 
     timeoutRef.current = setTimeout(async () => {
@@ -298,11 +298,15 @@ export const TeacherAttendanceScreen: React.FC = () => {
     // Trigger local push notification
     await triggerNotification();
 
-    // Run first ping immediately
+    // Run first ping immediately (for both Teacher and Admin)
     await sendLocationPing();
 
-    // Schedule the next randomized ping
-    scheduleNextPing();
+    // Only schedule subsequent background pings if user is a Teacher
+    if (!isAdmin) {
+      scheduleNextPing();
+    } else {
+      console.log('Admin session started: Background GPS pinging is disabled to save battery.');
+    }
   };
 
   const stopLogging = () => {
