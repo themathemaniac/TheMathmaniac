@@ -122,7 +122,7 @@ const MiniDropdown: React.FC<MiniDropdownProps> = ({
           className="bg-slate-900 border border-slate-800 rounded-xl absolute top-11 left-0 right-0 overflow-hidden shadow-lg shadow-black/40"
           style={{ zIndex: 10000, maxHeight }}
         >
-          <ScrollView nestedScrollEnabled={true}>
+          <ScrollView style={{ maxHeight }} nestedScrollEnabled={true}>
             {options.map((option) => (
               <TouchableOpacity 
                 key={option}
