@@ -1,14 +1,148 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, ActivityIndicator, Modal, SafeAreaView, Image } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { apiClient } from '../../../core/api/client';
 import { useAuthStore } from '../../../core/store/auth';
 import { COURSE_THEMES, getThemeUrl, extractThemeColor } from '../../../core/constants/courseThemes';
 
 const COMMON_SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'English'];
-const SUBJECTS = ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer', 'English'];
+const SUBJECT_OPTIONS = ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer', 'English'];
 const CLASS_OPTIONS = ['6', '7', '8', '9', '10', '11', '12', '1st Year', '2nd Year', '3rd Year', '4th Year'];
+
+const parseCourseTitle = (title: string) => {
+  if (!title) return { subject: '', targetClass: '', batch: '' };
+  const parts = title.trim().split(/\s+/);
+  if (parts.length < 3) return { subject: '', targetClass: '', batch: '' };
+  
+  const subject = parts[0];
+  const lastPart = parts[parts.length - 1];
+  let batch = '';
+  if (lastPart.startsWith('B') && lastPart.length > 1) {
+    batch = lastPart.substring(1);
+  }
+  
+  const targetClass = parts.slice(1, parts.length - 1).join(' ');
+  return { subject, targetClass, batch };
+};
+
+interface CustomDropdownProps {
+  label?: string;
+  selectedValue: string;
+  options: string[];
+  isOpen: boolean;
+  onToggle: () => void;
+  onSelect: (val: string) => void;
+  placeholder?: string;
+  maxHeight?: number;
+}
+
+const CustomDropdown: React.FC<CustomDropdownProps> = ({
+  label,
+  selectedValue,
+  options,
+  isOpen,
+  onToggle,
+  onSelect,
+  placeholder = 'Select option',
+  maxHeight = 200
+}) => {
+  return (
+    <View className="mb-4">
+      {label && <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">{label}</Text>}
+      <TouchableOpacity 
+        onPress={onToggle}
+        className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 flex-row justify-between items-center"
+      >
+        <Text className={selectedValue ? "text-slate-200 text-xs font-bold" : "text-slate-500 text-xs"}>
+          {selectedValue || placeholder}
+        </Text>
+        <Text className="text-slate-500 text-xs">{isOpen ? '▲' : '▼'}</Text>
+      </TouchableOpacity>
+      
+      {isOpen && (
+        <View className="bg-slate-900 border border-slate-800 rounded-xl mt-2 overflow-hidden shadow-lg shadow-black/40">
+          <ScrollView style={{ maxHeight }} nestedScrollEnabled={true}>
+            {options.map((option) => (
+              <TouchableOpacity 
+                key={option}
+                onPress={() => {
+                  onSelect(option);
+                  onToggle();
+                }}
+                className={`px-4 py-3 border-b border-slate-850 flex-row justify-between items-center ${selectedValue === option ? 'bg-blue-600/10' : ''}`}
+              >
+                <Text className={`text-xs ${selectedValue === option ? 'text-blue-400 font-bold' : 'text-slate-300'}`}>
+                  {option}
+                </Text>
+                {selectedValue === option && (
+                  <Text className="text-blue-500 text-xs font-bold">✓</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+};
+
+interface MiniDropdownProps {
+  selectedValue: string;
+  options: string[];
+  isOpen: boolean;
+  onToggle: () => void;
+  onSelect: (val: string) => void;
+  maxHeight?: number;
+  widthClass?: string;
+}
+
+const MiniDropdown: React.FC<MiniDropdownProps> = ({
+  selectedValue,
+  options,
+  isOpen,
+  onToggle,
+  onSelect,
+  maxHeight = 150,
+  widthClass = 'flex-1'
+}) => {
+  return (
+    <View className={`${widthClass} relative`} style={{ zIndex: isOpen ? 9999 : 1 }}>
+      <TouchableOpacity 
+        onPress={onToggle}
+        className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2.5 flex-row justify-between items-center"
+      >
+        <Text className="text-slate-200 text-xs font-bold text-center flex-1">
+          {selectedValue}
+        </Text>
+        <Text className="text-slate-500 text-[8px] ml-1">▼</Text>
+      </TouchableOpacity>
+      
+      {isOpen && (
+        <View 
+          className="bg-slate-900 border border-slate-800 rounded-xl absolute top-11 left-0 right-0 overflow-hidden shadow-lg shadow-black/40"
+          style={{ zIndex: 10000, maxHeight }}
+        >
+          <ScrollView nestedScrollEnabled={true}>
+            {options.map((option) => (
+              <TouchableOpacity 
+                key={option}
+                onPress={() => {
+                  onSelect(option);
+                  onToggle();
+                }}
+                className={`py-2 px-1 items-center border-b border-slate-850 ${selectedValue === option ? 'bg-blue-600/20' : ''}`}
+              >
+                <Text className={`text-[11px] ${selectedValue === option ? 'text-blue-400 font-bold' : 'text-slate-300'}`}>
+                  {option}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+    </View>
+  );
+};
 
 const SUPERUSER_PHONES = ['+917980357754', '+919831754957'];
 
@@ -38,105 +172,45 @@ export const AdminCoursesTab: React.FC = () => {
     title: '', description: '', thumbnailUrl: '', price: '', categoryId: '', branch: 'Sodepur', targetClass: '', timeSlots: [], isBundle: false, bundleCourseIds: []
   });
 
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedClass, setSelectedClass] = useState<string>('');
+  const [selectedBatch, setSelectedBatch] = useState<string>('');
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
   const [slotDay, setSlotDay] = useState<string>('Mon');
-  const [slotStartTime, setSlotStartTime] = useState(new Date(new Date().setHours(16, 30, 0, 0)));
-  const [slotEndTime, setSlotEndTime] = useState(new Date(new Date().setHours(18, 30, 0, 0)));
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [startHour, setStartHour] = useState<string>('04');
+  const [startMinute, setStartMinute] = useState<string>('30');
+  const [startAmpm, setStartAmpm] = useState<string>('PM');
+  const [endHour, setEndHour] = useState<string>('06');
+  const [endMinute, setEndMinute] = useState<string>('30');
+  const [endAmpm, setEndAmpm] = useState<string>('PM');
+
+  const getAvailableBatches = (subject: string, cls: string, currentEditingId: string | null) => {
+    const batches = ['1', '2', '3', '4'];
+    if (!subject || !cls) return batches;
+    
+    const takenBatches = courses
+      .filter(c => c.id !== currentEditingId)
+      .map(c => {
+        const parsed = parseCourseTitle(c.title);
+        if (parsed.subject.toLowerCase() === subject.toLowerCase() && 
+            parsed.targetClass.toLowerCase() === cls.toLowerCase()) {
+          return parsed.batch;
+        }
+        return null;
+      })
+      .filter(Boolean) as string[];
+      
+    return batches.filter(b => !takenBatches.includes(b));
+  };
 
   // Theme Dropdown State
   const [showThemeSelector, setShowThemeSelector] = useState(false);
 
-  // Custom Selection State
-  const [selectedSubject, setSelectedSubject] = useState<string>('');
-  const [selectedBatchNumber, setSelectedBatchNumber] = useState<number | null>(null);
-  const [showSubjectPicker, setShowSubjectPicker] = useState(false);
-  const [showClassPicker, setShowClassPicker] = useState(false);
-  const [showBatchPicker, setShowBatchPicker] = useState(false);
-
-  const getAvailableBatches = () => {
-    const allBatches = [1, 2, 3, 4];
-    if (!selectedSubject || !newCourse.targetClass) {
-      return allBatches;
-    }
-    
-    const takenBatches = courses
-      .filter(c => {
-        if (editingCourseId && c.id === editingCourseId) return false;
-        if (c.targetClass !== newCourse.targetClass) return false;
-        const cTitle = c.title || '';
-        return cTitle.toLowerCase().startsWith(selectedSubject.toLowerCase() + ' ');
-      })
-      .map(c => {
-        const match = c.title.match(/B([1-4])$/i);
-        return match ? parseInt(match[1], 10) : null;
-      })
-      .filter((b): b is number => b !== null);
-
-    return allBatches.filter(b => !takenBatches.includes(b));
-  };
-
-  const handleSubjectChange = (subject: string) => {
-    setSelectedSubject(subject);
-    
-    // Auto-detect category
-    const matchedCat = categories.find(c => 
-      subject.toLowerCase().includes(c.name.toLowerCase()) || 
-      c.name.toLowerCase().includes(subject.toLowerCase())
-    );
-    
-    // Clear batch selection if not available in the new combo
-    const takenBatches = courses
-      .filter(c => {
-        if (editingCourseId && c.id === editingCourseId) return false;
-        if (c.targetClass !== newCourse.targetClass) return false;
-        const cTitle = c.title || '';
-        return cTitle.toLowerCase().startsWith(subject.toLowerCase() + ' ');
-      })
-      .map(c => {
-        const match = c.title.match(/B([1-4])$/i);
-        return match ? parseInt(match[1], 10) : null;
-      })
-      .filter((b): b is number => b !== null);
-
-    if (selectedBatchNumber !== null && takenBatches.includes(selectedBatchNumber)) {
-      setSelectedBatchNumber(null);
-    }
-
-    setNewCourse(prev => ({
-      ...prev,
-      categoryId: matchedCat ? matchedCat.id : prev.categoryId
-    }));
-  };
-
-  const handleClassChange = (cls: string) => {
-    // Clear batch selection if not available in the new combo
-    const takenBatches = courses
-      .filter(c => {
-        if (editingCourseId && c.id === editingCourseId) return false;
-        if (c.targetClass !== cls) return false;
-        const cTitle = c.title || '';
-        return cTitle.toLowerCase().startsWith(selectedSubject.toLowerCase() + ' ');
-      })
-      .map(c => {
-        const match = c.title.match(/B([1-4])$/i);
-        return match ? parseInt(match[1], 10) : null;
-      })
-      .filter((b): b is number => b !== null);
-
-    if (selectedBatchNumber !== null && takenBatches.includes(selectedBatchNumber)) {
-      setSelectedBatchNumber(null);
-    }
-
-    setNewCourse(prev => ({
-      ...prev,
-      targetClass: cls
-    }));
-  };
-
   const handleAddSlot = () => {
-    const formatTime = (d: Date) => d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-    const timeStr = `${formatTime(slotStartTime)} - ${formatTime(slotEndTime)}`;
+    const startTimeStr = `${startHour}:${startMinute} ${startAmpm}`;
+    const endTimeStr = `${endHour}:${endMinute} ${endAmpm}`;
+    const timeStr = `${startTimeStr} - ${endTimeStr}`;
     
     setNewCourse(prev => ({
       ...prev,
@@ -198,28 +272,28 @@ export const AdminCoursesTab: React.FC = () => {
       Alert.alert('Error', 'Please select a Subject.');
       return;
     }
-    if (!newCourse.targetClass) {
+    if (!selectedClass) {
       Alert.alert('Error', 'Please select a Target Class.');
       return;
     }
-    if (selectedBatchNumber === null) {
-      Alert.alert('Error', 'Please select a Batch Number.');
+    if (!selectedBatch) {
+      Alert.alert('Error', 'Please select a Batch number.');
       return;
     }
     if (!newCourse.price) {
-      Alert.alert('Error', 'Please fill in the Price.');
+      Alert.alert('Error', 'Please enter a Price.');
       return;
     }
     
-    const finalTitle = `${selectedSubject} ${newCourse.targetClass} B${selectedBatchNumber}`;
+    const generatedTitle = `${selectedSubject} ${selectedClass} B${selectedBatch}`;
     
     const courseData = {
       ...newCourse,
-      title: finalTitle,
+      title: generatedTitle,
       price: parseInt(newCourse.price, 10) * 100, // Convert Rs to Paisa
       timeSlots: newCourse.timeSlots,
       branch: newCourse.branch,
-      targetClass: newCourse.targetClass
+      targetClass: selectedClass
     };
 
     let success;
@@ -233,7 +307,8 @@ export const AdminCoursesTab: React.FC = () => {
       Alert.alert('Success', `Course ${editingCourseId ? 'updated' : 'created'} successfully.`);
       setNewCourse({ title: '', description: '', thumbnailUrl: '', price: '', categoryId: categories[0]?.id || '', branch: 'Sodepur', targetClass: '', timeSlots: [], isBundle: false, bundleCourseIds: [] });
       setSelectedSubject('');
-      setSelectedBatchNumber(null);
+      setSelectedClass('');
+      setSelectedBatch('');
       setShowCreateForm(false);
       setEditingCourseId(null);
       loadCourses();
@@ -244,30 +319,18 @@ export const AdminCoursesTab: React.FC = () => {
 
   const handleEditCourseClick = (course: any) => {
     setEditingCourseId(course.id);
+    const parsed = parseCourseTitle(course.title);
+    setSelectedSubject(parsed.subject || '');
+    setSelectedClass(course.targetClass || parsed.targetClass || '');
+    setSelectedBatch(parsed.batch || '');
     
-    // Parse subject and batch number from title
-    const titleClean = (course.title || '').trim();
-    let foundSubject = '';
-    for (const s of SUBJECTS) {
-      if (titleClean.toLowerCase().startsWith(s.toLowerCase())) {
-        foundSubject = s;
-        break;
-      }
-    }
-    
-    const batchMatch = titleClean.match(/\s+B([1-4])$/i);
-    const foundBatch = batchMatch ? parseInt(batchMatch[1], 10) : null;
-    
-    setSelectedSubject(foundSubject);
-    setSelectedBatchNumber(foundBatch);
-
     setNewCourse({
       title: course.title,
       description: course.description || '',
       price: course.price ? (course.price / 100).toString() : '',
       categoryId: course.categoryId || '',
       branch: course.branch || 'Sodepur',
-      targetClass: course.targetClass || '',
+      targetClass: course.targetClass || parsed.targetClass || '',
       timeSlots: typeof course.timeSlots === 'string' ? JSON.parse(course.timeSlots) : (course.timeSlots || []),
       isBundle: course.isBundle || false,
       bundleCourseIds: course.bundleItems?.map((b: any) => b.courseId) || [],
@@ -367,17 +430,18 @@ export const AdminCoursesTab: React.FC = () => {
       {isCourseCreator && (
         <View className="mb-6">
           <TouchableOpacity 
-            onPress={() => {
-              setNewCourse({ title: '', description: '', thumbnailUrl: '', price: '', categoryId: categories[0]?.id || '', branch: 'Sodepur', targetClass: '', timeSlots: [], isBundle: false, bundleCourseIds: [] });
-              setSelectedSubject('');
-              setSelectedBatchNumber(null);
-              setShowCreateForm(true);
-              setEditingCourseId(null);
-            }}
-            className="py-3.5 rounded-xl items-center bg-slate-800 border border-slate-700/50 shadow-sm shadow-black/20"
-          >
-            <Text className="text-slate-300 font-bold text-[13px] uppercase tracking-wider">+ New Course</Text>
-          </TouchableOpacity>
+          onPress={() => {
+            setSelectedSubject('');
+            setSelectedClass('');
+            setSelectedBatch('');
+            setNewCourse({ title: '', description: '', thumbnailUrl: '', price: '', categoryId: categories[0]?.id || '', branch: 'Sodepur', targetClass: '', timeSlots: [], isBundle: false, bundleCourseIds: [] });
+            setEditingCourseId(null);
+            setShowCreateForm(true);
+          }}
+          className="py-3.5 rounded-xl items-center bg-slate-800 border border-slate-700/50 shadow-sm shadow-black/20"
+        >
+          <Text className="text-slate-300 font-bold text-[13px] uppercase tracking-wider">+ New Course</Text>
+        </TouchableOpacity>
 
           <Modal visible={showCreateForm} animationType="slide" transparent onRequestClose={() => setShowCreateForm(false)}>
             <View className="flex-1 justify-end bg-black/80">
@@ -385,15 +449,7 @@ export const AdminCoursesTab: React.FC = () => {
                 {/* Header */}
                 <View className="flex-row justify-between items-center p-5 border-b border-slate-850">
                   <Text className="text-slate-100 text-lg font-black">{editingCourseId ? 'Edit Course' : 'Create New Course'}</Text>
-                  <TouchableOpacity 
-                    onPress={() => {
-                      setShowCreateForm(false);
-                      setEditingCourseId(null);
-                      setSelectedSubject('');
-                      setSelectedBatchNumber(null);
-                    }} 
-                    className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700/50"
-                  >
+                  <TouchableOpacity onPress={() => setShowCreateForm(false)} className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700/50">
                     <Text className="text-slate-300 font-bold text-xs">Cancel</Text>
                   </TouchableOpacity>
                 </View>
@@ -411,53 +467,66 @@ export const AdminCoursesTab: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              <View>
-                <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Subject</Text>
-                <TouchableOpacity 
-                  onPress={() => setShowSubjectPicker(true)} 
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-4 mb-3 flex-row justify-between items-center"
-                >
-                  <Text className={selectedSubject ? "text-slate-300 text-xs font-semibold" : "text-slate-500 text-xs font-semibold"}>
-                    {selectedSubject || 'Select Subject'}
-                  </Text>
-                  <Text className="text-slate-500 text-[10px]">▼</Text>
-                </TouchableOpacity>
-              </View>
+              <View style={{ zIndex: 100 }}>
+                <CustomDropdown
+                  label="Subject"
+                  selectedValue={selectedSubject}
+                  options={SUBJECT_OPTIONS}
+                  isOpen={activeDropdown === 'subject'}
+                  onToggle={() => {
+                    setActiveDropdown(activeDropdown === 'subject' ? null : 'subject');
+                  }}
+                  onSelect={(subj) => {
+                    setSelectedSubject(subj);
+                    const matchedCat = categories.find(c => subj.toLowerCase().includes(c.name.toLowerCase()));
+                    if (matchedCat) {
+                      setNewCourse(prev => ({ ...prev, categoryId: matchedCat.id }));
+                    }
+                    const av = getAvailableBatches(subj, selectedClass, editingCourseId);
+                    if (selectedBatch && !av.includes(selectedBatch)) {
+                      setSelectedBatch('');
+                    }
+                  }}
+                  placeholder="Select Subject"
+                />
 
-              <View>
-                <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Target Class</Text>
-                <TouchableOpacity 
-                  onPress={() => setShowClassPicker(true)} 
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-4 mb-3 flex-row justify-between items-center"
-                >
-                  <Text className={newCourse.targetClass ? "text-slate-300 text-xs font-semibold" : "text-slate-500 text-xs font-semibold"}>
-                    {newCourse.targetClass ? (CLASS_OPTIONS.includes(newCourse.targetClass) && ['1st Year', '2nd Year', '3rd Year', '4th Year'].includes(newCourse.targetClass) ? newCourse.targetClass : `Class ${newCourse.targetClass}`) : 'Select Target Class'}
-                  </Text>
-                  <Text className="text-slate-500 text-[10px]">▼</Text>
-                </TouchableOpacity>
-              </View>
+                <CustomDropdown
+                  label="Target Class"
+                  selectedValue={selectedClass}
+                  options={CLASS_OPTIONS}
+                  isOpen={activeDropdown === 'class'}
+                  onToggle={() => {
+                    setActiveDropdown(activeDropdown === 'class' ? null : 'class');
+                  }}
+                  onSelect={(cls) => {
+                    setSelectedClass(cls);
+                    setNewCourse(prev => ({ ...prev, targetClass: cls }));
+                    const av = getAvailableBatches(selectedSubject, cls, editingCourseId);
+                    if (selectedBatch && !av.includes(selectedBatch)) {
+                      setSelectedBatch('');
+                    }
+                  }}
+                  placeholder="Select Class"
+                />
 
-              <View>
-                <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Batch Number</Text>
-                <TouchableOpacity 
-                  onPress={() => setShowBatchPicker(true)} 
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-4 mb-3 flex-row justify-between items-center"
-                >
-                  <Text className={selectedBatchNumber !== null ? "text-slate-300 text-xs font-semibold" : "text-slate-500 text-xs font-semibold"}>
-                    {selectedBatchNumber !== null ? `Batch ${selectedBatchNumber}` : 'Select Batch Number'}
-                  </Text>
-                  <Text className="text-slate-500 text-[10px]">▼</Text>
-                </TouchableOpacity>
+                <CustomDropdown
+                  label="Batch Number"
+                  selectedValue={selectedBatch}
+                  options={getAvailableBatches(selectedSubject, selectedClass, editingCourseId)}
+                  isOpen={activeDropdown === 'batch'}
+                  onToggle={() => {
+                    setActiveDropdown(activeDropdown === 'batch' ? null : 'batch');
+                  }}
+                  onSelect={(batch) => setSelectedBatch(batch)}
+                  placeholder={
+                    !selectedSubject || !selectedClass 
+                      ? "Select Subject & Class first" 
+                      : getAvailableBatches(selectedSubject, selectedClass, editingCourseId).length === 0
+                        ? "All batches (1-4) are already created"
+                        : "Select Batch"
+                  }
+                />
               </View>
-
-              {(selectedSubject && newCourse.targetClass && selectedBatchNumber !== null) && (
-                <View className="bg-slate-900 border border-slate-800/80 p-3.5 rounded-xl mb-4">
-                  <Text className="text-slate-500 text-[9px] font-bold uppercase">Computed Title Preview</Text>
-                  <Text className="text-emerald-400 text-sm font-bold mt-1">
-                    {`${selectedSubject} ${newCourse.targetClass} B${selectedBatchNumber}`}
-                  </Text>
-                </View>
-              )}
 
               {!newCourse.isBundle ? (
                 <View className="mb-4">
@@ -476,45 +545,74 @@ export const AdminCoursesTab: React.FC = () => {
                         ))}
                       </ScrollView>
                     </View>
-                    <View className="flex-row items-center mb-3">
-                      <TouchableOpacity onPress={() => setShowStartPicker(true)} className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 mr-2">
-                        <Text className="text-slate-300 text-[10px]">Start: {slotStartTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={() => setShowEndPicker(true)} className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 mr-2">
-                        <Text className="text-slate-300 text-[10px]">End: {slotEndTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity onPress={handleAddSlot} className="bg-emerald-600 px-4 justify-center rounded-lg py-2">
-                        <Text className="text-white text-[10px] font-bold">Add</Text>
-                      </TouchableOpacity>
+
+                    {/* Start Time Selectors */}
+                    <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1.5">Start Time</Text>
+                    <View className="flex-row items-center gap-2 mb-3" style={{ zIndex: 300 }}>
+                      <MiniDropdown 
+                        selectedValue={startHour}
+                        options={Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))}
+                        isOpen={activeDropdown === 'startHour'}
+                        onToggle={() => setActiveDropdown(activeDropdown === 'startHour' ? null : 'startHour')}
+                        onSelect={(val) => setStartHour(val)}
+                      />
+                      <Text className="text-slate-400 text-xs font-bold">:</Text>
+                      <MiniDropdown 
+                        selectedValue={startMinute}
+                        options={Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))}
+                        isOpen={activeDropdown === 'startMinute'}
+                        onToggle={() => setActiveDropdown(activeDropdown === 'startMinute' ? null : 'startMinute')}
+                        onSelect={(val) => setStartMinute(val)}
+                      />
+                      <MiniDropdown 
+                        selectedValue={startAmpm}
+                        options={['AM', 'PM']}
+                        isOpen={activeDropdown === 'startAmpm'}
+                        onToggle={() => setActiveDropdown(activeDropdown === 'startAmpm' ? null : 'startAmpm')}
+                        onSelect={(val) => setStartAmpm(val)}
+                        widthClass="w-16"
+                      />
                     </View>
 
-                    {showStartPicker && (
-                      <DateTimePicker
-                        value={slotStartTime}
-                        mode="time"
-                        display="default"
-                        onChange={(event: any, selectedDate: any) => {
-                          setShowStartPicker(false);
-                          if (selectedDate) setSlotStartTime(selectedDate);
-                        }}
+                    {/* End Time Selectors */}
+                    <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1.5">End Time</Text>
+                    <View className="flex-row items-center gap-2 mb-4" style={{ zIndex: 200 }}>
+                      <MiniDropdown 
+                        selectedValue={endHour}
+                        options={Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))}
+                        isOpen={activeDropdown === 'endHour'}
+                        onToggle={() => setActiveDropdown(activeDropdown === 'endHour' ? null : 'endHour')}
+                        onSelect={(val) => setEndHour(val)}
                       />
-                    )}
-                    {showEndPicker && (
-                      <DateTimePicker
-                        value={slotEndTime}
-                        mode="time"
-                        display="default"
-                        onChange={(event: any, selectedDate: any) => {
-                          setShowEndPicker(false);
-                          if (selectedDate) setSlotEndTime(selectedDate);
-                        }}
+                      <Text className="text-slate-400 text-xs font-bold">:</Text>
+                      <MiniDropdown 
+                        selectedValue={endMinute}
+                        options={Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))}
+                        isOpen={activeDropdown === 'endMinute'}
+                        onToggle={() => setActiveDropdown(activeDropdown === 'endMinute' ? null : 'endMinute')}
+                        onSelect={(val) => setEndMinute(val)}
                       />
-                    )}
+                      <MiniDropdown 
+                        selectedValue={endAmpm}
+                        options={['AM', 'PM']}
+                        isOpen={activeDropdown === 'endAmpm'}
+                        onToggle={() => setActiveDropdown(activeDropdown === 'endAmpm' ? null : 'endAmpm')}
+                        onSelect={(val) => setEndAmpm(val)}
+                        widthClass="w-16"
+                      />
+                    </View>
+
+                    {/* Add Button */}
+                    <TouchableOpacity onPress={handleAddSlot} className="bg-emerald-600 rounded-xl py-3 items-center">
+                      <Text className="text-white text-xs font-bold uppercase tracking-wider">Add Time Slot</Text>
+                    </TouchableOpacity>
+
+                    {/* Added slots list */}
                     {newCourse.timeSlots.length > 0 && (
                       <View className="mt-4 flex-row flex-wrap gap-3">
                         {newCourse.timeSlots.map((slot, idx) => (
-                          <View key={idx} className="bg-teal-50 border border-teal-200 pl-4 pr-3 py-3 rounded-2xl flex-row items-center shadow-sm">
-                            <Text className="text-teal-900 text-[13px] font-bold mr-4">{slot.day}   {slot.time}</Text>
+                          <View key={idx} className="bg-teal-50/10 border border-teal-800/40 pl-4 pr-3 py-3 rounded-2xl flex-row items-center shadow-sm">
+                            <Text className="text-teal-400 text-[13px] font-bold mr-4">{slot.day}   {slot.time}</Text>
                             <TouchableOpacity onPress={() => handleRemoveSlot(idx)} className="p-1 ml-2">
                               <Text className="text-red-500 text-xl font-bold" style={{ fontFamily: 'System' }}>✕</Text>
                             </TouchableOpacity>
@@ -565,7 +663,7 @@ export const AdminCoursesTab: React.FC = () => {
               <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Price (in Rs)</Text>
               <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-3" placeholder="e.g. 500" placeholderTextColor="#5C5446" value={newCourse.price} onChangeText={(t) => setNewCourse({...newCourse, price: t})} keyboardType="number-pad" />
 
-              {/* Target Class is selected via dropdown above */}
+              {/* Target Class Text Input Removed - now selected via dropdown */}
 
               <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Branch</Text>
               <View className="flex-row gap-4 mb-3">
@@ -924,133 +1022,6 @@ export const AdminCoursesTab: React.FC = () => {
             {(!expandedCourse?.teachers?.length && !expandedCourse?.purchases?.length) && (
               <Text className="text-slate-500 text-sm italic text-center py-4">No faculty or students enrolled yet.</Text>
             )}
-          </View>
-        </View>
-      </Modal>
-
-      {/* Subject Selector Modal */}
-      <Modal visible={showSubjectPicker} animationType="slide" transparent onRequestClose={() => setShowSubjectPicker(false)}>
-        <View className="flex-1 justify-end bg-black/85">
-          <View className="bg-slate-900 rounded-t-3xl border-t border-slate-800 pb-10" style={{ maxHeight: '50%' }}>
-            <View className="flex-row justify-between items-center p-5 border-b border-slate-850">
-              <Text className="text-slate-100 text-base font-black">Select Subject</Text>
-              <TouchableOpacity onPress={() => setShowSubjectPicker(false)} className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700/50">
-                <Text className="text-slate-300 font-bold text-xs">Cancel</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView className="p-5">
-              {SUBJECTS.map(sub => {
-                const isSelected = selectedSubject === sub;
-                return (
-                  <TouchableOpacity 
-                    key={sub} 
-                    onPress={() => {
-                      handleSubjectChange(sub);
-                      setShowSubjectPicker(false);
-                    }}
-                    className="py-3.5 border-b border-slate-800/60 flex-row justify-between items-center"
-                  >
-                    <Text className={`text-sm font-bold ${isSelected ? 'text-blue-400' : 'text-slate-300'}`}>{sub}</Text>
-                    {isSelected && (
-                      <View className="bg-blue-500 rounded-full w-4 h-4 items-center justify-center">
-                        <Text className="text-white text-[9px] font-black">✓</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Target Class Selector Modal */}
-      <Modal visible={showClassPicker} animationType="slide" transparent onRequestClose={() => setShowClassPicker(false)}>
-        <View className="flex-1 justify-end bg-black/85">
-          <View className="bg-slate-900 rounded-t-3xl border-t border-slate-800 pb-10" style={{ maxHeight: '60%' }}>
-            <View className="flex-row justify-between items-center p-5 border-b border-slate-850">
-              <Text className="text-slate-100 text-base font-black">Select Target Class</Text>
-              <TouchableOpacity onPress={() => setShowClassPicker(false)} className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700/50">
-                <Text className="text-slate-300 font-bold text-xs">Cancel</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView className="p-5">
-              {CLASS_OPTIONS.map(cls => {
-                const isSelected = newCourse.targetClass === cls;
-                return (
-                  <TouchableOpacity 
-                    key={cls} 
-                    onPress={() => {
-                      handleClassChange(cls);
-                      setShowClassPicker(false);
-                    }}
-                    className="py-3.5 border-b border-slate-800/60 flex-row justify-between items-center"
-                  >
-                    <Text className={`text-sm font-bold ${isSelected ? 'text-blue-400' : 'text-slate-300'}`}>
-                      {['1st Year', '2nd Year', '3rd Year', '4th Year'].includes(cls) ? cls : `Class ${cls}`}
-                    </Text>
-                    {isSelected && (
-                      <View className="bg-blue-500 rounded-full w-4 h-4 items-center justify-center">
-                        <Text className="text-white text-[9px] font-black">✓</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Batch Selector Modal */}
-      <Modal visible={showBatchPicker} animationType="slide" transparent onRequestClose={() => setShowBatchPicker(false)}>
-        <View className="flex-1 justify-end bg-black/85">
-          <View className="bg-slate-900 rounded-t-3xl border-t border-slate-800 pb-10" style={{ maxHeight: '55%' }}>
-            <View className="flex-row justify-between items-center p-5 border-b border-slate-850">
-              <View>
-                <Text className="text-slate-100 text-base font-black">Select Batch Number</Text>
-                <Text className="text-slate-500 text-[10px] mt-0.5">Mandatory, 1-4. Excludes already created batches.</Text>
-              </View>
-              <TouchableOpacity onPress={() => setShowBatchPicker(false)} className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700/50">
-                <Text className="text-slate-300 font-bold text-xs">Cancel</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView className="p-5">
-              {!selectedSubject || !newCourse.targetClass ? (
-                <View className="py-6 items-center">
-                  <Text className="text-amber-500 text-xs font-bold text-center">
-                    Please select a Subject and Target Class first.
-                  </Text>
-                </View>
-              ) : getAvailableBatches().length === 0 ? (
-                <View className="py-6 items-center">
-                  <Text className="text-red-400 text-xs font-bold text-center">
-                    All batches (1 to 4) are already created for this Subject & Class combination.
-                  </Text>
-                </View>
-              ) : (
-                getAvailableBatches().map(batchNum => {
-                  const isSelected = selectedBatchNumber === batchNum;
-                  return (
-                    <TouchableOpacity 
-                      key={batchNum} 
-                      onPress={() => {
-                        setSelectedBatchNumber(batchNum);
-                        setShowBatchPicker(false);
-                      }}
-                      className="py-3.5 border-b border-slate-800/60 flex-row justify-between items-center"
-                    >
-                      <Text className={`text-sm font-bold ${isSelected ? 'text-blue-400' : 'text-slate-300'}`}>Batch {batchNum}</Text>
-                      {isSelected && (
-                        <View className="bg-blue-500 rounded-full w-4 h-4 items-center justify-center">
-                          <Text className="text-white text-[9px] font-black">✓</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </ScrollView>
           </View>
         </View>
       </Modal>
