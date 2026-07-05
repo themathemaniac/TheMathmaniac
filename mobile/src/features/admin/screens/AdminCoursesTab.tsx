@@ -33,7 +33,6 @@ interface CustomDropdownProps {
   onToggle: () => void;
   onSelect: (val: string) => void;
   placeholder?: string;
-  maxHeight?: number;
 }
 
 const CustomDropdown: React.FC<CustomDropdownProps> = ({
@@ -43,8 +42,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   isOpen,
   onToggle,
   onSelect,
-  placeholder = 'Select option',
-  maxHeight = 200
+  placeholder = 'Select option'
 }) => {
   return (
     <View className="mb-4">
@@ -56,32 +54,46 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
         <Text className={selectedValue ? "text-slate-200 text-xs font-bold" : "text-slate-500 text-xs"}>
           {selectedValue || placeholder}
         </Text>
-        <Text className="text-slate-500 text-xs">{isOpen ? '▲' : '▼'}</Text>
+        <Text className="text-slate-500 text-xs">▼</Text>
       </TouchableOpacity>
       
-      {isOpen && (
-        <View className="bg-slate-900 border border-slate-800 rounded-xl mt-2 overflow-hidden shadow-lg shadow-black/40">
-          <ScrollView style={{ maxHeight }} nestedScrollEnabled={true}>
-            {options.map((option) => (
-              <TouchableOpacity 
-                key={option}
-                onPress={() => {
-                  onSelect(option);
-                  onToggle();
-                }}
-                className={`px-4 py-3 border-b border-slate-850 flex-row justify-between items-center ${selectedValue === option ? 'bg-blue-600/10' : ''}`}
-              >
-                <Text className={`text-xs ${selectedValue === option ? 'text-blue-400 font-bold' : 'text-slate-300'}`}>
-                  {option}
-                </Text>
-                {selectedValue === option && (
-                  <Text className="text-blue-500 text-xs font-bold">✓</Text>
-                )}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+      <Modal
+        visible={isOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={onToggle}
+      >
+        <TouchableOpacity 
+          className="flex-1 justify-center items-center bg-black/60 px-5"
+          activeOpacity={1}
+          onPress={onToggle}
+        >
+          <View className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-h-[60%] overflow-hidden shadow-2xl shadow-black">
+            <View className="p-4 border-b border-slate-850">
+              <Text className="text-slate-200 text-sm font-bold text-center">{placeholder}</Text>
+            </View>
+            <ScrollView className="p-3" nestedScrollEnabled={true}>
+              {options.map((option) => (
+                <TouchableOpacity 
+                  key={option}
+                  onPress={() => {
+                    onSelect(option);
+                    onToggle();
+                  }}
+                  className={`px-4 py-3.5 rounded-xl mb-1 flex-row justify-between items-center ${selectedValue === option ? 'bg-blue-600/20' : 'active:bg-slate-800'}`}
+                >
+                  <Text className={`text-xs ${selectedValue === option ? 'text-blue-400 font-bold' : 'text-slate-300'}`}>
+                    {option}
+                  </Text>
+                  {selectedValue === option && (
+                    <Text className="text-blue-500 text-xs font-bold">✓</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -92,8 +104,8 @@ interface MiniDropdownProps {
   isOpen: boolean;
   onToggle: () => void;
   onSelect: (val: string) => void;
-  maxHeight?: number;
   widthClass?: string;
+  placeholder?: string;
 }
 
 const MiniDropdown: React.FC<MiniDropdownProps> = ({
@@ -102,11 +114,11 @@ const MiniDropdown: React.FC<MiniDropdownProps> = ({
   isOpen,
   onToggle,
   onSelect,
-  maxHeight = 150,
-  widthClass = 'flex-1'
+  widthClass = 'flex-1',
+  placeholder = 'Select option'
 }) => {
   return (
-    <View className={`${widthClass} relative`} style={{ zIndex: isOpen ? 9999 : 1 }}>
+    <View className={`${widthClass} relative`}>
       <TouchableOpacity 
         onPress={onToggle}
         className="bg-slate-950 border border-slate-800 rounded-xl px-2 py-2.5 flex-row justify-between items-center"
@@ -117,29 +129,40 @@ const MiniDropdown: React.FC<MiniDropdownProps> = ({
         <Text className="text-slate-500 text-[8px] ml-1">▼</Text>
       </TouchableOpacity>
       
-      {isOpen && (
-        <View 
-          className="bg-slate-900 border border-slate-800 rounded-xl absolute top-11 left-0 right-0 overflow-hidden shadow-lg shadow-black/40"
-          style={{ zIndex: 10000, maxHeight }}
+      <Modal
+        visible={isOpen}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={onToggle}
+      >
+        <TouchableOpacity 
+          className="flex-1 justify-center items-center bg-black/60 px-5"
+          activeOpacity={1}
+          onPress={onToggle}
         >
-          <ScrollView style={{ maxHeight }} nestedScrollEnabled={true}>
-            {options.map((option) => (
-              <TouchableOpacity 
-                key={option}
-                onPress={() => {
-                  onSelect(option);
-                  onToggle();
-                }}
-                className={`py-2 px-1 items-center border-b border-slate-850 ${selectedValue === option ? 'bg-blue-600/20' : ''}`}
-              >
-                <Text className={`text-[11px] ${selectedValue === option ? 'text-blue-400 font-bold' : 'text-slate-300'}`}>
-                  {option}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
+          <View className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-h-[50%] overflow-hidden shadow-2xl shadow-black">
+            <View className="p-4 border-b border-slate-850">
+              <Text className="text-slate-200 text-sm font-bold text-center">{placeholder}</Text>
+            </View>
+            <ScrollView className="p-3" nestedScrollEnabled={true}>
+              {options.map((option) => (
+                <TouchableOpacity 
+                  key={option}
+                  onPress={() => {
+                    onSelect(option);
+                    onToggle();
+                  }}
+                  className={`py-3 px-4 rounded-xl mb-1 items-center ${selectedValue === option ? 'bg-blue-600/20' : 'active:bg-slate-800'}`}
+                >
+                  <Text className={`text-xs ${selectedValue === option ? 'text-blue-400 font-bold' : 'text-slate-300'}`}>
+                    {option}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -545,7 +568,6 @@ export const AdminCoursesTab: React.FC = () => {
                         ))}
                       </ScrollView>
                     </View>
-
                     {/* Start Time Selectors */}
                     <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1.5">Start Time</Text>
                     <View className="flex-row items-center gap-2 mb-3" style={{ zIndex: 300 }}>
@@ -555,6 +577,7 @@ export const AdminCoursesTab: React.FC = () => {
                         isOpen={activeDropdown === 'startHour'}
                         onToggle={() => setActiveDropdown(activeDropdown === 'startHour' ? null : 'startHour')}
                         onSelect={(val) => setStartHour(val)}
+                        placeholder="Select Start Hour"
                       />
                       <Text className="text-slate-400 text-xs font-bold">:</Text>
                       <MiniDropdown 
@@ -563,6 +586,7 @@ export const AdminCoursesTab: React.FC = () => {
                         isOpen={activeDropdown === 'startMinute'}
                         onToggle={() => setActiveDropdown(activeDropdown === 'startMinute' ? null : 'startMinute')}
                         onSelect={(val) => setStartMinute(val)}
+                        placeholder="Select Start Minute"
                       />
                       <MiniDropdown 
                         selectedValue={startAmpm}
@@ -571,9 +595,10 @@ export const AdminCoursesTab: React.FC = () => {
                         onToggle={() => setActiveDropdown(activeDropdown === 'startAmpm' ? null : 'startAmpm')}
                         onSelect={(val) => setStartAmpm(val)}
                         widthClass="w-16"
+                        placeholder="Select Period"
                       />
                     </View>
-
+ 
                     {/* End Time Selectors */}
                     <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1.5">End Time</Text>
                     <View className="flex-row items-center gap-2 mb-4" style={{ zIndex: 200 }}>
@@ -583,6 +608,7 @@ export const AdminCoursesTab: React.FC = () => {
                         isOpen={activeDropdown === 'endHour'}
                         onToggle={() => setActiveDropdown(activeDropdown === 'endHour' ? null : 'endHour')}
                         onSelect={(val) => setEndHour(val)}
+                        placeholder="Select End Hour"
                       />
                       <Text className="text-slate-400 text-xs font-bold">:</Text>
                       <MiniDropdown 
@@ -591,6 +617,7 @@ export const AdminCoursesTab: React.FC = () => {
                         isOpen={activeDropdown === 'endMinute'}
                         onToggle={() => setActiveDropdown(activeDropdown === 'endMinute' ? null : 'endMinute')}
                         onSelect={(val) => setEndMinute(val)}
+                        placeholder="Select End Minute"
                       />
                       <MiniDropdown 
                         selectedValue={endAmpm}
@@ -599,6 +626,7 @@ export const AdminCoursesTab: React.FC = () => {
                         onToggle={() => setActiveDropdown(activeDropdown === 'endAmpm' ? null : 'endAmpm')}
                         onSelect={(val) => setEndAmpm(val)}
                         widthClass="w-16"
+                        placeholder="Select Period"
                       />
                     </View>
 
