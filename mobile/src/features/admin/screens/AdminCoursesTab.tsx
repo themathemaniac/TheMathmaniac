@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, ActivityIndicator, Modal, SafeAreaView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert, TextInput, ActivityIndicator, Modal, SafeAreaView, Image, Platform } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { apiClient } from '../../../core/api/client';
 import { useAuthStore } from '../../../core/store/auth';
 import { COURSE_THEMES, getThemeUrl, extractThemeColor } from '../../../core/constants/courseThemes';
@@ -201,12 +202,18 @@ export const AdminCoursesTab: React.FC = () => {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
   const [slotDay, setSlotDay] = useState<string>('Mon');
-  const [startHour, setStartHour] = useState<string>('04');
-  const [startMinute, setStartMinute] = useState<string>('30');
-  const [startAmpm, setStartAmpm] = useState<string>('PM');
-  const [endHour, setEndHour] = useState<string>('06');
-  const [endMinute, setEndMinute] = useState<string>('30');
-  const [endAmpm, setEndAmpm] = useState<string>('PM');
+  const [slotStartTime, setSlotStartTime] = useState(() => {
+    const d = new Date();
+    d.setHours(16, 30, 0, 0);
+    return d;
+  });
+  const [slotEndTime, setSlotEndTime] = useState(() => {
+    const d = new Date();
+    d.setHours(18, 30, 0, 0);
+    return d;
+  });
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
   const getAvailableBatches = (subject: string, cls: string, currentEditingId: string | null) => {
     const batches = ['1', '2', '3', '4'];
@@ -231,8 +238,19 @@ export const AdminCoursesTab: React.FC = () => {
   const [showThemeSelector, setShowThemeSelector] = useState(false);
 
   const handleAddSlot = () => {
-    const startTimeStr = `${startHour}:${startMinute} ${startAmpm}`;
-    const endTimeStr = `${endHour}:${endMinute} ${endAmpm}`;
+    const formatTime = (d: Date) => {
+      let hours = d.getHours();
+      const minutes = d.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const minutesStr = String(minutes).padStart(2, '0');
+      const hoursStr = String(hours).padStart(2, '0');
+      return `${hoursStr}:${minutesStr} ${ampm}`;
+    };
+
+    const startTimeStr = formatTime(slotStartTime);
+    const endTimeStr = formatTime(slotEndTime);
     const timeStr = `${startTimeStr} - ${endTimeStr}`;
     
     setNewCourse(prev => ({
@@ -568,70 +586,61 @@ export const AdminCoursesTab: React.FC = () => {
                         ))}
                       </ScrollView>
                     </View>
-                    {/* Start Time Selectors */}
-                    <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1.5">Start Time</Text>
-                    <View className="flex-row items-center gap-2 mb-3" style={{ zIndex: 300 }}>
-                      <MiniDropdown 
-                        selectedValue={startHour}
-                        options={Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))}
-                        isOpen={activeDropdown === 'startHour'}
-                        onToggle={() => setActiveDropdown(activeDropdown === 'startHour' ? null : 'startHour')}
-                        onSelect={(val) => setStartHour(val)}
-                        placeholder="Select Start Hour"
-                      />
-                      <Text className="text-slate-400 text-xs font-bold">:</Text>
-                      <MiniDropdown 
-                        selectedValue={startMinute}
-                        options={Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))}
-                        isOpen={activeDropdown === 'startMinute'}
-                        onToggle={() => setActiveDropdown(activeDropdown === 'startMinute' ? null : 'startMinute')}
-                        onSelect={(val) => setStartMinute(val)}
-                        placeholder="Select Start Minute"
-                      />
-                      <MiniDropdown 
-                        selectedValue={startAmpm}
-                        options={['AM', 'PM']}
-                        isOpen={activeDropdown === 'startAmpm'}
-                        onToggle={() => setActiveDropdown(activeDropdown === 'startAmpm' ? null : 'startAmpm')}
-                        onSelect={(val) => setStartAmpm(val)}
-                        widthClass="w-16"
-                        placeholder="Select Period"
-                      />
-                    </View>
- 
-                    {/* End Time Selectors */}
-                    <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1.5">End Time</Text>
-                    <View className="flex-row items-center gap-2 mb-4" style={{ zIndex: 200 }}>
-                      <MiniDropdown 
-                        selectedValue={endHour}
-                        options={Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))}
-                        isOpen={activeDropdown === 'endHour'}
-                        onToggle={() => setActiveDropdown(activeDropdown === 'endHour' ? null : 'endHour')}
-                        onSelect={(val) => setEndHour(val)}
-                        placeholder="Select End Hour"
-                      />
-                      <Text className="text-slate-400 text-xs font-bold">:</Text>
-                      <MiniDropdown 
-                        selectedValue={endMinute}
-                        options={Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'))}
-                        isOpen={activeDropdown === 'endMinute'}
-                        onToggle={() => setActiveDropdown(activeDropdown === 'endMinute' ? null : 'endMinute')}
-                        onSelect={(val) => setEndMinute(val)}
-                        placeholder="Select End Minute"
-                      />
-                      <MiniDropdown 
-                        selectedValue={endAmpm}
-                        options={['AM', 'PM']}
-                        isOpen={activeDropdown === 'endAmpm'}
-                        onToggle={() => setActiveDropdown(activeDropdown === 'endAmpm' ? null : 'endAmpm')}
-                        onSelect={(val) => setEndAmpm(val)}
-                        widthClass="w-16"
-                        placeholder="Select Period"
-                      />
+                    {/* Start & End Time Buttons */}
+                    <View className="flex-row items-center mb-4">
+                      <View className="flex-1 mr-2">
+                        <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1.5">Start Time</Text>
+                        <TouchableOpacity 
+                          onPress={() => setShowStartPicker(true)} 
+                          className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 items-center"
+                        >
+                          <Text className="text-slate-300 text-xs font-bold">
+                            {slotStartTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <View className="flex-1 ml-2">
+                        <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1.5">End Time</Text>
+                        <TouchableOpacity 
+                          onPress={() => setShowEndPicker(true)} 
+                          className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 items-center"
+                        >
+                          <Text className="text-slate-300 text-xs font-bold">
+                            {slotEndTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
 
+                    {showStartPicker && (
+                      <DateTimePicker
+                        value={slotStartTime}
+                        mode="time"
+                        display="default"
+                        is24Hour={false}
+                        onChange={(event: any, selectedDate: any) => {
+                          setShowStartPicker(false);
+                          if (selectedDate) setSlotStartTime(selectedDate);
+                        }}
+                      />
+                    )}
+
+                    {showEndPicker && (
+                      <DateTimePicker
+                        value={slotEndTime}
+                        mode="time"
+                        display="default"
+                        is24Hour={false}
+                        onChange={(event: any, selectedDate: any) => {
+                          setShowEndPicker(false);
+                          if (selectedDate) setSlotEndTime(selectedDate);
+                        }}
+                      />
+                    )}
+
                     {/* Add Button */}
-                    <TouchableOpacity onPress={handleAddSlot} className="bg-emerald-600 rounded-xl py-3 items-center">
+                    <TouchableOpacity onPress={handleAddSlot} className="bg-emerald-600 rounded-xl py-3.5 items-center mt-2">
                       <Text className="text-white text-xs font-bold uppercase tracking-wider">Add Time Slot</Text>
                     </TouchableOpacity>
 
