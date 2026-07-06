@@ -16,6 +16,7 @@ import { ForgotPasswordResetScreen } from '../features/authentication/screens/Fo
 import { MandatoryChangePasswordScreen } from '../features/authentication/screens/MandatoryChangePasswordScreen';
 import { ChangePasswordScreen } from '../features/profile/screens/ChangePasswordScreen';
 import { AdminPanelScreen } from '../features/admin/screens/AdminPanelScreen';
+import { AdminAttendanceScreen } from '../features/admin/screens/AdminAttendanceScreen';
 import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { CoursesExploreScreen } from '../features/courses/screens/CoursesExploreScreen';
 import { CourseDetailsScreen } from '../features/courses/screens/CourseDetailsScreen';
@@ -152,7 +153,12 @@ function TeacherTabNavigator() {
 function AppTabsWrapper() {
   const { user } = useAuthStore();
   if (user?.role === 'ADMIN') {
-    return <AdminPanelScreen />;
+    const isSuperuser = user?.phoneNumber && ['+917980357754', '+919831754957'].includes(user.phoneNumber);
+    if (isSuperuser) {
+      return <AdminPanelScreen />;
+    } else {
+      return <AdminAttendanceScreen />;
+    }
   }
   if (user?.role === 'TEACHER') {
     return <TeacherTabNavigator />;

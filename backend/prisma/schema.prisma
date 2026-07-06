@@ -30,6 +30,8 @@ model User {
   teacherLocationLogs TeacherLocationLog[]
   teacherAttendances  TeacherAttendance[]
   courseTeachers      CourseTeacher[]
+  adminShifts         AdminShift[]
+  adminAttendances    AdminAttendance[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
@@ -342,4 +344,40 @@ model CourseTeacher {
   @@unique([courseId, userId])
   @@index([courseId])
   @@index([userId])
+}
+
+model AdminShift {
+  id               String            @id @default(uuid())
+  adminId          String
+  admin            User              @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  branch           String            // e.g. "Sodepur", "Belgharia"
+  date             String            // YYYY-MM-DD format
+  startTime        String            // hh:mm AM/PM
+  endTime          String            // hh:mm AM/PM
+  type             String            @default("BRANCH_DUTY") // "BRANCH_DUTY" | "FIELD_PROMOTION"
+  attendances      AdminAttendance[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([adminId])
+}
+
+model AdminAttendance {
+  id             String      @id @default(uuid())
+  adminId        String
+  admin          User        @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  shiftId        String
+  shift          AdminShift  @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  loginTime      DateTime    @default(now())
+  logoutTime     DateTime?
+  workingHours   Float?
+  checkInLat     Float?
+  checkInLng     Float?
+  checkOutLat    Float?
+  checkOutLng    Float?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([adminId])
+  @@index([shiftId])
 }

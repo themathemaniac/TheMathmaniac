@@ -8,6 +8,7 @@ import { useAuthStore } from '../../../core/store/auth';
 import { Button } from '../../../shared/components/Button';
 import { AdminCoursesTab } from './AdminCoursesTab';
 import { AdminRoutineTab } from './AdminRoutineTab';
+import { SuperuserAdminManagementTab } from './SuperuserAdminManagementTab';
 
 type AdminPanelScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminPanel'>;
 
@@ -63,7 +64,7 @@ export const AdminPanelScreen: React.FC = () => {
     isLoading
   } = useAuthStore();
 
-  const [activeTab, setActiveTab] = useState<'directory' | 'create' | 'audit' | 'courses' | 'routines'>('directory');
+  const [activeTab, setActiveTab] = useState<'directory' | 'create' | 'audit' | 'courses' | 'routines' | 'admins'>('directory');
 
   // Directory State
   const [users, setUsers] = useState<any[]>([]);
@@ -392,57 +393,69 @@ export const AdminPanelScreen: React.FC = () => {
           </View>
 
           {/* Tabs */}
-          <View className="flex-row bg-slate-900 p-1.5 rounded-2xl mb-6 border border-slate-800">
-            <TouchableOpacity
-              onPress={() => setActiveTab('directory')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center ${
-                (activeTab as string) === 'directory' ? 'bg-slate-800' : 'bg-transparent'
-              }`}
-            >
-              <Text className={`font-bold text-[10px] ${(activeTab as string) === 'directory' ? 'text-slate-100' : 'text-slate-400'}`}>
-                Directory
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setActiveTab('create')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center ${
-                (activeTab as string) === 'create' ? 'bg-slate-800' : 'bg-transparent'
-              }`}
-            >
-              <Text className={`font-bold text-[10px] ${(activeTab as string) === 'create' ? 'text-slate-100' : 'text-slate-400'}`}>
-                Create
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setActiveTab('audit')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center ${
-                (activeTab as string) === 'audit' ? 'bg-slate-800' : 'bg-transparent'
-              }`}
-            >
-              <Text className={`font-bold text-[10px] ${(activeTab as string) === 'audit' ? 'text-slate-100' : 'text-slate-400'}`}>
-                Logs
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setActiveTab('courses')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center ${
-                (activeTab as string) === 'courses' ? 'bg-slate-800' : 'bg-transparent'
-              }`}
-            >
-              <Text className={`font-bold text-[10px] ${(activeTab as string) === 'courses' ? 'text-slate-100' : 'text-slate-400'}`}>
-                Courses
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setActiveTab('routines')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center ${
-                (activeTab as string) === 'routines' ? 'bg-slate-800' : 'bg-transparent'
-              }`}
-            >
-              <Text className={`font-bold text-[10px] ${(activeTab as string) === 'routines' ? 'text-slate-100' : 'text-slate-400'}`}>
-                Routines
-              </Text>
-            </TouchableOpacity>
+          <View className="mb-6">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
+              <TouchableOpacity
+                onPress={() => setActiveTab('directory')}
+                className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                  (activeTab as string) === 'directory' ? 'bg-slate-800' : 'bg-transparent'
+                }`}
+              >
+                <Text className={`font-bold text-[10px] ${(activeTab as string) === 'directory' ? 'text-slate-100' : 'text-slate-400'}`}>
+                  Directory
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setActiveTab('create')}
+                className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                  (activeTab as string) === 'create' ? 'bg-slate-800' : 'bg-transparent'
+                }`}
+              >
+                <Text className={`font-bold text-[10px] ${(activeTab as string) === 'create' ? 'text-slate-100' : 'text-slate-400'}`}>
+                  Create
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setActiveTab('audit')}
+                className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                  (activeTab as string) === 'audit' ? 'bg-slate-800' : 'bg-transparent'
+                }`}
+              >
+                <Text className={`font-bold text-[10px] ${(activeTab as string) === 'audit' ? 'text-slate-100' : 'text-slate-400'}`}>
+                  Logs
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setActiveTab('courses')}
+                className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                  (activeTab as string) === 'courses' ? 'bg-slate-800' : 'bg-transparent'
+                }`}
+              >
+                <Text className={`font-bold text-[10px] ${(activeTab as string) === 'courses' ? 'text-slate-100' : 'text-slate-400'}`}>
+                  Courses
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setActiveTab('routines')}
+                className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                  (activeTab as string) === 'routines' ? 'bg-slate-800' : 'bg-transparent'
+                }`}
+              >
+                <Text className={`font-bold text-[10px] ${(activeTab as string) === 'routines' ? 'text-slate-100' : 'text-slate-400'}`}>
+                  Routines
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setActiveTab('admins')}
+                className={`px-4 py-2.5 rounded-xl items-center justify-center ${
+                  (activeTab as string) === 'admins' ? 'bg-slate-800' : 'bg-transparent'
+                }`}
+              >
+                <Text className={`font-bold text-[10px] ${(activeTab as string) === 'admins' ? 'text-slate-100' : 'text-slate-400'}`}>
+                  Admins
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
 
           {/* Sticky Header Group */}
@@ -592,10 +605,10 @@ export const AdminPanelScreen: React.FC = () => {
       {activeTab !== 'directory' && (
         <View className="mb-6">
           {/* Tabs for non-directory */}
-          <View className="flex-row bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
             <TouchableOpacity
               onPress={() => setActiveTab('directory')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center ${
+              className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
                 (activeTab as string) === 'directory' ? 'bg-slate-800' : 'bg-transparent'
               }`}
             >
@@ -605,45 +618,55 @@ export const AdminPanelScreen: React.FC = () => {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab('create')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center ${
-                activeTab === 'create' ? 'bg-slate-800' : 'bg-transparent'
+              className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                (activeTab as string) === 'create' ? 'bg-slate-800' : 'bg-transparent'
               }`}
             >
-              <Text className={`font-bold text-[10px] ${activeTab === 'create' ? 'text-slate-100' : 'text-slate-400'}`}>
+              <Text className={`font-bold text-[10px] ${(activeTab as string) === 'create' ? 'text-slate-100' : 'text-slate-400'}`}>
                 Create
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab('audit')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center ${
-                activeTab === 'audit' ? 'bg-slate-800' : 'bg-transparent'
+              className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                (activeTab as string) === 'audit' ? 'bg-slate-800' : 'bg-transparent'
               }`}
             >
-              <Text className={`font-bold text-[10px] ${activeTab === 'audit' ? 'text-slate-100' : 'text-slate-400'}`}>
+              <Text className={`font-bold text-[10px] ${(activeTab as string) === 'audit' ? 'text-slate-100' : 'text-slate-400'}`}>
                 Logs
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab('courses')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center ${
-                activeTab === 'courses' ? 'bg-slate-800' : 'bg-transparent'
+              className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                (activeTab as string) === 'courses' ? 'bg-slate-800' : 'bg-transparent'
               }`}
             >
-              <Text className={`font-bold text-[10px] ${activeTab === 'courses' ? 'text-slate-100' : 'text-slate-400'}`}>
+              <Text className={`font-bold text-[10px] ${(activeTab as string) === 'courses' ? 'text-slate-100' : 'text-slate-400'}`}>
                 Courses
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setActiveTab('routines')}
-              className={`flex-1 py-3 rounded-xl items-center justify-center ${
-                activeTab === 'routines' ? 'bg-slate-800' : 'bg-transparent'
+              className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                (activeTab as string) === 'routines' ? 'bg-slate-800' : 'bg-transparent'
               }`}
             >
-              <Text className={`font-bold text-[10px] ${activeTab === 'routines' ? 'text-slate-100' : 'text-slate-400'}`}>
+              <Text className={`font-bold text-[10px] ${(activeTab as string) === 'routines' ? 'text-slate-100' : 'text-slate-400'}`}>
                 Routines
               </Text>
             </TouchableOpacity>
-          </View>
+            <TouchableOpacity
+              onPress={() => setActiveTab('admins')}
+              className={`px-4 py-2.5 rounded-xl items-center justify-center ${
+                (activeTab as string) === 'admins' ? 'bg-slate-800' : 'bg-transparent'
+              }`}
+            >
+              <Text className={`font-bold text-[10px] ${(activeTab as string) === 'admins' ? 'text-slate-100' : 'text-slate-400'}`}>
+                Admins
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       )}
 
@@ -845,6 +868,12 @@ export const AdminPanelScreen: React.FC = () => {
       {activeTab === 'routines' && (
         <View className="flex-1">
           <AdminRoutineTab />
+        </View>
+      )}
+
+      {activeTab === 'admins' && (
+        <View className="flex-1">
+          <SuperuserAdminManagementTab />
         </View>
       )}
 

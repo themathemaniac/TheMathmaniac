@@ -14,6 +14,7 @@ import profileRoutes from './routes/profile';
 import attendanceRoutes from './routes/attendance';
 import superuserRoutes from './routes/superuser';
 import paymentRoutes from './routes/payments';
+import adminAttendanceRoutes from './routes/adminAttendance';
 import { startFirestoreListener } from './services/firestoreListener';
 import { startScheduler } from './services/scheduler';
 
@@ -73,6 +74,7 @@ app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/attendance', attendanceRoutes);
 app.use('/api/v1/superuser', superuserRoutes);
 app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/admin-attendance', adminAttendanceRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

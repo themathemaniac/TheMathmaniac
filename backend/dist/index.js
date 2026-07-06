@@ -51,6 +51,7 @@ const profile_1 = __importDefault(require("./routes/profile"));
 const attendance_1 = __importDefault(require("./routes/attendance"));
 const superuser_1 = __importDefault(require("./routes/superuser"));
 const payments_1 = __importDefault(require("./routes/payments"));
+const adminAttendance_1 = __importDefault(require("./routes/adminAttendance"));
 const firestoreListener_1 = require("./services/firestoreListener");
 const scheduler_1 = require("./services/scheduler");
 const app = (0, express_1.default)();
@@ -104,6 +105,7 @@ app.use('/api/v1/profile', profile_1.default);
 app.use('/api/v1/attendance', attendance_1.default);
 app.use('/api/v1/superuser', superuser_1.default);
 app.use('/api/v1/payments', payments_1.default);
+app.use('/api/v1/admin-attendance', adminAttendance_1.default);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
