@@ -39,6 +39,8 @@ function requireAdmin(req: AuthenticatedRequest, res: Response, next: any) {
 router.get('/shifts/my', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const adminId = req.user!.id;
+    
+    // 1. Fetch actual shifts from DB
     const shifts = await prisma.adminShift.findMany({
       where: { adminId },
       include: {
@@ -47,9 +49,57 @@ router.get('/shifts/my', authenticateJWT, requireAdmin, async (req: Authenticate
       orderBy: { date: 'desc' },
     });
 
+    // 2. Fetch weekly recurring schedule patterns
+    const patterns = await prisma.adminWeeklyPattern.findMany({
+      where: { adminId },
+    });
+
+    // 3. Synthesize upcoming shifts for next 7 days (including today)
+    const dates: { dateStr: string, dayOfWeek: number }[] = [];
+    const now = new Date();
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now.getTime() + (i * 24 * 60 * 60 * 1000));
+      const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' };
+      const formatter = new Intl.DateTimeFormat('en-CA', options);
+      const dateStr = formatter.format(d);
+      
+      const dayOfWeek = new Date(d.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })).getDay();
+      dates.push({ dateStr, dayOfWeek });
+    }
+
+    const existingShiftsByDate = new Map<string, any>();
+    for (const shift of shifts) {
+      existingShiftsByDate.set(shift.date, shift);
+    }
+
+    const resultShifts = [...shifts];
+    for (const item of dates) {
+      if (!existingShiftsByDate.has(item.dateStr)) {
+        const pattern = patterns.find(p => p.dayOfWeek === item.dayOfWeek);
+        if (pattern) {
+          resultShifts.push({
+            id: `recurring-${item.dateStr}-${pattern.id}`,
+            adminId,
+            branch: pattern.branch,
+            date: item.dateStr,
+            startTime: pattern.startTime,
+            endTime: pattern.endTime,
+            type: pattern.type,
+            isRecurring: true,
+            attendances: [],
+            createdAt: pattern.createdAt,
+            updatedAt: pattern.updatedAt,
+          } as any);
+        }
+      }
+    }
+
+    // Sort descending by date
+    resultShifts.sort((a, b) => b.date.localeCompare(a.date));
+
     return res.status(200).json({
       success: true,
-      data: shifts,
+      data: resultShifts,
     });
   } catch (error: any) {
     console.error('[Get Admin Shifts Error]', error);
@@ -61,15 +111,59 @@ router.get('/shifts/my', authenticateJWT, requireAdmin, async (req: Authenticate
 router.post('/shifts/ping', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const adminId = req.user!.id;
-    const { shiftId, latitude, longitude } = req.body;
+    let { shiftId, latitude, longitude } = req.body;
 
     if (!shiftId || latitude === undefined || longitude === undefined) {
       return res.status(400).json({ success: false, error: 'Missing shiftId, latitude, or longitude.' });
     }
 
-    const shift = await prisma.adminShift.findUnique({
-      where: { id: shiftId },
-    });
+    let shift: any = null;
+
+    // Handle dynamic instantiation of recurring pattern shifts
+    if (String(shiftId).startsWith('recurring-')) {
+      const parts = String(shiftId).split('-');
+      // format is recurring-YYYY-MM-DD-patternId
+      if (parts.length < 5) {
+        return res.status(400).json({ success: false, error: 'Invalid recurring shift ID format.' });
+      }
+      const targetDate = `${parts[1]}-${parts[2]}-${parts[3]}`;
+      const patternId = parts.slice(4).join('-');
+
+      // Verify the pattern exists
+      const pattern = await prisma.adminWeeklyPattern.findUnique({
+        where: { id: patternId },
+      });
+
+      if (!pattern || pattern.adminId !== adminId) {
+        return res.status(404).json({ success: false, error: 'Recurring schedule pattern not found.' });
+      }
+
+      // Check if a real shift already exists for this date to prevent duplicates
+      let existingShift = await prisma.adminShift.findFirst({
+        where: { adminId, date: targetDate },
+      });
+
+      if (!existingShift) {
+        // Instantiate the virtual shift into a real DB record
+        existingShift = await prisma.adminShift.create({
+          data: {
+            adminId,
+            branch: pattern.branch,
+            date: targetDate,
+            startTime: pattern.startTime,
+            endTime: pattern.endTime,
+            type: pattern.type,
+          },
+        });
+      }
+
+      shift = existingShift;
+      shiftId = existingShift.id; // Override shiftId with the real created UUID
+    } else {
+      shift = await prisma.adminShift.findUnique({
+        where: { id: shiftId },
+      });
+    }
 
     if (!shift) {
       return res.status(404).json({ success: false, error: 'Shift not found.' });

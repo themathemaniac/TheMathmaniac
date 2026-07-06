@@ -33,6 +33,7 @@ export const AdminAttendanceScreen: React.FC = () => {
   const { user, logout } = useAuthStore();
   const [shifts, setShifts] = useState<ShiftRecord[]>([]);
   const [activeShift, setActiveShift] = useState<ShiftRecord | null>(null);
+  const [weeklyPatterns, setWeeklyPatterns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [locationPermission, setLocationPermission] = useState<boolean | null>(null);
@@ -58,25 +59,31 @@ export const AdminAttendanceScreen: React.FC = () => {
 
   const fetchShifts = async () => {
     try {
-      const res = await apiClient.get('/admin-attendance/shifts/my');
-      if (res.data.success) {
-        const fetchedShifts: ShiftRecord[] = res.data.data;
+      const [shiftsRes, patternsRes] = await Promise.all([
+        apiClient.get('/admin-attendance/shifts/my'),
+        user ? apiClient.get(`/superuser/patterns/${user.id}`) : Promise.resolve({ data: { success: false, data: [] } })
+      ]);
+
+      if (shiftsRes.data.success) {
+        const fetchedShifts: ShiftRecord[] = shiftsRes.data.data;
         setShifts(fetchedShifts);
 
-        if (fetchedShifts.length > 0) {
-          // Identify today's active shift
-          const localDate = new Date();
-          const year = localDate.getFullYear();
-          const month = String(localDate.getMonth() + 1).padStart(2, '0');
-          const day = String(localDate.getDate()).padStart(2, '0');
-          const localDateStr = `${year}-${month}-${day}`;
+        // Identify today's active shift (could be synthesized or override)
+        const localDate = new Date();
+        const year = localDate.getFullYear();
+        const month = String(localDate.getMonth() + 1).padStart(2, '0');
+        const day = String(localDate.getDate()).padStart(2, '0');
+        const localDateStr = `${year}-${month}-${day}`;
 
-          const todaysShift = fetchedShifts.find(s => s.date === localDateStr);
-          setActiveShift(todaysShift || fetchedShifts[0] || null);
-        }
+        const todaysShift = fetchedShifts.find(s => s.date === localDateStr);
+        setActiveShift(todaysShift || null);
+      }
+
+      if (patternsRes.data.success) {
+        setWeeklyPatterns(patternsRes.data.data);
       }
     } catch (e) {
-      console.error('[Fetch Shifts Error]', e);
+      console.error('[Fetch Shifts / Patterns Error]', e);
       Alert.alert('Error', 'Unable to retrieve shift details.');
     } finally {
       setLoading(false);
@@ -263,6 +270,27 @@ export const AdminAttendanceScreen: React.FC = () => {
             <Text className="text-slate-100 text-2xl font-black mt-1">{totalShiftHours.toFixed(1)}h</Text>
           </View>
         </View>
+
+        {/* Weekly Schedule Overview */}
+        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-wider mb-3">My Weekly Schedule</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-6">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dayName, idx) => {
+            const pattern = weeklyPatterns.find(p => p.dayOfWeek === idx);
+            return (
+              <View key={dayName} className={`mr-2.5 p-3 rounded-2xl border min-w-[90px] items-center ${pattern ? 'bg-[#2D8C82]/10 border-[#2D8C82]/30' : 'bg-slate-900/30 border-slate-850'}`}>
+                <Text className={`text-[10px] font-black uppercase ${pattern ? 'text-[#2D8C82]' : 'text-slate-500'}`}>{dayName}</Text>
+                {pattern ? (
+                  <>
+                    <Text className="text-slate-200 text-xs font-black mt-1">{pattern.branch}</Text>
+                    <Text className="text-slate-400 text-[8px] mt-0.5">{pattern.startTime}</Text>
+                  </>
+                ) : (
+                  <Text className="text-slate-600 text-[10px] font-bold mt-2">Holiday</Text>
+                )}
+              </View>
+            );
+          })}
+        </ScrollView>
 
         {/* Active Shift Card */}
         {activeShift ? (

@@ -32,6 +32,7 @@ model User {
   courseTeachers      CourseTeacher[]
   adminShifts         AdminShift[]
   adminAttendances    AdminAttendance[]
+  adminWeeklyPatterns AdminWeeklyPattern[]
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
@@ -380,4 +381,20 @@ model AdminAttendance {
 
   @@index([adminId])
   @@index([shiftId])
+}
+
+model AdminWeeklyPattern {
+  id        String   @id @default(uuid())
+  adminId   String
+  admin     User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  dayOfWeek Int      // 0 (Sunday) to 6 (Saturday)
+  branch    String   // e.g. "Madhyamgram", "Sodepur"
+  startTime String   // "hh:mm AM/PM"
+  endTime   String   // "hh:mm AM/PM"
+  type      String   @default("BRANCH_DUTY") // "BRANCH_DUTY" | "FIELD_PROMOTION"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([adminId, dayOfWeek])
+  @@index([adminId])
 }

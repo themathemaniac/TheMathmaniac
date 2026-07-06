@@ -271,4 +271,92 @@ router.delete('/shifts/:id', authenticateJWT, requireSuperuser, async (req: Auth
   }
 });
 
+// 9. Save / Update Weekly Pattern (Superuser only)
+router.post('/patterns', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { adminId, dayOfWeek, branch, startTime, endTime, type } = req.body;
+    if (adminId === undefined || dayOfWeek === undefined || !branch || !startTime || !endTime) {
+      return res.status(400).json({ success: false, error: 'adminId, dayOfWeek (0-6), branch, startTime, and endTime are required.' });
+    }
+
+    const dayNum = parseInt(dayOfWeek, 10);
+    if (isNaN(dayNum) || dayNum < 0 || dayNum > 6) {
+      return res.status(400).json({ success: false, error: 'dayOfWeek must be an integer between 0 (Sunday) and 6 (Saturday).' });
+    }
+
+    // Verify target user is indeed an admin
+    const targetUser = await prisma.user.findUnique({ where: { id: adminId } });
+    if (!targetUser || targetUser.role !== 'ADMIN') {
+      return res.status(400).json({ success: false, error: 'Target user is not an Admin.' });
+    }
+
+    // Upsert pattern for this admin + dayOfWeek combination
+    const pattern = await prisma.adminWeeklyPattern.upsert({
+      where: {
+        adminId_dayOfWeek: {
+          adminId,
+          dayOfWeek: dayNum
+        }
+      },
+      update: {
+        branch,
+        startTime,
+        endTime,
+        type: type || 'BRANCH_DUTY'
+      },
+      create: {
+        adminId,
+        dayOfWeek: dayNum,
+        branch,
+        startTime,
+        endTime,
+        type: type || 'BRANCH_DUTY'
+      }
+    });
+
+    return res.status(200).json({ success: true, data: pattern });
+  } catch (error: any) {
+    console.error('[Save Pattern Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 10. Get Weekly Pattern for specific admin (Superuser or Admin themselves)
+router.get('/patterns/:adminId', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const adminId = req.params.adminId;
+    
+    // Allow either the superuser OR the admin themselves to request this
+    const isSelf = req.user!.id === adminId;
+    const isSuper = SUPERUSER_PHONES.includes(req.user!.phoneNumber || '');
+    if (!isSelf && !isSuper) {
+      return res.status(403).json({ success: false, error: 'Access Denied: Unauthorized.' });
+    }
+
+    const patterns = await prisma.adminWeeklyPattern.findMany({
+      where: { adminId },
+      orderBy: { dayOfWeek: 'asc' }
+    });
+
+    return res.status(200).json({ success: true, data: patterns });
+  } catch (error: any) {
+    console.error('[Get Patterns Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 11. Delete Weekly Pattern Slot (Superuser only)
+router.delete('/patterns/:id', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const patternId = req.params.id;
+    await prisma.adminWeeklyPattern.delete({
+      where: { id: patternId }
+    });
+    return res.status(200).json({ success: true, message: 'Weekly schedule pattern slot removed successfully.' });
+  } catch (error: any) {
+    console.error('[Delete Pattern Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

@@ -13,6 +13,7 @@ export const SuperuserAdminManagementTab: React.FC = () => {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [showCredsModal, setShowCredsModal] = useState(false);
+  const [showPatternModal, setShowPatternModal] = useState(false);
 
   // Admin form state
   const [adminName, setAdminName] = useState('');
@@ -38,6 +39,29 @@ export const SuperuserAdminManagementTab: React.FC = () => {
     return d;
   });
   const [shiftType, setShiftType] = useState<'BRANCH_DUTY' | 'FIELD_PROMOTION'>('BRANCH_DUTY');
+
+  // Pattern management state
+  const [selectedAdminForPattern, setSelectedAdminForPattern] = useState<any>(null);
+  const [adminPatterns, setAdminPatterns] = useState<any[]>([]);
+  const [loadingPatterns, setLoadingPatterns] = useState(false);
+  const [patternDay, setPatternDay] = useState(0);
+  const [patternBranch, setPatternBranch] = useState('Madhyamgram');
+  const [patternType, setPatternType] = useState<'BRANCH_DUTY' | 'FIELD_PROMOTION'>('BRANCH_DUTY');
+  const [patternStartTime, setPatternStartTime] = useState(() => {
+    const d = new Date();
+    d.setHours(9, 0, 0, 0);
+    return d;
+  });
+  const [patternEndTime, setPatternEndTime] = useState(() => {
+    const d = new Date();
+    d.setHours(17, 0, 0, 0);
+    return d;
+  });
+  const [showPatternBranchDropdown, setShowPatternBranchDropdown] = useState(false);
+  const [showPatternTypeDropdown, setShowPatternTypeDropdown] = useState(false);
+  const [showPatternStartPicker, setShowPatternStartPicker] = useState(false);
+  const [showPatternEndPicker, setShowPatternEndPicker] = useState(false);
+  const [isSubmittingPattern, setIsSubmittingPattern] = useState(false);
   
   // Date/Time pickers visibility states
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -50,6 +74,71 @@ export const SuperuserAdminManagementTab: React.FC = () => {
   const [showAdminDropdown, setShowAdminDropdown] = useState(false);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [showTypeDropdown, setShowTypeDropdown] = useState(false);
+
+  const fetchPatterns = async (adminId: string) => {
+    try {
+      setLoadingPatterns(true);
+      const res = await apiClient.get(`/superuser/patterns/${adminId}`);
+      if (res.data.success) {
+        setAdminPatterns(res.data.data);
+      }
+    } catch (e) {
+      console.error('[Fetch Patterns Error]', e);
+      Alert.alert('Error', 'Unable to retrieve weekly pattern.');
+    } finally {
+      setLoadingPatterns(false);
+    }
+  };
+
+  const handleSavePattern = async () => {
+    if (!selectedAdminForPattern) return;
+
+    const formatTime = (d: Date) => {
+      let hours = d.getHours();
+      const minutes = d.getMinutes();
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+    };
+
+    try {
+      setIsSubmittingPattern(true);
+      const res = await apiClient.post('/superuser/patterns', {
+        adminId: selectedAdminForPattern.id,
+        dayOfWeek: patternDay,
+        branch: patternBranch,
+        startTime: formatTime(patternStartTime),
+        endTime: formatTime(patternEndTime),
+        type: patternType,
+      });
+
+      if (res.data.success) {
+        Alert.alert('Success', 'Weekly pattern slot updated.');
+        fetchPatterns(selectedAdminForPattern.id);
+      }
+    } catch (error: any) {
+      console.error('Save Pattern Error:', error);
+      Alert.alert('Error', error.response?.data?.error || 'Failed to save pattern.');
+    } finally {
+      setIsSubmittingPattern(false);
+    }
+  };
+
+  const handleDeletePattern = async (patternId: string) => {
+    try {
+      const res = await apiClient.delete(`/superuser/patterns/${patternId}`);
+      if (res.data.success) {
+        Alert.alert('Success', 'Weekly slot cleared (marked as Holiday).');
+        if (selectedAdminForPattern) {
+          fetchPatterns(selectedAdminForPattern.id);
+        }
+      }
+    } catch (error: any) {
+      console.error('Delete Pattern Error:', error);
+      Alert.alert('Error', error.response?.data?.error || 'Failed to delete pattern.');
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -261,12 +350,24 @@ export const SuperuserAdminManagementTab: React.FC = () => {
               <Text className="text-slate-400 text-xs mt-0.5">{admin.phoneNumber}</Text>
               {admin.email && <Text className="text-slate-500 text-[10px] mt-0.5">{admin.email}</Text>}
             </View>
-            <TouchableOpacity
-              onPress={() => handleDeleteAdmin(admin)}
-              className="bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl"
-            >
-              <Text className="text-red-400 font-extrabold text-[10px] uppercase">Remove</Text>
-            </TouchableOpacity>
+            <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedAdminForPattern(admin);
+                  fetchPatterns(admin.id);
+                  setShowPatternModal(true);
+                }}
+                className="bg-[#2D8C82]/10 border border-[#2D8C82]/20 px-3 py-2 rounded-xl"
+              >
+                <Text className="text-[#2D8C82] font-black text-[10px] uppercase">Schedule</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleDeleteAdmin(admin)}
+                className="bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl"
+              >
+                <Text className="text-red-400 font-extrabold text-[10px] uppercase">Remove</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         ))
       ) : (
@@ -591,6 +692,216 @@ export const SuperuserAdminManagementTab: React.FC = () => {
                   )}
                 </TouchableOpacity>
               </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* WEEKLY PATTERN MODAL */}
+      <Modal visible={showPatternModal} transparent animationType="slide" onRequestClose={() => setShowPatternModal(false)}>
+        <View className="flex-1 justify-end bg-black/85">
+          <View className="bg-slate-900 border-t border-slate-800 rounded-t-3xl p-5 pb-10 max-h-[90%]">
+            <Text className="text-slate-100 text-base font-black mb-1">
+              Weekly Schedule: {selectedAdminForPattern?.name}
+            </Text>
+            <Text className="text-slate-500 text-[10px] mb-4 uppercase font-bold">
+              Set recurring weekly branches and timings. Unscheduled days default to Holiday/Off.
+            </Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* 7 Days List */}
+              <View className="bg-slate-950 border border-slate-850 rounded-2xl p-3 mb-4">
+                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((dayName, idx) => {
+                  const dayPattern = adminPatterns.find(p => p.dayOfWeek === idx);
+                  const isSelected = patternDay === idx;
+
+                  return (
+                    <TouchableOpacity
+                      key={dayName}
+                      onPress={() => {
+                        setPatternDay(idx);
+                        if (dayPattern) {
+                          setPatternBranch(dayPattern.branch);
+                          setPatternType(dayPattern.type);
+                          // Parse times back into Dates for display in the pickers
+                          const [startH, startM] = dayPattern.startTime.split(':');
+                          const [endH, endM] = dayPattern.endTime.split(':');
+                          const sd = new Date();
+                          const ed = new Date();
+                          sd.setHours(parseInt(startH, 10) + (dayPattern.startTime.includes('PM') && startH !== '12' ? 12 : 0), parseInt(startM, 10), 0);
+                          ed.setHours(parseInt(endH, 10) + (dayPattern.endTime.includes('PM') && endH !== '12' ? 12 : 0), parseInt(endM, 10), 0);
+                          setPatternStartTime(sd);
+                          setPatternEndTime(ed);
+                        } else {
+                          setPatternBranch('Madhyamgram');
+                          setPatternType('BRANCH_DUTY');
+                        }
+                      }}
+                      className={`flex-row justify-between items-center p-3 border-b border-slate-900 rounded-xl mb-1 ${isSelected ? 'bg-slate-900 border border-slate-800' : ''}`}
+                    >
+                      <View className="flex-1">
+                        <View className="flex-row items-center gap-2">
+                          <Text className={`text-xs font-bold ${isSelected ? 'text-[#2D8C82]' : 'text-slate-350'}`}>
+                            {dayName}
+                          </Text>
+                          {dayPattern && (
+                            <View className="bg-[#2D8C82]/10 border border-[#2D8C82]/20 px-1.5 py-0.5 rounded">
+                              <Text className="text-[8px] text-[#2D8C82] font-black uppercase">{dayPattern.type === 'FIELD_PROMOTION' ? 'Outdoor' : 'Branch'}</Text>
+                            </View>
+                          )}
+                        </View>
+                        {dayPattern ? (
+                          <Text className="text-slate-400 text-[10px] mt-0.5 font-semibold">
+                            {dayPattern.branch} | {dayPattern.startTime} - {dayPattern.endTime}
+                          </Text>
+                        ) : (
+                          <Text className="text-slate-650 text-[10px] mt-0.5">Holiday / Off-day</Text>
+                        )}
+                      </View>
+
+                      {dayPattern ? (
+                        <TouchableOpacity
+                          onPress={() => handleDeletePattern(dayPattern.id)}
+                          className="bg-red-500/10 px-2.5 py-1.5 rounded-lg border border-red-500/20"
+                        >
+                          <Text className="text-red-400 text-[9px] font-black uppercase">Clear</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text className="text-[#2D8C82] text-[10px] font-black uppercase">Add</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Slot Editor Form */}
+              <Text className="text-slate-400 text-[10px] font-bold uppercase mb-3">
+                Configure {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][patternDay]}
+              </Text>
+
+              {/* Branch Selector */}
+              <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1">Branch</Text>
+              <TouchableOpacity
+                onPress={() => setShowPatternBranchDropdown(!showPatternBranchDropdown)}
+                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 mb-3 flex-row justify-between items-center"
+              >
+                <Text className="text-slate-300 text-xs">{patternBranch}</Text>
+                <Text className="text-slate-500 text-[10px]">▼</Text>
+              </TouchableOpacity>
+              {showPatternBranchDropdown && (
+                <View className="bg-slate-950 border border-slate-850 rounded-xl mb-3 overflow-hidden">
+                  {['Sodepur', 'Madhyamgram'].map(br => (
+                    <TouchableOpacity
+                      key={br}
+                      onPress={() => {
+                        setPatternBranch(br);
+                        setShowPatternBranchDropdown(false);
+                      }}
+                      className="p-3 border-b border-slate-900"
+                    >
+                      <Text className="text-slate-300 text-xs">{br}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* Shift Type Selector */}
+              <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1">Type</Text>
+              <TouchableOpacity
+                onPress={() => setShowPatternTypeDropdown(!showPatternTypeDropdown)}
+                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 mb-3 flex-row justify-between items-center"
+              >
+                <Text className="text-slate-300 text-xs">
+                  {patternType === 'FIELD_PROMOTION' ? 'Outdoor Promotion Event' : 'Branch In-Office Duty'}
+                </Text>
+                <Text className="text-slate-500 text-[10px]">▼</Text>
+              </TouchableOpacity>
+              {showPatternTypeDropdown && (
+                <View className="bg-slate-950 border border-slate-850 rounded-xl mb-3 overflow-hidden">
+                  <TouchableOpacity
+                    onPress={() => { setPatternType('BRANCH_DUTY'); setShowPatternTypeDropdown(false); }}
+                    className="p-3 border-b border-slate-900"
+                  >
+                    <Text className="text-slate-300 text-xs">Branch In-Office Duty</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => { setPatternType('FIELD_PROMOTION'); setShowPatternTypeDropdown(false); }}
+                    className="p-3"
+                  >
+                    <Text className="text-slate-300 text-xs">Outdoor Promotion Event</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Time Pickers */}
+              <View className="flex-row gap-4 mb-4">
+                <View className="flex-1">
+                  <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1">Start</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowPatternStartPicker(true)}
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 items-center"
+                  >
+                    <Text className="text-slate-300 text-xs">
+                      {patternStartTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </TouchableOpacity>
+                  {showPatternStartPicker && (
+                    <DateTimePicker
+                      value={patternStartTime}
+                      mode="time"
+                      is24Hour={false}
+                      display="default"
+                      onChange={(event, time) => {
+                        setShowPatternStartPicker(false);
+                        if (time) setPatternStartTime(time);
+                      }}
+                    />
+                  )}
+                </View>
+
+                <View className="flex-1">
+                  <Text className="text-slate-500 text-[9px] font-bold uppercase mb-1">End</Text>
+                  <TouchableOpacity
+                    onPress={() => setShowPatternEndPicker(true)}
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 items-center"
+                  >
+                    <Text className="text-slate-300 text-xs">
+                      {patternEndTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  </TouchableOpacity>
+                  {showPatternEndPicker && (
+                    <DateTimePicker
+                      value={patternEndTime}
+                      mode="time"
+                      is24Hour={false}
+                      display="default"
+                      onChange={(event, time) => {
+                        setShowPatternEndPicker(false);
+                        if (time) setPatternEndTime(time);
+                      }}
+                    />
+                  )}
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={handleSavePattern}
+                disabled={isSubmittingPattern}
+                className="bg-[#2D8C82] py-3.5 rounded-xl items-center mb-3 shadow"
+              >
+                {isSubmittingPattern ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-white text-xs font-black uppercase">Save Weekly Slot</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowPatternModal(false)}
+                className="bg-slate-800 py-3.5 rounded-xl items-center"
+              >
+                <Text className="text-slate-400 text-xs font-bold">Close</Text>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
