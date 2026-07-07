@@ -309,24 +309,35 @@ export const AdminCoursesTab: React.FC = () => {
   };
 
   const handleSaveCourse = async () => {
-    if (!selectedSubject) {
-      Alert.alert('Error', 'Please select a Subject.');
-      return;
+    if (!newCourse.isBundle) {
+      if (!selectedSubject) {
+        Alert.alert('Error', 'Please select a Subject.');
+        return;
+      }
+      if (!selectedBatch) {
+        Alert.alert('Error', 'Please select a Batch number.');
+        return;
+      }
+    } else {
+      if (!newCourse.title.trim()) {
+        Alert.alert('Error', 'Please enter a Bundle Name.');
+        return;
+      }
     }
+    
     if (!selectedClass) {
       Alert.alert('Error', 'Please select a Target Class.');
       return;
     }
-    if (!selectedBatch) {
-      Alert.alert('Error', 'Please select a Batch number.');
-      return;
-    }
+    
     if (!newCourse.price) {
       Alert.alert('Error', 'Please enter a Price.');
       return;
     }
     
-    const generatedTitle = `${selectedSubject} ${selectedClass} B${selectedBatch}`;
+    const generatedTitle = newCourse.isBundle 
+      ? newCourse.title 
+      : `${selectedSubject} ${selectedClass} B${selectedBatch}`;
     
     const courseData = {
       ...newCourse,
@@ -513,6 +524,19 @@ export const AdminCoursesTab: React.FC = () => {
                   <View className={`w-4 h-4 rounded-full bg-white transition-all ${newCourse.isBundle ? 'ml-auto' : ''}`} />
                 </TouchableOpacity>
               </View>
+
+              {newCourse.isBundle && (
+                <View className="mb-4">
+                  <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Bundle Name</Text>
+                  <TextInput 
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs" 
+                    placeholder="e.g. Class 12 PCM Complete Bundle" 
+                    placeholderTextColor="#5C5446" 
+                    value={newCourse.title} 
+                    onChangeText={(t) => setNewCourse({...newCourse, title: t})} 
+                  />
+                </View>
+              )}
 
               <View style={{ zIndex: 100 }}>
                 {!newCourse.isBundle && (
