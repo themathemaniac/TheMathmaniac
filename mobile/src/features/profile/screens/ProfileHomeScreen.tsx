@@ -238,6 +238,11 @@ export const ProfileHomeScreen: React.FC = () => {
     setRefreshing(false);
   };
 
+  const regularRecords = attendanceRecords.filter(r => r.status === 'PRESENT' || r.status === 'ABSENT');
+  const presentCount = regularRecords.filter(r => r.status === 'PRESENT').length;
+  const totalCount = regularRecords.length;
+  const presentPercentage = totalCount > 0 ? Math.round((presentCount / totalCount) * 100) : 100;
+
   const handleLogout = () => {
     Alert.alert('Confirm Logout', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
@@ -303,16 +308,16 @@ export const ProfileHomeScreen: React.FC = () => {
                   Programs Unlocked
                 </Text>
                 <Text className="text-slate-100 text-2xl font-black mt-2">
-                  {profileData.stats.purchasedCoursesCount}
+                  {profileData.stats.purchasedCoursesCount ?? 0}
                 </Text>
               </View>
               {/* Box 2 */}
               <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
                 <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">
-                  Videos Completed
+                  Attendance
                 </Text>
                 <Text className="text-slate-100 text-2xl font-black mt-2">
-                  {profileData.stats.completedLecturesCount}
+                  {presentPercentage}%
                 </Text>
               </View>
               {/* Box 3 */}

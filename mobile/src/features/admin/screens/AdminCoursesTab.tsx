@@ -177,7 +177,7 @@ export const AdminCoursesTab: React.FC = () => {
   const [teachers, setTeachers] = useState<any[]>([]);
   const [enrollStudentId, setEnrollStudentId] = useState('');
   const [assignTeacherIds, setAssignTeacherIds] = useState<string[]>([]);
-  const [loadingActions, setLoadingActions] = useState({ assignTeacher: false });
+  const [loadingActions, setLoadingActions] = useState({ assignTeacher: false, enrollStudent: false, removeTeacher: false });
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [expandedCourse, setExpandedCourse] = useState<any | null>(null);
 
@@ -386,10 +386,14 @@ export const AdminCoursesTab: React.FC = () => {
       Alert.alert('Input Error', 'Please enter a Student ID.');
       return;
     }
+    setLoadingActions(prev => ({ ...prev, enrollStudent: true }));
     const success = await adminEnrollStudent(courseId, enrollStudentId.trim());
+    setLoadingActions(prev => ({ ...prev, enrollStudent: false }));
+    
     if (success) {
-      Alert.alert('Success', 'Student enrolled successfully.');
       setEnrollStudentId('');
+      setSelectedCourseId(null);
+      Alert.alert('Success', 'Student enrolled successfully.');
       loadCourses();
     } else {
       const errorMsg = useAuthStore.getState().error || 'Failed to enroll student.';
@@ -425,7 +429,9 @@ export const AdminCoursesTab: React.FC = () => {
         text: 'Remove',
         style: 'destructive',
         onPress: async () => {
+          setLoadingActions(prev => ({ ...prev, removeTeacher: true }));
           const success = await adminRemoveTeacher(courseId, teacherId);
+          setLoadingActions(prev => ({ ...prev, removeTeacher: false }));
           if (success) {
             Alert.alert('Success', 'Teacher removed successfully.');
             loadCourses();
@@ -509,27 +515,29 @@ export const AdminCoursesTab: React.FC = () => {
               </View>
 
               <View style={{ zIndex: 100 }}>
-                <CustomDropdown
-                  label="Subject"
-                  selectedValue={selectedSubject}
-                  options={SUBJECT_OPTIONS}
-                  isOpen={activeDropdown === 'subject'}
-                  onToggle={() => {
-                    setActiveDropdown(activeDropdown === 'subject' ? null : 'subject');
-                  }}
-                  onSelect={(subj) => {
-                    setSelectedSubject(subj);
-                    const matchedCat = categories.find(c => subj.toLowerCase().includes(c.name.toLowerCase()));
-                    if (matchedCat) {
-                      setNewCourse(prev => ({ ...prev, categoryId: matchedCat.id }));
-                    }
-                    const av = getAvailableBatches(subj, selectedClass, editingCourseId);
-                    if (selectedBatch && !av.includes(selectedBatch)) {
-                      setSelectedBatch('');
-                    }
-                  }}
-                  placeholder="Select Subject"
-                />
+                {!newCourse.isBundle && (
+                  <CustomDropdown
+                    label="Subject"
+                    selectedValue={selectedSubject}
+                    options={SUBJECT_OPTIONS}
+                    isOpen={activeDropdown === 'subject'}
+                    onToggle={() => {
+                      setActiveDropdown(activeDropdown === 'subject' ? null : 'subject');
+                    }}
+                    onSelect={(subj) => {
+                      setSelectedSubject(subj);
+                      const matchedCat = categories.find(c => subj.toLowerCase().includes(c.name.toLowerCase()));
+                      if (matchedCat) {
+                        setNewCourse(prev => ({ ...prev, categoryId: matchedCat.id }));
+                      }
+                      const av = getAvailableBatches(subj, selectedClass, editingCourseId);
+                      if (selectedBatch && !av.includes(selectedBatch)) {
+                        setSelectedBatch('');
+                      }
+                    }}
+                    placeholder="Select Subject"
+                  />
+                )}
 
                 <CustomDropdown
                   label="Target Class"
@@ -550,23 +558,25 @@ export const AdminCoursesTab: React.FC = () => {
                   placeholder="Select Class"
                 />
 
-                <CustomDropdown
-                  label="Batch Number"
-                  selectedValue={selectedBatch}
-                  options={getAvailableBatches(selectedSubject, selectedClass, editingCourseId)}
-                  isOpen={activeDropdown === 'batch'}
-                  onToggle={() => {
-                    setActiveDropdown(activeDropdown === 'batch' ? null : 'batch');
-                  }}
-                  onSelect={(batch) => setSelectedBatch(batch)}
-                  placeholder={
-                    !selectedSubject || !selectedClass 
-                      ? "Select Subject & Class first" 
-                      : getAvailableBatches(selectedSubject, selectedClass, editingCourseId).length === 0
-                        ? "All batches (1-4) are already created"
-                        : "Select Batch"
-                  }
-                />
+                {!newCourse.isBundle && (
+                  <CustomDropdown
+                    label="Batch Number"
+                    selectedValue={selectedBatch}
+                    options={getAvailableBatches(selectedSubject, selectedClass, editingCourseId)}
+                    isOpen={activeDropdown === 'batch'}
+                    onToggle={() => {
+                      setActiveDropdown(activeDropdown === 'batch' ? null : 'batch');
+                    }}
+                    onSelect={(batch) => setSelectedBatch(batch)}
+                    placeholder={
+                      !selectedSubject || !selectedClass 
+                        ? "Select Subject & Class first" 
+                        : getAvailableBatches(selectedSubject, selectedClass, editingCourseId).length === 0
+                          ? "All batches (1-4) are already created"
+                          : "Select Batch"
+                    }
+                  />
+                )}
               </View>
 
               {!newCourse.isBundle ? (
@@ -954,9 +964,17 @@ export const AdminCoursesTab: React.FC = () => {
 
                   <TouchableOpacity
                     onPress={() => handleEnroll(course.id)}
-                    className="bg-[#2D8C82] py-3.5 rounded-xl items-center"
+                    disabled={loadingActions.enrollStudent}
+                    className={`py-3.5 rounded-xl items-center flex-row justify-center ${loadingActions.enrollStudent ? 'bg-[#2D8C82]/50' : 'bg-[#2D8C82]'}`}
                   >
-                    <Text className="text-white text-xs font-bold uppercase tracking-wider">Enroll Selected Student</Text>
+                    {loadingActions.enrollStudent ? (
+                      <>
+                        <ActivityIndicator size="small" color="#ffffff" className="mr-2" />
+                        <Text className="text-white text-xs font-bold uppercase tracking-wider">Enrolling...</Text>
+                      </>
+                    ) : (
+                      <Text className="text-white text-xs font-bold uppercase tracking-wider">Enroll Selected Student</Text>
+                    )}
                   </TouchableOpacity>
                 </View>
 
@@ -997,9 +1015,17 @@ export const AdminCoursesTab: React.FC = () => {
 
                     <TouchableOpacity
                       onPress={() => handleAssignTeacher(course.id)}
-                      className="bg-purple-600 py-3.5 rounded-xl items-center"
+                      disabled={loadingActions.assignTeacher}
+                      className={`py-3.5 rounded-xl items-center flex-row justify-center ${loadingActions.assignTeacher ? 'bg-purple-600/50' : 'bg-purple-600'}`}
                     >
-                      <Text className="text-white text-xs font-bold uppercase tracking-wider">Assign Selected Teachers</Text>
+                      {loadingActions.assignTeacher ? (
+                        <>
+                          <ActivityIndicator size="small" color="#ffffff" className="mr-2" />
+                          <Text className="text-white text-xs font-bold uppercase tracking-wider">Assigning...</Text>
+                        </>
+                      ) : (
+                        <Text className="text-white text-xs font-bold uppercase tracking-wider">Assign Selected Teachers</Text>
+                      )}
                     </TouchableOpacity>
                   </View>
                 )}

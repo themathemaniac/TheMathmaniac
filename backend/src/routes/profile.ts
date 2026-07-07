@@ -38,7 +38,7 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
 
     // Performance numbers
     let stats = {};
-    if (user.role === 'TEACHER' || user.role === 'ADMIN') {
+    if (user.role === 'ADMIN' || user.role === 'SUPERUSER') {
       const totalStudents = await prisma.user.count({
         where: { role: 'STUDENT' },
       });
@@ -57,6 +57,47 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       const batchesManaged = await prisma.courseTeacher.count({
         where: { userId }
       });
+
+      stats = {
+        totalStudents,
+        totalCourses,
+        totalTests,
+        totalMaterials,
+        teachingHours: Math.round(teachingHoursSum * 10) / 10,
+        batchesManaged,
+      };
+    } else if (user.role === 'TEACHER') {
+      const courseTeachers = await prisma.courseTeacher.findMany({
+        where: { userId },
+        select: { courseId: true }
+      });
+      const assignedCourseIds = courseTeachers.map(ct => ct.courseId);
+
+      const totalCourses = assignedCourseIds.length;
+      const batchesManaged = totalCourses;
+
+      const purchases = await prisma.purchase.findMany({
+        where: {
+          courseId: { in: assignedCourseIds },
+          status: 'SUCCESS'
+        },
+        select: { userId: true }
+      });
+      const uniqueStudentIds = new Set(purchases.map(p => p.userId));
+      const totalStudents = uniqueStudentIds.size;
+
+      const totalTests = await prisma.test.count({
+        where: { courseId: { in: assignedCourseIds } }
+      });
+      const totalMaterials = await prisma.studyMaterial.count({
+        where: { courseId: { in: assignedCourseIds } }
+      });
+
+      const teacherAttendance = await prisma.teacherAttendance.findMany({
+        where: { userId },
+        select: { teachingHours: true }
+      });
+      const teachingHoursSum = teacherAttendance.reduce((acc, row) => acc + (row.teachingHours || 0), 0);
 
       stats = {
         totalStudents,
