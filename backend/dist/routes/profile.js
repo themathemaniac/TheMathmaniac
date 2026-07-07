@@ -357,4 +357,26 @@ router.get('/calendar', auth_1.authenticateJWT, async (req, res) => {
         return res.status(500).json({ success: false, error: error.message });
     }
 });
+// 7. Register / Update Expo Push Token
+router.post('/push-token', auth_1.authenticateJWT, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { pushToken } = req.body;
+        if (!pushToken) {
+            return res.status(400).json({ success: false, error: 'Push token is required.' });
+        }
+        await db_1.default.user.update({
+            where: { id: userId },
+            data: { pushToken: pushToken.trim() },
+        });
+        return res.status(200).json({
+            success: true,
+            message: 'Push token registered successfully.',
+        });
+    }
+    catch (error) {
+        console.error('[Register Push Token Error]', error);
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
 exports.default = router;

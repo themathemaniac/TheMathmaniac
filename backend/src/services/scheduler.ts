@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { generateDailyReport } from './reportBuilder';
 import prisma from '../config/db';
+import { createNotificationAndPush } from '../utils/notifications';
 
 export function startScheduler() {
   console.log('[Scheduler Service] Initializing daily and monthly cron schedulers...');
@@ -50,13 +51,11 @@ export function startScheduler() {
 
           if (!successPayment) {
             // Send warning notification
-            await prisma.notification.create({
-              data: {
-                userId: student.id,
-                title: 'Fee Payment Due Warning ⚠️',
-                body: `Please pay your monthly tuition fee for "${purchase.course.title}" within the 10th of this month to avoid a late fine of ₹50 per week.`
-              }
-            });
+            await createNotificationAndPush(
+              student.id,
+              'Fee Payment Due Warning ⚠️',
+              `Please pay your monthly tuition fee for "${purchase.course.title}" within the 10th of this month to avoid a late fine of ₹50 per week.`
+            );
             console.log(`[Scheduler] Sent due warning to user ${student.name} for course ${purchase.course.title}`);
           }
         }
@@ -103,13 +102,11 @@ export function startScheduler() {
             });
 
             if (!alreadyNotified) {
-              await prisma.notification.create({
-                data: {
-                  userId: schedule.userId,
-                  title: 'Check-in Reminder 📍',
-                  body: `Your class "${schedule.title}" started ${diffStart} minutes ago. Please make sure to check in (start location tracking) and log student attendance.`
-                }
-              });
+              await createNotificationAndPush(
+                schedule.userId,
+                'Check-in Reminder 📍',
+                `Your class "${schedule.title}" started ${diffStart} minutes ago. Please make sure to check in (start location tracking) and log student attendance.`
+              );
               console.log(`[Scheduler] Sent check-in reminder to teacher ${schedule.userId} for schedule ${schedule.id}`);
             }
           }
@@ -133,13 +130,11 @@ export function startScheduler() {
             });
 
             if (!alreadyNotifiedCheckout) {
-              await prisma.notification.create({
-                data: {
-                  userId: schedule.userId,
-                  title: 'Checkout Reminder 📍',
-                  body: `Your class "${schedule.title}" ended ${diffEnd} minutes ago. Please end your session tracking to log out your attendance.`
-                }
-              });
+              await createNotificationAndPush(
+                schedule.userId,
+                'Checkout Reminder 📍',
+                `Your class "${schedule.title}" ended ${diffEnd} minutes ago. Please end your session tracking to log out your attendance.`
+              );
               console.log(`[Scheduler] Sent checkout reminder to teacher ${schedule.userId} for schedule ${schedule.id}`);
             }
           }

@@ -12,6 +12,7 @@ model User {
   name                String
   email               String?              @unique
   phoneNumber         String?
+  pushToken           String?
   googleId            String?
   firstLogin          Boolean              @default(true)
   role                String               @default("STUDENT")

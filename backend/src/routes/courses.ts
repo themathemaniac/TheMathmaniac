@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import prisma from '../config/db';
 import * as jwt from 'jsonwebtoken';
 import { AuthenticatedRequest, authenticateJWT } from '../middleware/auth';
+import { createNotificationAndPush } from '../utils/notifications';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'mathemaniac_secret_key';
@@ -352,6 +353,20 @@ router.post('/:id/announcements', authenticateJWT, async (req: AuthenticatedRequ
         authorName
       }
     });
+
+    // Notify all students enrolled in the course via push notifications
+    const purchases = await prisma.purchase.findMany({
+      where: { courseId: id, status: 'SUCCESS' },
+      select: { userId: true },
+    });
+
+    for (const purchase of purchases) {
+      createNotificationAndPush(
+        purchase.userId,
+        `New Announcement: ${title} 📢`,
+        content
+      ).catch((e) => console.error('[Announcement Push Error]', e));
+    }
 
     return res.status(201).json({ success: true, data: announcement });
   } catch (error: any) {

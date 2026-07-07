@@ -5,6 +5,7 @@ import prisma from '../config/db';
 import { db, isFirebaseEnabled } from '../config/firebase';
 import { authenticateJWT, AuthenticatedRequest } from '../middleware/auth';
 import { syncUserToFirestore, findUserByPhoneInFirestore } from './auth';
+import { createNotificationAndPush } from '../utils/notifications';
 
 const router = Router();
 
@@ -87,14 +88,12 @@ router.post('/users', authenticateJWT, requireAdmin, async (req: AuthenticatedRe
       }
     });
 
-    // Create a Welcome Notification for students
-    await prisma.notification.create({
-      data: {
-        userId: user.id,
-        title: 'Welcome to Mathemaniac!',
-        body: 'Your account has been created by the administrator. Please change your password on first login.',
-      },
-    });
+    // Create a Welcome Notification and push alert for students
+    await createNotificationAndPush(
+      user.id,
+      'Welcome to Mathemaniac!',
+      'Your account has been created by the administrator. Please change your password on first login.'
+    );
 
     // Write to AuditLog
     await prisma.auditLog.create({

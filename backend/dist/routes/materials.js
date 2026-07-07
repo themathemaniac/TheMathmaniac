@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const db_1 = __importDefault(require("../config/db"));
 const auth_1 = require("../middleware/auth");
+const notifications_1 = require("../utils/notifications");
 const multer_1 = __importDefault(require("multer"));
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
@@ -118,6 +119,14 @@ router.post('/', auth_1.authenticateJWT, upload.single('file'), async (req, res)
                 fileUrl,
             },
         });
+        // Notify all students who purchased the course
+        const purchases = await db_1.default.purchase.findMany({
+            where: { courseId, status: 'SUCCESS' },
+            select: { userId: true },
+        });
+        for (const purchase of purchases) {
+            (0, notifications_1.createNotificationAndPush)(purchase.userId, `New Study Material: ${course.title} 📚`, `New study material "${title}" (${type}) has been uploaded.`).catch((e) => console.error('[Material Notif Error]', e));
+        }
         return res.status(201).json({ success: true, data: material });
     }
     catch (error) {

@@ -40,6 +40,7 @@ const express_1 = require("express");
 const db_1 = __importDefault(require("../config/db"));
 const jwt = __importStar(require("jsonwebtoken"));
 const auth_1 = require("../middleware/auth");
+const notifications_1 = require("../utils/notifications");
 const router = (0, express_1.Router)();
 const JWT_SECRET = process.env.JWT_SECRET || 'mathemaniac_secret_key';
 // Helper to check token optionally and return full user info
@@ -350,6 +351,14 @@ router.post('/:id/announcements', auth_1.authenticateJWT, async (req, res) => {
                 authorName
             }
         });
+        // Notify all students enrolled in the course via push notifications
+        const purchases = await db_1.default.purchase.findMany({
+            where: { courseId: id, status: 'SUCCESS' },
+            select: { userId: true },
+        });
+        for (const purchase of purchases) {
+            (0, notifications_1.createNotificationAndPush)(purchase.userId, `New Announcement: ${title} 📢`, content).catch((e) => console.error('[Announcement Push Error]', e));
+        }
         return res.status(201).json({ success: true, data: announcement });
     }
     catch (error) {

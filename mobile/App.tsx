@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { VersionCheckProvider } from './src/core/providers/VersionCheckProvider';
+import { PushNotificationProvider } from './src/core/providers/PushNotificationProvider';
 
 // Configure TanStack Query Client
 const queryClient = new QueryClient({
@@ -20,8 +21,10 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <VersionCheckProvider>
-          <StatusBar style="light" />
-          <AppNavigator />
+          <PushNotificationProvider>
+            <StatusBar style="light" />
+            <AppNavigator />
+          </PushNotificationProvider>
         </VersionCheckProvider>
       </SafeAreaProvider>
     </QueryClientProvider>

@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../config/db';
 import { authenticateJWT, AuthenticatedRequest } from '../middleware/auth';
+import { createNotificationAndPush } from '../utils/notifications';
 
 const router = Router();
 
@@ -83,13 +84,11 @@ router.post('/admin/register', authenticateJWT, async (req: AuthenticatedRequest
         ? `A payment of ${formattedTotalAmount} (including Late Fee of ₹${fineAmount}) for ${course?.title || 'Monthly Fee'} (${month}) has been successfully logged by the administrator.`
         : `A payment of ${formattedTotalAmount} for ${course?.title || 'Monthly Fee'} (${month}) has been successfully logged by the administrator.`;
 
-    await prisma.notification.create({
-      data: {
-        userId: studentId,
-        title: 'Fee Payment Registered 🧾',
-        body: bodyText,
-      },
-    });
+    await createNotificationAndPush(
+      studentId,
+      'Fee Payment Registered 🧾',
+      bodyText
+    );
 
     return res.status(200).json({ success: true, data: fee });
   } catch (error: any) {

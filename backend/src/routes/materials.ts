@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../config/db';
 import { authenticateJWT, AuthenticatedRequest } from '../middleware/auth';
+import { createNotificationAndPush } from '../utils/notifications';
 import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
@@ -128,6 +129,20 @@ router.post('/', authenticateJWT, upload.single('file'), async (req: Authenticat
         fileUrl,
       },
     });
+
+    // Notify all students who purchased the course
+    const purchases = await prisma.purchase.findMany({
+      where: { courseId, status: 'SUCCESS' },
+      select: { userId: true },
+    });
+
+    for (const purchase of purchases) {
+      createNotificationAndPush(
+        purchase.userId,
+        `New Study Material: ${course.title} 📚`,
+        `New study material "${title}" (${type}) has been uploaded.`
+      ).catch((e) => console.error('[Material Notif Error]', e));
+    }
 
     return res.status(201).json({ success: true, data: material });
   } catch (error: any) {

@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const db_1 = __importDefault(require("../config/db"));
 const auth_1 = require("../middleware/auth");
+const notifications_1 = require("../utils/notifications");
 const router = (0, express_1.Router)();
 const SUPERUSER_PHONES = ['+917980357754', '+919831754957'];
 // 1. Manually log/register student payments (Admin/Superuser only)
@@ -75,13 +76,7 @@ router.post('/admin/register', auth_1.authenticateJWT, async (req, res) => {
             : fineAmount > 0
                 ? `A payment of ${formattedTotalAmount} (including Late Fee of ₹${fineAmount}) for ${course?.title || 'Monthly Fee'} (${month}) has been successfully logged by the administrator.`
                 : `A payment of ${formattedTotalAmount} for ${course?.title || 'Monthly Fee'} (${month}) has been successfully logged by the administrator.`;
-        await db_1.default.notification.create({
-            data: {
-                userId: studentId,
-                title: 'Fee Payment Registered 🧾',
-                body: bodyText,
-            },
-        });
+        await (0, notifications_1.createNotificationAndPush)(studentId, 'Fee Payment Registered 🧾', bodyText);
         return res.status(200).json({ success: true, data: fee });
     }
     catch (error) {
