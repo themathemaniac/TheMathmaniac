@@ -359,29 +359,29 @@ export const SuperuserAdminManagementTab: React.FC = () => {
   return (
     <ScrollView className="flex-1 px-4 mt-4">
       {/* Admin Actions */}
-      <View className="flex-row justify-between mb-6">
-        {isSuperuser && (
+      {isSuperuser && (
+        <View className="flex-row justify-between mb-6">
           <TouchableOpacity
             onPress={() => setShowAdminModal(true)}
             className="flex-1 bg-[#2D8C82] border border-[#237068] py-3.5 rounded-2xl items-center mr-2 shadow-md"
           >
             <Text className="text-white text-xs font-black uppercase">Create Admin</Text>
           </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          onPress={() => {
-            if (admins.length === 0) {
-              Alert.alert('No Admins Found', 'Create at least one branch admin first.');
-              return;
-            }
-            setSelectedAdminId(admins[0]?.id || '');
-            setShowShiftModal(true);
-          }}
-          className={`bg-blue-600 border border-blue-700 py-3.5 rounded-2xl items-center shadow-md ${isSuperuser ? 'flex-1 ml-2' : 'w-full'}`}
-        >
-          <Text className="text-white text-xs font-black uppercase">Assign Shift</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            onPress={() => {
+              if (admins.length === 0) {
+                Alert.alert('No Admins Found', 'Create at least one branch admin first.');
+                return;
+              }
+              setSelectedAdminId(admins[0]?.id || '');
+              setShowShiftModal(true);
+            }}
+            className="flex-1 bg-blue-600 border border-blue-700 py-3.5 rounded-2xl items-center ml-2 shadow-md"
+          >
+            <Text className="text-white text-xs font-black uppercase">Assign Shift</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Swap Requests Panel */}
       {swapRequests.some(r => r.status === 'PENDING') && (
@@ -454,43 +454,47 @@ export const SuperuserAdminManagementTab: React.FC = () => {
       )}
 
       {/* Shifts Planner Board */}
-      <Text className="text-slate-500 text-[10px] font-black uppercase tracking-wider mt-6 mb-3">Shifts Logs & Schedule</Text>
-      {shifts.length > 0 ? (
-        shifts.map(shift => {
-          const attendance = shift.attendances[0];
-          return (
-            <View key={shift.id} className="bg-slate-900 border border-slate-850 rounded-2xl p-4 mb-3 shadow">
-              <View className="flex-row justify-between items-center mb-2">
-                <View>
-                  <Text className="text-slate-200 text-sm font-black">{shift.admin?.name || 'Unknown Admin'}</Text>
-                  <Text className="text-slate-400 text-xs font-semibold mt-0.5">{shift.branch} Branch ({shift.date})</Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => handleDeleteShift(shift.id)}
-                  className="bg-red-500/10 border border-red-500/20 px-2 py-1.5 rounded-lg"
-                >
-                  <Text className="text-red-500 text-xs">✕</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View className="flex-row justify-between items-center border-t border-slate-850 pt-2.5 mt-2">
-                <Text className="text-slate-500 text-xs">{shift.startTime} - {shift.endTime}</Text>
-                <View className="flex-row items-center gap-2">
-                  <View className={`px-2 py-0.5 rounded-md ${shift.type === 'FIELD_PROMOTION' ? 'bg-amber-600/10 border border-amber-500/20' : 'bg-blue-600/10 border border-blue-500/20'}`}>
-                    <Text className={`text-[9px] font-bold uppercase ${shift.type === 'FIELD_PROMOTION' ? 'text-amber-400' : 'text-blue-400'}`}>
-                      {shift.type === 'FIELD_PROMOTION' ? 'Outdoor' : 'Branch'}
-                    </Text>
+      {isSuperuser && (
+        <>
+          <Text className="text-slate-500 text-[10px] font-black uppercase tracking-wider mt-6 mb-3">Shifts Logs & Schedule</Text>
+          {shifts.length > 0 ? (
+            shifts.map(shift => {
+              const attendance = shift.attendances[0];
+              return (
+                <View key={shift.id} className="bg-slate-900 border border-slate-850 rounded-2xl p-4 mb-3 shadow">
+                  <View className="flex-row justify-between items-center mb-2">
+                    <View>
+                      <Text className="text-slate-200 text-sm font-black">{shift.admin?.name || 'Unknown Admin'}</Text>
+                      <Text className="text-slate-400 text-xs font-semibold mt-0.5">{shift.branch} Branch ({shift.date})</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteShift(shift.id)}
+                      className="bg-red-500/10 border border-red-500/20 px-2 py-1.5 rounded-lg"
+                    >
+                      <Text className="text-red-500 text-xs">✕</Text>
+                    </TouchableOpacity>
                   </View>
-                  <Text className={`text-xs font-black ${attendance ? (attendance.logoutTime ? 'text-slate-500' : 'text-emerald-400') : 'text-red-400'}`}>
-                    {attendance ? (attendance.logoutTime ? `Finished (${attendance.workingHours}h)` : 'Working') : 'Unchecked'}
-                  </Text>
+
+                  <View className="flex-row justify-between items-center border-t border-slate-850 pt-2.5 mt-2">
+                    <Text className="text-slate-500 text-xs">{shift.startTime} - {shift.endTime}</Text>
+                    <View className="flex-row items-center gap-2">
+                      <View className={`px-2 py-0.5 rounded-md ${shift.type === 'FIELD_PROMOTION' ? 'bg-amber-600/10 border border-amber-500/20' : 'bg-blue-600/10 border border-blue-500/20'}`}>
+                        <Text className={`text-[9px] font-bold uppercase ${shift.type === 'FIELD_PROMOTION' ? 'text-amber-400' : 'text-blue-400'}`}>
+                          {shift.type === 'FIELD_PROMOTION' ? 'Outdoor' : 'Branch'}
+                        </Text>
+                      </View>
+                      <Text className={`text-xs font-black ${attendance ? (attendance.logoutTime ? 'text-slate-500' : 'text-emerald-400') : 'text-red-400'}`}>
+                        {attendance ? (attendance.logoutTime ? `Finished (${attendance.workingHours}h)` : 'Working') : 'Unchecked'}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
-              </View>
-            </View>
-          );
-        })
-      ) : (
-        <Text className="text-slate-600 text-xs py-4 text-center mb-10">No shifts scheduled.</Text>
+              );
+            })
+          ) : (
+            <Text className="text-slate-600 text-xs py-4 text-center mb-10">No shifts scheduled.</Text>
+          )}
+        </>
       )}
 
       {/* CREATE ADMIN MODAL */}
