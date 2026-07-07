@@ -61,8 +61,11 @@ export const AdminPanelScreen: React.FC = () => {
     adminListUsers,
     adminListAuditLogs,
     logout,
-    isLoading
+    isLoading,
+    user
   } = useAuthStore();
+
+  const isSuperuser = user?.phoneNumber && ['+917980357754', '+919831754957'].includes(user.phoneNumber);
 
   const [activeTab, setActiveTab] = useState<'directory' | 'create' | 'audit' | 'courses' | 'routines' | 'admins'>('directory');
 
@@ -384,7 +387,7 @@ export const AdminPanelScreen: React.FC = () => {
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={() => navigation.navigate('TeacherAttendanceTracking')}
+                onPress={() => navigation.navigate('AdminAttendance' as any)}
                 className="bg-[#2D8C82] border border-[#3CA79B] px-4 py-2.5 rounded-2xl active:opacity-90 shadow-md shadow-teal-500/10"
               >
                 <Text className="text-white text-xs font-extrabold uppercase tracking-wider">Start Tracking</Text>
@@ -445,16 +448,18 @@ export const AdminPanelScreen: React.FC = () => {
                   Routines
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setActiveTab('admins')}
-                className={`px-4 py-2.5 rounded-xl items-center justify-center ${
-                  (activeTab as string) === 'admins' ? 'bg-slate-800' : 'bg-transparent'
-                }`}
-              >
-                <Text className={`font-bold text-[10px] ${(activeTab as string) === 'admins' ? 'text-slate-100' : 'text-slate-400'}`}>
-                  Admins
-                </Text>
-              </TouchableOpacity>
+              {isSuperuser && (
+                <TouchableOpacity
+                  onPress={() => setActiveTab('admins')}
+                  className={`px-4 py-2.5 rounded-xl items-center justify-center ${
+                    (activeTab as string) === 'admins' ? 'bg-slate-800' : 'bg-transparent'
+                  }`}
+                >
+                  <Text className={`font-bold text-[10px] ${(activeTab as string) === 'admins' ? 'text-slate-100' : 'text-slate-400'}`}>
+                    Admins
+                  </Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
           </View>
 

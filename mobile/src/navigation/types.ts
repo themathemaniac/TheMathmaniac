@@ -30,4 +30,5 @@ export type RootStackParamList = {
   SuperuserReports: undefined;
   TeacherCourseDetails: { courseId: string; courseTitle: string; };
   TeacherPayments: undefined;
+  AdminAttendance: undefined;
 };

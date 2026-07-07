@@ -153,12 +153,7 @@ function TeacherTabNavigator() {
 function AppTabsWrapper() {
   const { user } = useAuthStore();
   if (user?.role === 'ADMIN') {
-    const isSuperuser = user?.phoneNumber && ['+917980357754', '+919831754957'].includes(user.phoneNumber);
-    if (isSuperuser) {
-      return <AdminPanelScreen />;
-    } else {
-      return <AdminAttendanceScreen />;
-    }
+    return <AdminPanelScreen />;
   }
   if (user?.role === 'TEACHER') {
     return <TeacherTabNavigator />;
@@ -198,6 +193,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="TeacherCourseDetails" component={TeacherCourseDetailsScreen} />
         <Stack.Screen name="TeacherPayments" component={TeacherPaymentsScreen} />
         <Stack.Screen name="FeePayment" component={FeePaymentScreen} />
+        <Stack.Screen name="AdminAttendance" component={AdminAttendanceScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
