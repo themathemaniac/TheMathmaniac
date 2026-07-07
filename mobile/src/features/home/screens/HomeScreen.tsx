@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, Image, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, FlatList, RefreshControl, Image, TouchableOpacity, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../../core/store/auth';
 import { apiClient } from '../../../core/api/client';
@@ -57,35 +57,37 @@ export const HomeScreen: React.FC = () => {
       const announcements = announceRes.data.data;
       const tests = testsRes.data.data;
 
-      // Extract resume lecture from purchased courses progress
-      let resumeLecture = null;
-      const purchasedCourse = courses.find(
-        (c: any) => c.isPurchased
-      );
-
-      if (purchasedCourse) {
-        const detailRes = await apiClient.get(`/courses/${purchasedCourse.id}`);
-        const outline = detailRes.data.data.lectures;
-        const incomplete = outline.find((l: any) => !l.completed);
-        if (incomplete) {
-          resumeLecture = {
-            ...incomplete,
-            courseTitle: purchasedCourse.title,
-          };
-        }
-      }
-
       setDashboardData({
         courses,
         announcements,
         tests,
         stats,
-        resumeLecture,
+        resumeLecture: null,
         feeStatus,
       });
+      
+      // Stop loading spinner immediately after primary data is fetched
+      setLoading(false);
+
+      // Asynchronously fetch resume lecture without blocking UI
+      const purchasedCourse = courses.find((c: any) => c.isPurchased);
+      if (purchasedCourse) {
+        apiClient.get(`/courses/${purchasedCourse.id}`).then((detailRes) => {
+          const outline = detailRes.data.data.lectures;
+          const incomplete = outline.find((l: any) => !l.completed);
+          if (incomplete) {
+            setDashboardData(prev => ({
+              ...prev,
+              resumeLecture: {
+                ...incomplete,
+                courseTitle: purchasedCourse.title,
+              }
+            }));
+          }
+        }).catch(e => console.log('Error pulling resume lecture:', e));
+      }
     } catch (e) {
       console.log('Error pulling dashboard data:', e);
-    } finally {
       setLoading(false);
     }
   };
@@ -208,10 +210,14 @@ export const HomeScreen: React.FC = () => {
               </View>
 
               {dashboardData.courses.filter(c => c.isPurchased).length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-1">
-                  {dashboardData.courses.filter(c => c.isPurchased).map((course) => (
+                <FlatList
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="py-1"
+                  data={dashboardData.courses.filter(c => c.isPurchased)}
+                  keyExtractor={course => course.id}
+                  renderItem={({ item: course }) => (
                     <CourseCard
-                      key={course.id}
                       id={course.id}
                       title={course.title}
                       category={course.targetClass && course.category?.name ? `${course.category.name} • Class ${course.targetClass}` : (course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program')}
@@ -222,8 +228,11 @@ export const HomeScreen: React.FC = () => {
                       teacherName={course.teachers && course.teachers.length > 0 ? course.teachers.map((t: any) => t.user?.name).filter(Boolean).join(', ') : course.instructorName}
                       onPress={() => navigation.navigate('CourseDetails', { courseId: course.id })}
                     />
-                  ))}
-                </ScrollView>
+                  )}
+                  initialNumToRender={3}
+                  maxToRenderPerBatch={3}
+                  windowSize={5}
+                />
               ) : (
                 <View className="bg-slate-900 border border-slate-800 rounded-2xl p-6 items-center justify-center">
                   <Text className="text-3xl mb-2">📚</Text>
@@ -247,10 +256,14 @@ export const HomeScreen: React.FC = () => {
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-1">
-                  {dashboardData.courses.map((course) => (
+                <FlatList
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  className="py-1"
+                  data={dashboardData.courses}
+                  keyExtractor={course => course.id}
+                  renderItem={({ item: course }) => (
                     <CourseCard
-                      key={course.id}
                       id={course.id}
                       title={course.title}
                       category={course.targetClass && course.category?.name ? `${course.category.name} • Class ${course.targetClass}` : (course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program')}
@@ -261,8 +274,11 @@ export const HomeScreen: React.FC = () => {
                       teacherName={course.teachers && course.teachers.length > 0 ? course.teachers.map((t: any) => t.user?.name).filter(Boolean).join(', ') : course.instructorName}
                       onPress={() => navigation.navigate('CourseDetails', { courseId: course.id })}
                     />
-                  ))}
-                </ScrollView>
+                  )}
+                  initialNumToRender={3}
+                  maxToRenderPerBatch={3}
+                  windowSize={5}
+                />
               </View>
             )}
 

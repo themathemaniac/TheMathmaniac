@@ -18,6 +18,8 @@ import adminAttendanceRoutes from './routes/adminAttendance';
 import { startFirestoreListener } from './services/firestoreListener';
 import { startScheduler } from './services/scheduler';
 
+import compression from 'compression';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -28,6 +30,7 @@ startFirestoreListener();
 startScheduler();
 
 // Middleware configurations
+app.use(compression());
 app.use(cors());
 app.use(express.json());
 app.use((req, res, next) => {

@@ -6,6 +6,10 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { VersionCheckProvider } from './src/core/providers/VersionCheckProvider';
 import { PushNotificationProvider } from './src/core/providers/PushNotificationProvider';
 
+import { enableScreens } from 'react-native-screens';
+
+enableScreens(true);
+
 // Configure TanStack Query Client
 const queryClient = new QueryClient({
   defaultOptions: {
