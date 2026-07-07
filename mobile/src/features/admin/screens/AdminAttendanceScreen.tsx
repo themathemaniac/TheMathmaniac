@@ -44,6 +44,10 @@ export const AdminAttendanceScreen: React.FC = () => {
   const [distance, setDistance] = useState<number | null>(null);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
 
+  // Branch Swap states
+  const [swapRequest, setSwapRequest] = useState<{ id: string, status: string, requestedBranch: string } | null>(null);
+  const [isSwapping, setIsSwapping] = useState(false);
+
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3; // meters
     const phi1 = lat1 * Math.PI / 180;
@@ -56,6 +60,26 @@ export const AdminAttendanceScreen: React.FC = () => {
               Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c; // in meters
+  };
+
+  const checkInitialLocation = async (targetBranch: string) => {
+    try {
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+      setCurrentCoords(coords);
+
+      const branchCoords = CAMPUSES[targetBranch];
+      if (branchCoords) {
+        const dist = calculateDistance(coords.latitude, coords.longitude, branchCoords.lat, branchCoords.lon);
+        setDistance(dist);
+      }
+    } catch (e) {
+      console.log('[Initial location fetch skipped/failed]', e);
+    }
   };
 
   const fetchShifts = async () => {
@@ -78,6 +102,19 @@ export const AdminAttendanceScreen: React.FC = () => {
 
         const todaysShift = fetchedShifts.find(s => s.date === localDateStr);
         setActiveShift(todaysShift || null);
+
+        if (todaysShift) {
+          // Fetch active branch swap request for today
+          apiClient.get(`/admin-attendance/shifts/my-swap-request?date=${localDateStr}`)
+            .then(res => {
+              if (res.data.success) {
+                setSwapRequest(res.data.data || null);
+              }
+            })
+            .catch(err => console.log('Error fetching swap request:', err));
+
+          checkInitialLocation(todaysShift.branch);
+        }
       }
 
       if (patternsRes.data.success) {
@@ -219,6 +256,78 @@ export const AdminAttendanceScreen: React.FC = () => {
     );
   };
 
+  const handleRequestSwap = async (altBranch: string) => {
+    if (!activeShift) return;
+    try {
+      setIsSwapping(true);
+      const res = await apiClient.post('/admin-attendance/shifts/request-swap', {
+        date: activeShift.date,
+        requestedBranch: altBranch,
+      });
+      if (res.data.success) {
+        Alert.alert('Success', `Requested branch swap to ${altBranch} successfully sent to owner.`);
+        setSwapRequest(res.data.data);
+      }
+    } catch (e: any) {
+      console.log('[Request Swap Error]', e);
+      Alert.alert('Error', e.response?.data?.error || 'Unable to request branch swap.');
+    } finally {
+      setIsSwapping(false);
+    }
+  };
+
+  const toggleShiftType = async () => {
+    if (!activeShift) return;
+    const newType = activeShift.type === 'FIELD_PROMOTION' ? 'BRANCH_DUTY' : 'FIELD_PROMOTION';
+    const message = newType === 'FIELD_PROMOTION'
+      ? 'Are you leaving the campus for promotional/field work? Geofencing checks will be temporarily suspended.'
+      : 'Are you returning to the campus? Geofencing checks will be reactivated.';
+
+    Alert.alert(
+      newType === 'FIELD_PROMOTION' ? 'Switch to Outdoor Event' : 'Return to Campus',
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            try {
+              setIsCheckingIn(true);
+              const res = await apiClient.post('/admin-attendance/shifts/update-type', {
+                shiftId: activeShift.id,
+                type: newType,
+                description: newType === 'FIELD_PROMOTION' ? 'Outdoor promo event' : 'Returned to campus'
+              });
+
+              if (res.data.success) {
+                Alert.alert('Success', `Shift status updated to ${newType === 'FIELD_PROMOTION' ? 'Outdoor Event' : 'Branch Duty'}.`);
+                fetchShifts();
+              }
+            } catch (e: any) {
+              console.log('[Toggle Shift Type Error]', e);
+              Alert.alert('Error', e.response?.data?.error || 'Unable to update shift status.');
+            } finally {
+              setIsCheckingIn(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const alternateBranch = React.useMemo(() => {
+    const checkedIn = activeShift?.attendances[0] && !activeShift.attendances[0].logoutTime;
+    if (!activeShift || !currentCoords || checkedIn) return null;
+    if (distance === null || distance <= 150) return null;
+
+    return Object.keys(CAMPUSES).find(bName => {
+      if (bName === activeShift.branch) return false;
+      const coords = CAMPUSES[bName];
+      const d = calculateDistance(currentCoords.latitude, currentCoords.longitude, coords.lat, coords.lon);
+      return d <= 150; // within 150m of the other campus
+    });
+  }, [activeShift, currentCoords, distance]);
+
   // Aggregate monthly hours
   const totalShiftHours = React.useMemo(() => {
     return shifts.reduce((total, s) => {
@@ -293,6 +402,34 @@ export const AdminAttendanceScreen: React.FC = () => {
           })}
         </ScrollView>
 
+        {/* Branch Swap Suggestion Alert */}
+        {alternateBranch && !isCheckedIn && (
+          <View className="bg-slate-900 border border-slate-850 rounded-3xl p-5 mb-6 shadow-2xl">
+            <Text className="text-amber-400 text-xs font-bold uppercase tracking-wider mb-2">📍 Wrong Campus Detected</Text>
+            <Text className="text-slate-300 text-xs leading-5 mb-4">
+              You are far from your scheduled campus ({activeShift?.branch}). Are you serving at <Text className="font-extrabold text-slate-100">{alternateBranch}</Text> today instead?
+            </Text>
+            
+            {swapRequest && swapRequest.status === 'PENDING' ? (
+              <View className="bg-amber-600/10 border border-amber-500/20 rounded-2xl p-3.5 items-center">
+                <Text className="text-amber-400 text-xs font-bold">Swap Request to {swapRequest.requestedBranch} is Pending Approval</Text>
+              </View>
+            ) : swapRequest && swapRequest.status === 'REJECTED' ? (
+              <View className="bg-red-500/10 border border-red-500/20 rounded-2xl p-3.5 items-center">
+                <Text className="text-red-400 text-xs font-bold">Swap Request to {swapRequest.requestedBranch} was Rejected</Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => handleRequestSwap(alternateBranch)}
+                disabled={isSwapping}
+                className="bg-amber-600 border border-amber-700 py-3.5 rounded-2xl items-center shadow-lg active:opacity-90"
+              >
+                <Text className="text-white text-xs font-black uppercase tracking-wider">Request Branch Swap for Today</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {/* Active Shift Card */}
         {activeShift ? (
           <View className="bg-slate-900 border border-slate-850 rounded-3xl p-5 mb-6 shadow-2xl">
@@ -321,9 +458,20 @@ export const AdminAttendanceScreen: React.FC = () => {
 
             {isCheckedIn ? (
               <View>
-                <View className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 mb-5 items-center">
+                <View className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 mb-3 items-center">
                   <Text className="text-emerald-400 text-xs font-bold">✓ Checked In Since: {new Date(activeAttendance.loginTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
                 </View>
+
+                {/* Field duty toggle */}
+                <TouchableOpacity
+                  onPress={toggleShiftType}
+                  className="bg-slate-950 border border-slate-850 py-3.5 rounded-2xl items-center mb-4 active:opacity-90 flex-row justify-center gap-2"
+                >
+                  <Text className="text-slate-300 text-xs font-bold uppercase tracking-wider">
+                    {activeShift.type === 'FIELD_PROMOTION' ? '🏢 Switch to Branch Duty' : '📢 Switch to Outdoor Event (Field Duty)'}
+                  </Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity
                   onPress={handleCheckOut}
                   disabled={isCheckingIn}

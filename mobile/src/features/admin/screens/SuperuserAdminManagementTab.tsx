@@ -9,6 +9,21 @@ export const SuperuserAdminManagementTab: React.FC = () => {
   const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Swap requests states
+  const [swapRequests, setSwapRequests] = useState<any[]>([]);
+  const [isProcessingSwap, setIsProcessingSwap] = useState(false);
+
+  const fetchSwapRequests = async () => {
+    try {
+      const res = await apiClient.get('/admin-attendance/shifts/swap-requests');
+      if (res.data.success) {
+        setSwapRequests(res.data.data);
+      }
+    } catch (e) {
+      console.log('Error fetching swap requests:', e);
+    }
+  };
+
   // Modals visibility states
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
@@ -146,6 +161,7 @@ export const SuperuserAdminManagementTab: React.FC = () => {
       const [adminsRes, shiftsRes] = await Promise.all([
         apiClient.get('/superuser/admins'),
         apiClient.get('/superuser/shifts'),
+        fetchSwapRequests().catch(e => console.log('Error inside Promise.all swap fetch:', e))
       ]);
 
       if (adminsRes.data.success) setAdmins(adminsRes.data.data);
@@ -155,6 +171,27 @@ export const SuperuserAdminManagementTab: React.FC = () => {
       Alert.alert('Error', 'Unable to retrieve management data.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleProcessSwap = async (requestId: string, status: 'APPROVED' | 'REJECTED') => {
+    try {
+      setIsProcessingSwap(true);
+      const res = await apiClient.post('/admin-attendance/shifts/approve-swap', {
+        requestId,
+        status,
+      });
+
+      if (res.data.success) {
+        Alert.alert('Success', `Swap request ${status.toLowerCase()} successfully.`);
+        fetchSwapRequests();
+        loadData();
+      }
+    } catch (error: any) {
+      console.error('Process Swap Error:', error);
+      Alert.alert('Error', error.response?.data?.error || 'Failed to update swap request.');
+    } finally {
+      setIsProcessingSwap(false);
     }
   };
 
@@ -339,6 +376,40 @@ export const SuperuserAdminManagementTab: React.FC = () => {
           <Text className="text-white text-xs font-black uppercase">Assign Shift</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Swap Requests Panel */}
+      {swapRequests.some(r => r.status === 'PENDING') && (
+        <View className="mb-6">
+          <Text className="text-amber-400 text-[10px] font-black uppercase tracking-wider mb-3">Branch Swap Requests</Text>
+          {swapRequests.map(req => {
+            if (req.status !== 'PENDING') return null;
+            return (
+              <View key={req.id} className="bg-slate-900 border border-slate-850 rounded-2xl p-4 mb-3 shadow-lg">
+                <Text className="text-slate-100 text-sm font-black">{req.admin?.name || 'Admin'}</Text>
+                <Text className="text-slate-400 text-[11px] mt-1 leading-5">
+                  Requests to serve at <Text className="text-[#2D8C82] font-black">{req.requestedBranch}</Text> on <Text className="font-black text-slate-300">{req.date}</Text>
+                </Text>
+                <View className="flex-row justify-end gap-2 mt-4">
+                  <TouchableOpacity
+                    onPress={() => handleProcessSwap(req.id, 'REJECTED')}
+                    disabled={isProcessingSwap}
+                    className="bg-red-500/10 border border-red-500/20 px-3.5 py-2 rounded-xl active:opacity-90"
+                  >
+                    <Text className="text-red-400 font-extrabold text-[10px] uppercase">Reject</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleProcessSwap(req.id, 'APPROVED')}
+                    disabled={isProcessingSwap}
+                    className="bg-[#2D8C82]/10 border border-[#2D8C82]/20 px-3.5 py-2 rounded-xl active:opacity-90"
+                  >
+                    <Text className="text-[#2D8C82] font-black text-[10px] uppercase">Approve</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
 
       {/* Admin Directory */}
       <Text className="text-slate-500 text-[10px] font-black uppercase tracking-wider mb-3">Branch Admins Directory</Text>

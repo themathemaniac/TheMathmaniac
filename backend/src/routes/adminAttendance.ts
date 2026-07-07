@@ -40,7 +40,7 @@ router.get('/shifts/my', authenticateJWT, requireAdmin, async (req: Authenticate
   try {
     const adminId = req.user!.id;
     
-    // 1. Fetch actual shifts from DB
+    // Fetch actual shifts from DB
     const shifts = await prisma.adminShift.findMany({
       where: { adminId },
       include: {
@@ -49,12 +49,18 @@ router.get('/shifts/my', authenticateJWT, requireAdmin, async (req: Authenticate
       orderBy: { date: 'desc' },
     });
 
-    // 2. Fetch weekly recurring schedule patterns
+    // Fetch weekly recurring schedule patterns
     const patterns = await prisma.adminWeeklyPattern.findMany({
       where: { adminId },
     });
 
-    // 3. Synthesize upcoming shifts for next 7 days (including today)
+    // Fetch approved branch swaps
+    const approvedSwaps = await prisma.adminBranchSwapRequest.findMany({
+      where: { adminId, status: 'APPROVED' }
+    });
+    const swapMap = new Map(approvedSwaps.map(s => [s.date, s.requestedBranch]));
+
+    // Synthesize upcoming shifts for next 7 days (including today)
     const dates: { dateStr: string, dayOfWeek: number }[] = [];
     const now = new Date();
     for (let i = 0; i < 7; i++) {
@@ -69,6 +75,9 @@ router.get('/shifts/my', authenticateJWT, requireAdmin, async (req: Authenticate
 
     const existingShiftsByDate = new Map<string, any>();
     for (const shift of shifts) {
+      if (swapMap.has(shift.date)) {
+        shift.branch = swapMap.get(shift.date)!;
+      }
       existingShiftsByDate.set(shift.date, shift);
     }
 
@@ -77,10 +86,11 @@ router.get('/shifts/my', authenticateJWT, requireAdmin, async (req: Authenticate
       if (!existingShiftsByDate.has(item.dateStr)) {
         const pattern = patterns.find(p => p.dayOfWeek === item.dayOfWeek);
         if (pattern) {
+          const activeBranch = swapMap.get(item.dateStr) || pattern.branch;
           resultShifts.push({
             id: `recurring-${item.dateStr}-${pattern.id}`,
             adminId,
-            branch: pattern.branch,
+            branch: activeBranch,
             date: item.dateStr,
             startTime: pattern.startTime,
             endTime: pattern.endTime,
@@ -144,11 +154,17 @@ router.post('/shifts/ping', authenticateJWT, requireAdmin, async (req: Authentic
       });
 
       if (!existingShift) {
+        // Check for an approved branch swap request
+        const approvedSwap = await prisma.adminBranchSwapRequest.findFirst({
+          where: { adminId, date: targetDate, status: 'APPROVED' }
+        });
+        const activeBranch = approvedSwap ? approvedSwap.requestedBranch : pattern.branch;
+
         // Instantiate the virtual shift into a real DB record
         existingShift = await prisma.adminShift.create({
           data: {
             adminId,
-            branch: pattern.branch,
+            branch: activeBranch,
             date: targetDate,
             startTime: pattern.startTime,
             endTime: pattern.endTime,
@@ -163,6 +179,19 @@ router.post('/shifts/ping', authenticateJWT, requireAdmin, async (req: Authentic
       shift = await prisma.adminShift.findUnique({
         where: { id: shiftId },
       });
+
+      if (shift) {
+        // Check for an approved branch swap request
+        const approvedSwap = await prisma.adminBranchSwapRequest.findFirst({
+          where: { adminId, date: shift.date, status: 'APPROVED' }
+        });
+        if (approvedSwap && shift.branch !== approvedSwap.requestedBranch) {
+          shift = await prisma.adminShift.update({
+            where: { id: shift.id },
+            data: { branch: approvedSwap.requestedBranch },
+          });
+        }
+      }
     }
 
     if (!shift) {
@@ -255,6 +284,216 @@ router.post('/shifts/checkout', authenticateJWT, requireAdmin, async (req: Authe
     });
   } catch (error: any) {
     console.error('[Admin Checkout Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Helper for Superusers
+const SUPERUSERS = ['+917980357754', '+919831754957'];
+function requireSuperuser(req: AuthenticatedRequest, res: Response, next: any) {
+  if (!req.user || req.user.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, error: 'Access Denied: Admin privileges required.' });
+  }
+  const isSuper = req.user.phoneNumber && SUPERUSERS.includes(req.user.phoneNumber);
+  if (!isSuper) {
+    return res.status(403).json({ success: false, error: 'Access Denied: Superuser privileges required.' });
+  }
+  next();
+}
+
+// 4. Update Shift Type (Branch Duty vs Field Promotion)
+router.post('/shifts/update-type', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const adminId = req.user!.id;
+    const { shiftId, type, description } = req.body;
+
+    if (!shiftId || !type) {
+      return res.status(400).json({ success: false, error: 'Missing shiftId or type.' });
+    }
+
+    if (type !== 'BRANCH_DUTY' && type !== 'FIELD_PROMOTION') {
+      return res.status(400).json({ success: false, error: 'Invalid shift type.' });
+    }
+
+    let shift = await prisma.adminShift.findUnique({
+      where: { id: shiftId },
+    });
+
+    if (!shift) {
+      return res.status(404).json({ success: false, error: 'Shift not found.' });
+    }
+
+    if (shift.adminId !== adminId) {
+      return res.status(403).json({ success: false, error: 'Access denied.' });
+    }
+
+    const updatedShift = await prisma.adminShift.update({
+      where: { id: shiftId },
+      data: { type },
+    });
+
+    // Create Audit Log
+    await prisma.auditLog.create({
+      data: {
+        action: 'ADMIN_SHIFT_TYPE_UPDATE',
+        userId: adminId,
+        actorId: adminId,
+        details: `Admin changed active shift type to ${type}. Reason: ${description || 'N/A'}`
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: updatedShift,
+    });
+  } catch (error: any) {
+    console.error('[Update Shift Type Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Request Branch Swap for Today
+router.post('/shifts/request-swap', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const adminId = req.user!.id;
+    const { date, requestedBranch } = req.body;
+
+    if (!date || !requestedBranch) {
+      return res.status(400).json({ success: false, error: 'Missing date or requestedBranch.' });
+    }
+
+    // Upsert the swap request for today
+    const swapRequest = await prisma.adminBranchSwapRequest.upsert({
+      where: {
+        adminId_date: {
+          adminId,
+          date,
+        },
+      },
+      update: {
+        requestedBranch,
+        status: 'PENDING',
+      },
+      create: {
+        adminId,
+        date,
+        requestedBranch,
+        status: 'PENDING',
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: swapRequest,
+    });
+  } catch (error: any) {
+    console.error('[Request Branch Swap Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Get My Active Swap Request for Today
+router.get('/shifts/my-swap-request', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const adminId = req.user!.id;
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ success: false, error: 'Missing date parameter.' });
+    }
+
+    const swapRequest = await prisma.adminBranchSwapRequest.findUnique({
+      where: {
+        adminId_date: {
+          adminId,
+          date: String(date),
+        },
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: swapRequest,
+    });
+  } catch (error: any) {
+    console.error('[Get My Swap Request Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7. Get All Swap Requests (Superuser only)
+router.get('/shifts/swap-requests', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const requests = await prisma.adminBranchSwapRequest.findMany({
+      include: {
+        admin: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNumber: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: requests,
+    });
+  } catch (error: any) {
+    console.error('[Get All Swap Requests Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 8. Approve/Reject Swap Request (Superuser only)
+router.post('/shifts/approve-swap', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { requestId, status } = req.body;
+
+    if (!requestId || !status) {
+      return res.status(400).json({ success: false, error: 'Missing requestId or status.' });
+    }
+
+    if (status !== 'APPROVED' && status !== 'REJECTED') {
+      return res.status(400).json({ success: false, error: 'Invalid status value.' });
+    }
+
+    const request = await prisma.adminBranchSwapRequest.findUnique({
+      where: { id: requestId },
+    });
+
+    if (!request) {
+      return res.status(404).json({ success: false, error: 'Swap request not found.' });
+    }
+
+    const updatedRequest = await prisma.adminBranchSwapRequest.update({
+      where: { id: requestId },
+      data: { status },
+    });
+
+    // If approved, update active instantiated shift for today if it exists
+    if (status === 'APPROVED') {
+      const activeShift = await prisma.adminShift.findFirst({
+        where: { adminId: request.adminId, date: request.date },
+      });
+
+      if (activeShift) {
+        await prisma.adminShift.update({
+          where: { id: activeShift.id },
+          data: { branch: request.requestedBranch },
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: updatedRequest,
+    });
+  } catch (error: any) {
+    console.error('[Approve/Reject Swap Request Error]', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });
