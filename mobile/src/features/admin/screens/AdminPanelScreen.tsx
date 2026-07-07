@@ -543,18 +543,16 @@ export const AdminPanelScreen: React.FC = () => {
                   Holidays
                 </Text>
               </TouchableOpacity>
-              {isSuperuser && (
-                <TouchableOpacity
-                  onPress={() => setActiveTab('admins')}
-                  className={`px-4 py-2.5 rounded-xl items-center justify-center ${
-                    (activeTab as string) === 'admins' ? 'bg-slate-800' : 'bg-transparent'
-                  }`}
-                >
-                  <Text className={`font-bold text-[10px] ${(activeTab as string) === 'admins' ? 'text-slate-100' : 'text-slate-400'}`}>
-                    Admins
-                  </Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                onPress={() => setActiveTab('admins')}
+                className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                  (activeTab as string) === 'admins' ? 'bg-slate-800' : 'bg-transparent'
+                }`}
+              >
+                <Text className={`font-bold text-[10px] ${(activeTab as string) === 'admins' ? 'text-slate-100' : 'text-slate-400'}`}>
+                  Admins
+                </Text>
+              </TouchableOpacity>
             </ScrollView>
           </View>
 

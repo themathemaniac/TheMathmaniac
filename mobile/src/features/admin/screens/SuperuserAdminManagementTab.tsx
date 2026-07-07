@@ -3,8 +3,12 @@ import { View, Text, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Acti
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { apiClient } from '../../../core/api/client';
+import { useAuthStore } from '../../../core/store/auth';
 
 export const SuperuserAdminManagementTab: React.FC = () => {
+  const { user } = useAuthStore();
+  const isSuperuser = user?.phoneNumber && ['+917980357754', '+919831754957'].includes(user.phoneNumber);
+
   const [admins, setAdmins] = useState<any[]>([]);
   const [shifts, setShifts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -356,12 +360,14 @@ export const SuperuserAdminManagementTab: React.FC = () => {
     <ScrollView className="flex-1 px-4 mt-4">
       {/* Admin Actions */}
       <View className="flex-row justify-between mb-6">
-        <TouchableOpacity
-          onPress={() => setShowAdminModal(true)}
-          className="flex-1 bg-[#2D8C82] border border-[#237068] py-3.5 rounded-2xl items-center mr-2 shadow-md"
-        >
-          <Text className="text-white text-xs font-black uppercase">Create Admin</Text>
-        </TouchableOpacity>
+        {isSuperuser && (
+          <TouchableOpacity
+            onPress={() => setShowAdminModal(true)}
+            className="flex-1 bg-[#2D8C82] border border-[#237068] py-3.5 rounded-2xl items-center mr-2 shadow-md"
+          >
+            <Text className="text-white text-xs font-black uppercase">Create Admin</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           onPress={() => {
             if (admins.length === 0) {
@@ -371,7 +377,7 @@ export const SuperuserAdminManagementTab: React.FC = () => {
             setSelectedAdminId(admins[0]?.id || '');
             setShowShiftModal(true);
           }}
-          className="flex-1 bg-blue-600 border border-blue-700 py-3.5 rounded-2xl items-center ml-2 shadow-md"
+          className={`bg-blue-600 border border-blue-700 py-3.5 rounded-2xl items-center shadow-md ${isSuperuser ? 'flex-1 ml-2' : 'w-full'}`}
         >
           <Text className="text-white text-xs font-black uppercase">Assign Shift</Text>
         </TouchableOpacity>
@@ -432,12 +438,14 @@ export const SuperuserAdminManagementTab: React.FC = () => {
               >
                 <Text className="text-[#2D8C82] font-black text-[10px] uppercase">Schedule</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => handleDeleteAdmin(admin)}
-                className="bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl"
-              >
-                <Text className="text-red-400 font-extrabold text-[10px] uppercase">Remove</Text>
-              </TouchableOpacity>
+              {isSuperuser && (
+                <TouchableOpacity
+                  onPress={() => handleDeleteAdmin(admin)}
+                  className="bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl"
+                >
+                  <Text className="text-red-400 font-extrabold text-[10px] uppercase">Remove</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         ))
