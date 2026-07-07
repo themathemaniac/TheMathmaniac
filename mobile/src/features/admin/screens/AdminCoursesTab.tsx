@@ -743,13 +743,13 @@ export const AdminCoursesTab: React.FC = () => {
                     </View>
                     <ScrollView className="p-5">
                       {(() => {
-                        const titleLower = newCourse.title.toLowerCase();
+                        const subjectLower = selectedSubject.toLowerCase();
                         let availableThemes: any[] = [];
-                        if (/\b(computer|cs|tech|programming|coding)\b/.test(titleLower)) availableThemes = COURSE_THEMES.computer;
-                        else if (/\b(physic|physics)\b/.test(titleLower)) availableThemes = COURSE_THEMES.physics;
-                        else if (/\b(chem|chemistry)\b/.test(titleLower)) availableThemes = COURSE_THEMES.chemistry;
-                        else if (/\b(math|maths|mathematics)\b/.test(titleLower)) availableThemes = COURSE_THEMES.maths;
-                        else if (/\b(bio|biology|botany|zoology)\b/.test(titleLower)) availableThemes = COURSE_THEMES.biology;
+                        if (subjectLower.includes('computer')) availableThemes = COURSE_THEMES.computer;
+                        else if (subjectLower.includes('physic')) availableThemes = COURSE_THEMES.physics;
+                        else if (subjectLower.includes('chem')) availableThemes = COURSE_THEMES.chemistry;
+                        else if (subjectLower.includes('math')) availableThemes = COURSE_THEMES.maths;
+                        else if (subjectLower.includes('bio')) availableThemes = COURSE_THEMES.biology;
                         else availableThemes = [...COURSE_THEMES.computer, ...COURSE_THEMES.physics, ...COURSE_THEMES.chemistry, ...COURSE_THEMES.maths, ...COURSE_THEMES.biology]; // Fallback to all
 
                         return (

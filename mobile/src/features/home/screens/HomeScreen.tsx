@@ -238,17 +238,17 @@ export const HomeScreen: React.FC = () => {
             </View>
 
             {/* 2b. Recommended Courses Carousel */}
-            {dashboardData.courses.filter(c => !c.isPurchased).length > 0 && (
+            {dashboardData.courses.length > 0 && (
               <View className="mb-6">
                 <View className="flex-row justify-between items-baseline mb-3">
-                  <Text className="text-slate-100 text-lg font-bold">Recommended Programs</Text>
+                  <Text className="text-slate-100 text-lg font-bold">Recommended Courses</Text>
                   <TouchableOpacity onPress={() => navigation.navigate('AppTabs', { screen: 'Courses' })}>
                     <Text className="text-blue-600 text-xs font-bold">See All</Text>
                   </TouchableOpacity>
                 </View>
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-1">
-                  {dashboardData.courses.filter(c => !c.isPurchased).map((course) => (
+                  {dashboardData.courses.map((course) => (
                     <CourseCard
                       key={course.id}
                       id={course.id}
