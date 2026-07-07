@@ -6,6 +6,7 @@ import { apiClient } from '../../../core/api/client';
 import { CourseCard } from '../../../shared/components/CourseCard';
 import { Skeleton } from '../../../shared/components/Skeleton';
 import { useNavigation } from '@react-navigation/native';
+import { MiniCalendar } from '../../../shared/components/MiniCalendar';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
 
@@ -131,6 +132,9 @@ export const HomeScreen: React.FC = () => {
           </View>
         ) : (
           <View className="pb-12">
+            {/* Mini Calendar for holidays and classes */}
+            <MiniCalendar />
+
             {/* Unpaid Fee Warning Banner */}
             {dashboardData.feeStatus?.hasPendingPayment && new Date().getDate() >= 8 && (
               <View className="bg-amber-200 border border-amber-500 rounded-3xl p-5 mb-6">

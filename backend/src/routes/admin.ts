@@ -698,5 +698,65 @@ router.put('/users/:id', authenticateJWT, requireAdmin, async (req: Authenticate
   }
 });
 
+// Holidays Management Routes
+router.post('/holidays', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { date, title } = req.body;
+    if (!date || !title) {
+      return res.status(400).json({ success: false, error: 'Date and title are required.' });
+    }
+
+    const existing = await prisma.holiday.findUnique({
+      where: { date },
+    });
+    if (existing) {
+      return res.status(400).json({ success: false, error: 'A holiday is already scheduled on this date.' });
+    }
+
+    const holiday = await prisma.holiday.create({
+      data: { date, title },
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: holiday,
+    });
+  } catch (error: any) {
+    console.error('[Admin Add Holiday Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/holidays', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const holidays = await prisma.holiday.findMany({
+      orderBy: { date: 'asc' },
+    });
+    return res.status(200).json({
+      success: true,
+      data: holidays,
+    });
+  } catch (error: any) {
+    console.error('[Admin Get Holidays Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+router.delete('/holidays/:id', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    await prisma.holiday.delete({
+      where: { id },
+    });
+    return res.status(200).json({
+      success: true,
+      message: 'Holiday removed successfully.',
+    });
+  } catch (error: any) {
+    console.error('[Admin Delete Holiday Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
  

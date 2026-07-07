@@ -9,6 +9,9 @@ import { Button } from '../../../shared/components/Button';
 import { AdminCoursesTab } from './AdminCoursesTab';
 import { AdminRoutineTab } from './AdminRoutineTab';
 import { SuperuserAdminManagementTab } from './SuperuserAdminManagementTab';
+import { apiClient } from '../../../core/api/client';
+import { MiniCalendar } from '../../../shared/components/MiniCalendar';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 type AdminPanelScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminPanel'>;
 
@@ -67,7 +70,86 @@ export const AdminPanelScreen: React.FC = () => {
 
   const isSuperuser = user?.phoneNumber && ['+917980357754', '+919831754957'].includes(user.phoneNumber);
 
-  const [activeTab, setActiveTab] = useState<'directory' | 'create' | 'audit' | 'courses' | 'routines' | 'admins'>('directory');
+  const [activeTab, setActiveTab] = useState<'directory' | 'create' | 'audit' | 'courses' | 'routines' | 'admins' | 'holidays'>('directory');
+
+  // Holidays state
+  const [holidays, setHolidays] = useState<any[]>([]);
+  const [holidayTitle, setHolidayTitle] = useState('');
+  const [holidayDate, setHolidayDate] = useState(new Date());
+  const [showHolidayDatePicker, setShowHolidayDatePicker] = useState(false);
+  const [isSubmittingHoliday, setIsSubmittingHoliday] = useState(false);
+  const [loadingHolidays, setLoadingHolidays] = useState(false);
+
+  const fetchHolidays = async () => {
+    try {
+      setLoadingHolidays(true);
+      const res = await apiClient.get('/admin/holidays');
+      if (res.data.success) {
+        setHolidays(res.data.data);
+      }
+    } catch (e) {
+      console.log('Error pulling holidays:', e);
+    } finally {
+      setLoadingHolidays(false);
+    }
+  };
+
+  const handleCreateHoliday = async () => {
+    if (!holidayTitle.trim()) {
+      Alert.alert('Error', 'Please enter a holiday title.');
+      return;
+    }
+    const year = holidayDate.getFullYear();
+    const month = String(holidayDate.getMonth() + 1).padStart(2, '0');
+    const day = String(holidayDate.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    try {
+      setIsSubmittingHoliday(true);
+      const res = await apiClient.post('/admin/holidays', {
+        date: dateStr,
+        title: holidayTitle.trim(),
+      });
+      if (res.data.success) {
+        Alert.alert('Success', 'Holiday scheduled successfully.');
+        setHolidayTitle('');
+        fetchHolidays();
+      }
+    } catch (error: any) {
+      console.log('Create Holiday Error:', error);
+      Alert.alert('Error', error.response?.data?.error || 'Failed to add holiday.');
+    } finally {
+      setIsSubmittingHoliday(false);
+    }
+  };
+
+  const handleDeleteHoliday = async (id: string) => {
+    Alert.alert('Remove Holiday', 'Are you sure you want to delete this holiday?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const res = await apiClient.delete(`/admin/holidays/${id}`);
+            if (res.data.success) {
+              Alert.alert('Success', 'Holiday deleted successfully.');
+              fetchHolidays();
+            }
+          } catch (e: any) {
+            console.log('Delete Holiday Error:', e);
+            Alert.alert('Error', 'Failed to remove holiday.');
+          }
+        },
+      },
+    ]);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'holidays') {
+      fetchHolidays();
+    }
+  }, [activeTab]);
 
   // Directory State
   const [users, setUsers] = useState<any[]>([]);
@@ -395,6 +477,9 @@ export const AdminPanelScreen: React.FC = () => {
             </View>
           </View>
 
+          {/* Mini Calendar showing Holidays and Classes */}
+          <MiniCalendar />
+
           {/* Tabs */}
           <View className="mb-6">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="bg-slate-900 p-1.5 rounded-2xl border border-slate-800">
@@ -446,6 +531,16 @@ export const AdminPanelScreen: React.FC = () => {
               >
                 <Text className={`font-bold text-[10px] ${(activeTab as string) === 'routines' ? 'text-slate-100' : 'text-slate-400'}`}>
                   Routines
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setActiveTab('holidays')}
+                className={`px-4 py-2.5 rounded-xl items-center justify-center mr-1 ${
+                  (activeTab as string) === 'holidays' ? 'bg-slate-800' : 'bg-transparent'
+                }`}
+              >
+                <Text className={`font-bold text-[10px] ${(activeTab as string) === 'holidays' ? 'text-slate-100' : 'text-slate-400'}`}>
+                  Holidays
                 </Text>
               </TouchableOpacity>
               {isSuperuser && (
@@ -880,6 +975,84 @@ export const AdminPanelScreen: React.FC = () => {
         <View className="flex-1">
           <SuperuserAdminManagementTab />
         </View>
+      )}
+
+      {activeTab === 'holidays' && (
+        <ScrollView className="flex-1 px-5 mt-4" contentContainerStyle={{ paddingBottom: 60 }}>
+          <View className="bg-slate-900 border border-slate-850 rounded-3xl p-5 mb-6 shadow-2xl">
+            <Text className="text-slate-100 text-base font-black mb-4">Schedule a Holiday</Text>
+
+            <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Holiday Title</Text>
+            <TextInput
+              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 text-slate-300 text-sm font-semibold mb-4"
+              placeholder="e.g. Independence Day"
+              placeholderTextColor="#5C5446"
+              value={holidayTitle}
+              onChangeText={setHolidayTitle}
+            />
+
+            <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Select Date</Text>
+            <TouchableOpacity
+              onPress={() => setShowHolidayDatePicker(true)}
+              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3.5 mb-5 justify-center"
+            >
+              <Text className="text-slate-300 text-sm font-semibold">
+                {holidayDate.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}
+              </Text>
+            </TouchableOpacity>
+
+            {showHolidayDatePicker && (
+              <DateTimePicker
+                value={holidayDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, date) => {
+                  setShowHolidayDatePicker(false);
+                  if (date) setHolidayDate(date);
+                }}
+              />
+            )}
+
+            <TouchableOpacity
+              onPress={handleCreateHoliday}
+              disabled={isSubmittingHoliday}
+              className="bg-[#2D8C82] border border-[#237068] py-4 rounded-2xl items-center shadow-lg active:opacity-90"
+            >
+              {isSubmittingHoliday ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text className="text-white text-xs font-black uppercase tracking-wider">Add Holiday</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Current Year Holidays List */}
+          <Text className="text-slate-500 text-[10px] font-black uppercase tracking-wider mb-3">Scheduled Holidays</Text>
+          {loadingHolidays ? (
+            <ActivityIndicator size="small" color="#2D8C82" className="py-6" />
+          ) : holidays.length > 0 ? (
+            holidays.map((h) => (
+              <View key={h.id} className="bg-slate-900 border border-slate-850 rounded-2xl p-4 mb-3 shadow flex-row justify-between items-center">
+                <View className="flex-1 mr-4">
+                  <Text className="text-slate-100 text-sm font-black">{h.title}</Text>
+                  <Text className="text-slate-400 text-xs mt-0.5">
+                    {new Date(h.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleDeleteHoliday(h.id)}
+                  className="bg-red-500/10 border border-red-500/20 px-3.5 py-2 rounded-xl active:opacity-90"
+                >
+                  <Text className="text-red-400 font-extrabold text-[10px] uppercase">Remove</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          ) : (
+            <View className="bg-slate-900/20 border border-slate-850 rounded-2xl py-8 items-center justify-center">
+              <Text className="text-slate-500 text-xs font-bold">No holidays scheduled yet.</Text>
+            </View>
+          )}
+        </ScrollView>
       )}
 
       {/* Generated Credentials Modal (Shown ONLY ONCE) */}
