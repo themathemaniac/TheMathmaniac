@@ -26,6 +26,7 @@ interface AuthState {
   initializeAuth: () => Promise<void>;
   login: (phoneNumber: string, password: string) => Promise<boolean>;
   register: (name: string, phoneNumber: string, password: string, role?: string) => Promise<boolean>;
+  updateName: (newName: string) => Promise<boolean>;
   logout: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<boolean>;
   verifyRecoveryPassphrase: (phoneNumber: string, passphrase: string) => Promise<string | null>;
@@ -134,6 +135,23 @@ export const useAuthStore = create<AuthState>((set) => ({
   register: async (name, phoneNumber, password, role) => {
     set({ error: 'Registration is restricted to administrators. Please contact administration.' });
     return false;
+  },
+
+  updateName: async (newName: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await apiClient.put('/profile/name', { name: newName });
+      const updatedUser = res.data.data;
+      set((state) => ({
+        isLoading: false,
+        user: state.user ? { ...state.user, name: updatedUser.name } : null
+      }));
+      return true;
+    } catch (error: any) {
+      const msg = error.response?.data?.error || 'Failed to update name';
+      set({ error: msg, isLoading: false });
+      return false;
+    }
   },
 
   logout: async () => {

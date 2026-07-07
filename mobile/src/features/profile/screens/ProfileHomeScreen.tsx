@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Alert, Image, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { useAuthStore } from '../../../core/store/auth';
 import { apiClient } from '../../../core/api/client';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -185,7 +185,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ records, loadin
 
 export const ProfileHomeScreen: React.FC = () => {
   const navigation = useNavigation<ProfileHomeNavigationProp>();
-  const { logout } = useAuthStore();
+  const { logout, updateName, user } = useAuthStore();
   const [profileData, setProfileData] = useState<{
     profile: any;
     stats: {
@@ -200,6 +200,30 @@ export const ProfileHomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [attendanceLoading, setAttendanceLoading] = useState(true);
+
+  // Edit Name State
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState('');
+  const [savingName, setSavingName] = useState(false);
+
+  const handleEditNameSubmit = async () => {
+    if (!editNameValue.trim()) {
+      Alert.alert('Error', 'Name cannot be empty.');
+      return;
+    }
+    setSavingName(true);
+    const success = await updateName(editNameValue.trim());
+    if (success) {
+      setProfileData(prev => prev ? {
+        ...prev,
+        profile: { ...prev.profile, name: editNameValue.trim() }
+      } : null);
+      setIsEditingName(false);
+    } else {
+      Alert.alert('Error', useAuthStore.getState().error || 'Failed to update name.');
+    }
+    setSavingName(false);
+  };
 
   const fetchProfile = async () => {
     try {
@@ -291,7 +315,12 @@ export const ProfileHomeScreen: React.FC = () => {
                 </Text>
               </View>
               <View className="flex-1">
-                <Text className="text-slate-100 text-lg font-black">{profileData.profile.name}</Text>
+                <View className="flex-row items-center justify-between pr-2">
+                  <Text className="text-slate-100 text-lg font-black">{profileData.profile.name}</Text>
+                  <TouchableOpacity onPress={() => { setEditNameValue(profileData.profile.name); setIsEditingName(true); }} className="p-2">
+                    <Text className="text-blue-500 text-xs font-bold">✎ Edit</Text>
+                  </TouchableOpacity>
+                </View>
                 <Text className="text-slate-400 text-xs mt-1">{profileData.profile.phoneNumber}</Text>
                 <Text className="text-slate-500 text-xs mt-0.5" numberOfLines={1}>
                   {profileData.profile.email}
@@ -413,6 +442,32 @@ export const ProfileHomeScreen: React.FC = () => {
           </View>
         )}
       </ScrollView>
+
+      {/* Edit Name Modal */}
+      <Modal visible={isEditingName} animationType="fade" transparent onRequestClose={() => setIsEditingName(false)}>
+        <View className="flex-1 justify-center items-center bg-black/80 px-5">
+          <View className="bg-slate-900 w-full rounded-3xl p-6 border border-slate-800">
+            <Text className="text-slate-100 text-lg font-bold mb-4">Edit Profile Name</Text>
+            <TextInput
+              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 text-sm mb-6"
+              value={editNameValue}
+              onChangeText={setEditNameValue}
+              placeholder="Enter your name"
+              placeholderTextColor="#5C5446"
+              autoFocus
+            />
+            <View className="flex-row justify-end gap-3">
+              <TouchableOpacity onPress={() => setIsEditingName(false)} className="px-5 py-2.5 rounded-xl border border-slate-700">
+                <Text className="text-slate-300 font-bold text-xs">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleEditNameSubmit} disabled={savingName} className="px-5 py-2.5 rounded-xl bg-blue-600">
+                <Text className="text-white font-bold text-xs">{savingName ? 'Saving...' : 'Save Changes'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 };

@@ -559,6 +559,24 @@ router.post('/courses', authenticateJWT, requireAdmin, async (req: Authenticated
       },
     });
 
+    // If it's a bundle, sync teachers from sub-courses
+    if (!!isBundle && Array.isArray(bundleCourseIds) && bundleCourseIds.length > 0) {
+      const subCourseTeachers = await prisma.courseTeacher.findMany({
+        where: { courseId: { in: bundleCourseIds } },
+        select: { userId: true }
+      });
+      const uniqueTeacherIds = [...new Set(subCourseTeachers.map(ct => ct.userId))];
+      if (uniqueTeacherIds.length > 0) {
+        await prisma.courseTeacher.createMany({
+          data: uniqueTeacherIds.map(tid => ({
+            courseId: course.id,
+            userId: tid
+          })),
+          skipDuplicates: true
+        });
+      }
+    }
+
     return res.status(201).json({ success: true, data: course });
   } catch (error: any) {
     console.error('[Create Course Error]', error);
