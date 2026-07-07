@@ -118,6 +118,13 @@ app.use((err, req, res, next) => {
         error: err.message || 'Internal Server Error',
     });
 });
+app.get('/api/v1/app-config', (req, res) => {
+    return res.status(200).json({
+        success: true,
+        minAndroidVersionCode: parseInt(process.env.MIN_APP_VERSION_CODE || '10', 10),
+        apkDownloadUrl: process.env.APK_DOWNLOAD_URL || 'https://expo.dev/artifacts/eas/mathemaniac-app.apk'
+    });
+});
 app.listen(PORT, () => {
     console.log(`===================================================`);
     console.log(`Mathemaniac Node Express API is live on port: ${PORT}`);

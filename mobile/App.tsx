@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { VersionCheckProvider } from './src/core/providers/VersionCheckProvider';
 
 // Configure TanStack Query Client
 const queryClient = new QueryClient({
@@ -18,8 +19,10 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <StatusBar style="light" />
-        <AppNavigator />
+        <VersionCheckProvider>
+          <StatusBar style="light" />
+          <AppNavigator />
+        </VersionCheckProvider>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

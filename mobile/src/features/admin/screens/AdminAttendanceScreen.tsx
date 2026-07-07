@@ -30,6 +30,7 @@ const CAMPUSES: Record<string, { lat: number; lon: number }> = {
 };
 
 export const AdminAttendanceScreen: React.FC = () => {
+  const navigation = useNavigation();
   const { user, logout } = useAuthStore();
   const [shifts, setShifts] = useState<ShiftRecord[]>([]);
   const [activeShift, setActiveShift] = useState<ShiftRecord | null>(null);
@@ -253,8 +254,8 @@ export const AdminAttendanceScreen: React.FC = () => {
             <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Mathemaniac Admin</Text>
             <Text className="text-slate-100 text-xl font-black mt-1">Hello, {user?.name}</Text>
           </View>
-          <TouchableOpacity onPress={logout} className="bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl">
-            <Text className="text-red-400 font-extrabold text-[10px] uppercase">Logout</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} className="bg-slate-900 border border-slate-800 px-4 py-2.5 rounded-xl">
+            <Text className="text-slate-300 font-bold text-[10px] uppercase">← Back</Text>
           </TouchableOpacity>
         </View>
 
