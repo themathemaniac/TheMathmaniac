@@ -23,6 +23,18 @@ export function requireSuperuser(req: AuthenticatedRequest, res: Response, next:
   next();
 }
 
+// Middleware to enforce Admin role or Superuser access
+export function requireAdminOrSuperuser(req: AuthenticatedRequest, res: Response, next: any) {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Unauthorized.' });
+  }
+  const isSuperuser = req.user.phoneNumber && SUPERUSER_PHONES.includes(req.user.phoneNumber);
+  if (req.user.role !== 'ADMIN' && !isSuperuser) {
+    return res.status(403).json({ success: false, error: 'Access Denied: Admin or Superuser privileges required.' });
+  }
+  next();
+}
+
 // Passphrase generator helpers
 const ADJECTIVES = [
   'SUNSET', 'MOON', 'SILENT', 'OCEAN', 'GOLDEN', 'WILD', 'DARK', 'LIGHT', 'SHADOW', 'RIVER',
@@ -75,7 +87,7 @@ router.post('/reports/generate', authenticateJWT, requireSuperuser, async (req: 
 });
 
 // 3. List Branch Admins (excluding Superusers)
-router.get('/admins', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admins', authenticateJWT, requireAdminOrSuperuser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const admins = await prisma.user.findMany({
       where: {
@@ -211,8 +223,8 @@ router.delete('/admins/:id', authenticateJWT, requireSuperuser, async (req: Auth
   }
 });
 
-// 6. Create / Assign Shift to Admin (Superuser only)
-router.post('/shifts', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+// 6. Create / Assign Shift to Admin (Superuser or Admin)
+router.post('/shifts', authenticateJWT, requireAdminOrSuperuser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { adminId, branch, date, startTime, endTime, type } = req.body;
     if (!adminId || !branch || !date || !startTime || !endTime) {
@@ -240,8 +252,8 @@ router.post('/shifts', authenticateJWT, requireSuperuser, async (req: Authentica
   }
 });
 
-// 7. Get All Scheduled Shifts (Superuser only)
-router.get('/shifts', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+// 7. Get All Scheduled Shifts (Superuser or Admin)
+router.get('/shifts', authenticateJWT, requireAdminOrSuperuser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const shifts = await prisma.adminShift.findMany({
       include: {
@@ -257,8 +269,8 @@ router.get('/shifts', authenticateJWT, requireSuperuser, async (req: Authenticat
   }
 });
 
-// 8. Delete / Cancel Shift (Superuser only)
-router.delete('/shifts/:id', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+// 8. Delete / Cancel Shift (Superuser or Admin)
+router.delete('/shifts/:id', authenticateJWT, requireAdminOrSuperuser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const shiftId = req.params.id;
     await prisma.adminShift.delete({
@@ -271,8 +283,8 @@ router.delete('/shifts/:id', authenticateJWT, requireSuperuser, async (req: Auth
   }
 });
 
-// 9. Save / Update Weekly Pattern (Superuser only)
-router.post('/patterns', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+// 9. Save / Update Weekly Pattern (Superuser or Admin)
+router.post('/patterns', authenticateJWT, requireAdminOrSuperuser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { adminId, dayOfWeek, branch, startTime, endTime, type } = req.body;
     if (adminId === undefined || dayOfWeek === undefined || !branch || !startTime || !endTime) {
@@ -345,8 +357,8 @@ router.get('/patterns/:adminId', authenticateJWT, async (req: AuthenticatedReque
   }
 });
 
-// 11. Delete Weekly Pattern Slot (Superuser only)
-router.delete('/patterns/:id', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+// 11. Delete Weekly Pattern Slot (Superuser or Admin)
+router.delete('/patterns/:id', authenticateJWT, requireAdminOrSuperuser, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const patternId = req.params.id;
     await prisma.adminWeeklyPattern.delete({
