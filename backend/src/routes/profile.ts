@@ -338,76 +338,60 @@ router.get('/calendar', authenticateJWT, async (req: AuthenticatedRequest, res: 
     });
 
     let classes: any[] = [];
+    
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const mapDayToNumber = (day: string) => {
+      const map: Record<string, number> = { 'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+      return map[day] !== undefined ? map[day] : parseInt(day, 10);
+    };
+
+    let targetCourses: any[] = [];
 
     if (user.role === 'STUDENT') {
-      // Fetch purchased courses
       const purchases = await prisma.purchase.findMany({
         where: { userId, status: 'SUCCESS' },
-        include: {
-          course: {
-            include: {
-              teachers: {
-                include: {
-                  user: {
-                    select: { name: true }
-                  }
-                }
-              }
-            }
-          }
-        }
+        include: { course: { include: { teachers: { include: { user: { select: { name: true } } } } } } }
       });
-
-      const now = new Date();
-      const currentYear = now.getFullYear();
-
-      for (const p of purchases) {
-        const slots = JSON.parse(p.course.timeSlots || '[]');
-        const teacherName = p.course.teachers[0]?.user?.name || 'Faculty';
-
-        slots.forEach((slot: any) => {
-          const targetDay = parseInt(slot.day, 10);
-          if (isNaN(targetDay)) return;
-
-          let tempDate = new Date(currentYear, 0, 1);
-          while (tempDate.getFullYear() === currentYear) {
-            if (tempDate.getDay() === targetDay) {
-              const dateStr = tempDate.toISOString().split('T')[0];
-              classes.push({
-                date: dateStr,
-                title: `${p.course.title}`,
-                subtitle: `${slot.time || 'Class'} (${teacherName})`,
-                type: 'CLASS',
-              });
-            }
-            tempDate.setDate(tempDate.getDate() + 1);
-          }
-        });
-      }
+      targetCourses = purchases.map(p => p.course);
     } else if (user.role === 'TEACHER') {
-      const schedules = await prisma.teacherSchedule.findMany({
-        where: { userId },
+      targetCourses = await prisma.course.findMany({
+        where: { teachers: { some: { userId } } },
+        include: { teachers: { include: { user: { select: { name: true } } } } }
       });
-      classes = schedules.map(s => ({
-        date: s.date,
-        title: s.title,
-        subtitle: `${s.startTime} - ${s.endTime} (${s.campus})`,
-        type: 'CLASS',
-      }));
     } else {
-      const schedules = await prisma.teacherSchedule.findMany({
-        include: {
-          user: {
-            select: { name: true }
+      // ADMIN or SUPERUSER
+      targetCourses = await prisma.course.findMany({
+        include: { teachers: { include: { user: { select: { name: true } } } } }
+      });
+    }
+
+    for (const c of targetCourses) {
+      let slots: any[] = [];
+      try {
+        slots = typeof c.timeSlots === 'string' ? JSON.parse(c.timeSlots || '[]') : (c.timeSlots || []);
+      } catch(e) {}
+      
+      const teacherName = c.teachers && c.teachers[0]?.user?.name ? c.teachers[0].user.name : 'Faculty';
+
+      slots.forEach((slot: any) => {
+        const targetDay = mapDayToNumber(slot.day);
+        if (isNaN(targetDay)) return;
+
+        let tempDate = new Date(currentYear, 0, 1);
+        while (tempDate.getFullYear() === currentYear) {
+          if (tempDate.getDay() === targetDay) {
+            const dateStr = tempDate.toISOString().split('T')[0];
+            classes.push({
+              date: dateStr,
+              title: c.title,
+              subtitle: `${slot.time || (slot.startTime ? slot.startTime + ' - ' + slot.endTime : 'Class')} (${teacherName})`,
+              type: 'CLASS',
+            });
           }
+          tempDate.setDate(tempDate.getDate() + 1);
         }
       });
-      classes = schedules.map(s => ({
-        date: s.date,
-        title: s.title,
-        subtitle: `${s.startTime} - ${s.endTime} (${s.user?.name || 'Teacher'})`,
-        type: 'CLASS',
-      }));
     }
 
     const calendarEvents = [
