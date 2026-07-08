@@ -59,4 +59,21 @@ export const secureStorage = {
       console.error('Error clearing secure tokens:', error);
     }
   },
+
+  async saveGeofenceScheduleId(id: string): Promise<void> {
+    try {
+      await SecureStore.setItemAsync('geofence_schedule_id', id);
+    } catch (e) {
+      console.error('Error saving geofence id:', e);
+    }
+  },
+
+  async getGeofenceScheduleId(): Promise<string | null> {
+    try {
+      return await SecureStore.getItemAsync('geofence_schedule_id');
+    } catch (e) {
+      console.error('Error getting geofence id:', e);
+      return null;
+    }
+  }
 };

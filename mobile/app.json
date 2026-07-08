@@ -18,7 +18,14 @@
         "foregroundImage": "./assets/Mathemaniac_Logo_Padded.png",
         "backgroundColor": "#EAE7DF"
       },
-      "package": "com.synapseedutech.mathemaniac"
+      "package": "com.synapseedutech.mathemaniac",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/Mathemaniac_Logo_Padded.png"
@@ -30,7 +37,14 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Mathemaniac to track your location in the background for duty shift logging.",
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ]
     ],
     "runtimeVersion": {
       "policy": "appVersion"

@@ -7,6 +7,7 @@ import { VersionCheckProvider } from './src/core/providers/VersionCheckProvider'
 import { PushNotificationProvider } from './src/core/providers/PushNotificationProvider';
 
 import { enableScreens } from 'react-native-screens';
+import './src/features/teacher/tasks/GeofenceTask';
 
 enableScreens(true);
 

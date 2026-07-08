@@ -111,7 +111,6 @@ export const TeacherAttendanceScreen: React.FC = () => {
       const scheduleRes = await apiClient.get('/attendance/teacher/schedule');
       if (scheduleRes.data.success) {
         const fetchedSchedules = scheduleRes.data.data;
-        setSchedules(fetchedSchedules);
         if (fetchedSchedules.length > 0) {
           const localDate = new Date();
           const year = localDate.getFullYear();
@@ -119,8 +118,32 @@ export const TeacherAttendanceScreen: React.FC = () => {
           const day = String(localDate.getDate()).padStart(2, '0');
           const localDateStr = `${year}-${month}-${day}`;
           
-          const todaysSchedule = fetchedSchedules.find((s: any) => s.date === localDateStr);
-          setActiveSchedule(todaysSchedule || fetchedSchedules[0] || null);
+          let todaysSchedules = fetchedSchedules.filter((s: any) => s.date === localDateStr);
+          const otherSchedules = fetchedSchedules.filter((s: any) => s.date !== localDateStr);
+          
+          if (todaysSchedules.length > 0) {
+            const currentTimeStr = `${String(localDate.getHours()).padStart(2, '0')}:${String(localDate.getMinutes()).padStart(2, '0')}`;
+            
+            // Sort by start time
+            todaysSchedules.sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
+            
+            // Find the active or upcoming schedule
+            const activeIndex = todaysSchedules.findIndex((s: any) => s.endTime >= currentTimeStr);
+            const activeIdxToUse = activeIndex !== -1 ? activeIndex : 0;
+            const activeCourse = todaysSchedules[activeIdxToUse];
+            
+            // Hoist to top
+            todaysSchedules.splice(activeIdxToUse, 1);
+            todaysSchedules.unshift(activeCourse);
+            
+            setActiveSchedule(activeCourse);
+            setSchedules([...todaysSchedules, ...otherSchedules]);
+          } else {
+            setActiveSchedule(fetchedSchedules[0] || null);
+            setSchedules(fetchedSchedules);
+          }
+        } else {
+          setSchedules([]);
         }
       }
 
@@ -260,23 +283,8 @@ export const TeacherAttendanceScreen: React.FC = () => {
       ]);
     }
   };
-
-  // Recursive randomized ping scheduler: 25-30 mins (Teachers only)
-  const scheduleNextPing = () => {
-    if (!isLoggingRef.current || isAdmin) return; // Admins do not run background loops
-
-    const minDelay = 25 * 60 * 1000;  // 25 mins
-    const maxDelay = 30 * 60 * 1000;  // 30 mins
-    const randomDelay = Math.floor(Math.random() * (maxDelay - minDelay + 1) + minDelay);
-
-    timeoutRef.current = setTimeout(async () => {
-      if (isLoggingRef.current) {
-        await sendLocationPing();
-        scheduleNextPing();
-      }
-    }, randomDelay);
-  };
-
+  // We use Background Location API for teachers instead of setTimeout
+  const GEOFENCE_LOCATION_TASK = 'background-geofence-task';
   const startLogging = async () => {
     if (!activeSchedule) {
       Alert.alert('No Schedule', 'Please select or generate a class schedule first.');
@@ -288,34 +296,59 @@ export const TeacherAttendanceScreen: React.FC = () => {
       Alert.alert('GPS Permission Required', 'This system requires physical GPS coordinates to verify attendance.');
       return;
     }
+    
+    // For iOS, check background permission
+    const { status: bgStatus } = await Location.getBackgroundPermissionsAsync();
+    if (bgStatus !== 'granted') {
+       await Location.requestBackgroundPermissionsAsync();
+    }
 
     setLoggedPings([]);
     setPingStats({ total: 0, inside: 0 });
     setCheckoutVerdict(null);
     setIsLogging(true);
     isLoggingRef.current = true;
+    
+    // Save schedule ID securely for headless task
+    const { secureStorage } = require('../../../core/storage/secure');
+    await secureStorage.saveGeofenceScheduleId(activeSchedule.id);
 
-    // Trigger local push notification
-    await triggerNotification();
-
-    // Run first ping immediately (for both Teacher and Admin)
+    // Run first ping immediately in foreground
     await sendLocationPing();
 
-    // Only schedule subsequent background pings if user is a Teacher
+    // Start background tracking for teachers
     if (!isAdmin) {
-      scheduleNextPing();
+      try {
+        await Location.startLocationUpdatesAsync(GEOFENCE_LOCATION_TASK, {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 25 * 60 * 1000, // Roughly every 25 mins
+          distanceInterval: 10,
+          deferredUpdatesInterval: 25 * 60 * 1000,
+          showsBackgroundLocationIndicator: true,
+          foregroundService: {
+            notificationTitle: "📍 GPS Tracking Active",
+            notificationBody: "Your location is being tracked for duty attendance. Do not swipe away.",
+            notificationColor: "#2D8C82"
+          }
+        });
+      } catch (e) {
+        console.error('Failed to start background tracking:', e);
+      }
     } else {
       console.log('Admin session started: Background GPS pinging is disabled to save battery.');
     }
   };
 
-  const stopLogging = () => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
+  const stopLogging = async () => {
     setIsLogging(false);
     isLoggingRef.current = false;
+    
+    try {
+       const hasStarted = await Location.hasStartedLocationUpdatesAsync(GEOFENCE_LOCATION_TASK);
+       if (hasStarted) {
+         await Location.stopLocationUpdatesAsync(GEOFENCE_LOCATION_TASK);
+       }
+    } catch(e) {}
   };
 
   const handleCheckout = async () => {
