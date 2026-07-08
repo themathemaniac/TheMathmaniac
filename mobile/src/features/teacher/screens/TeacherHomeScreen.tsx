@@ -6,7 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
 import { Timetable, RoutineSession } from '../../../shared/components/Timetable';
-import { MiniCalendar } from '../../../shared/components/MiniCalendar';
+import { TeacherAttendanceCalendar } from '../components/TeacherAttendanceCalendar';
 
 type TeacherHomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'TeacherAttendanceTracking' | 'SuperuserReports'>;
 
@@ -119,8 +119,8 @@ export const TeacherHomeScreen: React.FC = () => {
           </View>
         ) : (
           <View className="pb-12">
-            {/* Mini Calendar showing Holidays and Classes */}
-            <MiniCalendar />
+            {/* Institute Calendar for Teachers */}
+            <TeacherAttendanceCalendar courses={courses} />
 
             {mappedSchedules.length > 0 ? (
               <View className="mb-6">

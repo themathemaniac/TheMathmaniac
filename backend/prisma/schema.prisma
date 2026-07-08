@@ -240,13 +240,15 @@ model Attendance {
   status     String // "PRESENT", "ABSENT", "CANCELLED", "HOLIDAY"
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId   String?  // Made optional for backwards compatibility but should be used going forward
   recordedBy String // Teacher/Admin ID who recorded it
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([userId, date])
+  @@unique([userId, courseId, date])
   @@index([userId])
   @@index([date])
+  @@index([courseId])
 }
 
 model FeePayment {

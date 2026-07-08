@@ -15,26 +15,30 @@ function requireTeacherOrAdmin(req: AuthenticatedRequest, res: Response, next: a
 // 1. Get attendance roster and overall status for a date (Teacher/Admin only)
 router.get('/', authenticateJWT, requireTeacherOrAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { date } = req.query;
+    const { date, courseId } = req.query;
     if (!date || typeof date !== 'string') {
       return res.status(400).json({ success: false, error: 'Date query parameter is required (format: YYYY-MM-DD).' });
     }
 
-    // Fetch all active students from SQLite
-    const students = await prisma.user.findMany({
-      where: { role: 'STUDENT' },
-      select: {
-        id: true,
-        name: true,
-        class: true,
-        stream: true,
-      },
-      orderBy: { name: 'asc' },
-    });
+    if (!courseId || typeof courseId !== 'string') {
+      return res.status(400).json({ success: false, error: 'courseId query parameter is required.' });
+    }
 
-    // Fetch existing attendance records for this date
+    // Fetch students enrolled in this specific course
+    const purchases = await prisma.purchase.findMany({
+      where: { courseId, status: 'SUCCESS' },
+      include: { user: true },
+    });
+    
+    // Sort students alphabetically
+    const students = purchases
+      .map(p => p.user)
+      .filter(u => u.role === 'STUDENT')
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Fetch existing attendance records for this date AND courseId
     const attendanceRecords = await prisma.attendance.findMany({
-      where: { date },
+      where: { date, courseId },
     });
 
     // Map records by studentId for fast lookup
@@ -76,10 +80,13 @@ router.get('/', authenticateJWT, requireTeacherOrAdmin, async (req: Authenticate
 // 2. Record attendance for a date (Teacher/Admin only)
 router.post('/', authenticateJWT, requireTeacherOrAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { date, dayStatus, records, reason } = req.body;
+    const { date, courseId, dayStatus, records, reason } = req.body;
 
     if (!date || typeof date !== 'string') {
       return res.status(400).json({ success: false, error: 'Date is required (format: YYYY-MM-DD).' });
+    }
+    if (!courseId || typeof courseId !== 'string') {
+      return res.status(400).json({ success: false, error: 'courseId is required.' });
     }
     if (!['CLASS_HELD', 'CANCELLED', 'HOLIDAY'].includes(dayStatus)) {
       return res.status(400).json({ success: false, error: 'Invalid dayStatus. Must be CLASS_HELD, CANCELLED, or HOLIDAY.' });
@@ -107,13 +114,15 @@ router.post('/', authenticateJWT, requireTeacherOrAdmin, async (req: Authenticat
     const recordedBy = req.user!.id;
 
     // Fetch all active students
-    const students = await prisma.user.findMany({
-      where: { role: 'STUDENT' },
-      select: { id: true },
+    // Fetch active students in this specific course
+    const purchases = await prisma.purchase.findMany({
+      where: { courseId, status: 'SUCCESS' },
+      select: { userId: true },
     });
+    const students = purchases.map(p => ({ id: p.userId }));
 
     if (students.length === 0) {
-      return res.status(400).json({ success: false, error: 'No students found to record attendance.' });
+      return res.status(400).json({ success: false, error: 'No students found enrolled in this course to record attendance.' });
     }
 
     // Determine the status to write for each student
@@ -143,26 +152,27 @@ router.post('/', authenticateJWT, requireTeacherOrAdmin, async (req: Authenticat
     }
 
     // Write all to SQLite database using transaction / upsert
-    await prisma.$transaction(
-      operations.map(op => prisma.attendance.upsert({
-        where: {
-          userId_date: {
-            userId: op.userId,
-            date,
-          },
-        },
-        update: {
-          status: op.status,
-          recordedBy,
-        },
-        create: {
+    // Write all to SQLite database using transaction / upsert
+    // Note: Due to changing from @@unique([userId, date]) to @@unique([userId, courseId, date])
+    // The where clause needs userId_courseId_date. Since courseId could historically be null, 
+    // we use prisma.attendance.findFirst inside a loop, or delete and recreate to be safer with SQLite.
+    
+    // To handle courseId being added, we'll just delete existing and create many.
+    await prisma.$transaction(async (tx) => {
+      await tx.attendance.deleteMany({
+        where: { date, courseId, userId: { in: students.map(s => s.id) } }
+      });
+      
+      await tx.attendance.createMany({
+        data: operations.map(op => ({
           userId: op.userId,
+          courseId,
           date,
           status: op.status,
           recordedBy,
-        },
-      }))
-    );
+        }))
+      });
+    });
 
     // Add audit log
     await prisma.auditLog.create({
