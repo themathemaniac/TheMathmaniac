@@ -294,8 +294,20 @@ router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, async (r
     const userId = req.user!.id;
     const isAdmin = req.user?.role === 'ADMIN';
 
-    // Auto-generate schedules for the next 14 days based on Course assignments
     const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    // CLEANUP: Delete future schedules that have no attendance logged, 
+    // so if a course was deleted, its future schedules disappear.
+    await prisma.teacherSchedule.deleteMany({
+      where: {
+        date: { gte: todayStr },
+        teacherAttendances: { none: {} },
+        ...(isAdmin ? {} : { userId })
+      }
+    });
+
+    // Auto-generate schedules for the next 14 days based on Course assignments
     const next14Days: string[] = [];
     for (let i = 0; i < 14; i++) {
       const d = new Date(today);
