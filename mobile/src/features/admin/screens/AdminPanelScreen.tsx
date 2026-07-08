@@ -957,7 +957,7 @@ export const AdminPanelScreen: React.FC = () => {
             )}
 
             {role === 'TEACHER' && (
-              <View className="mb-4 z-50">
+              <View className="mb-4">
                 <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects</Text>
                 <MultiSelectDropdown
                   label="Subjects"
@@ -1213,10 +1213,11 @@ export const AdminPanelScreen: React.FC = () => {
                   />
 
                   <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Class</Text>
-                  <TextInput
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
+                  <SelectDropdown
+                    label="Class"
                     value={editForm.class}
-                    onChangeText={(t) => setEditForm({...editForm, class: t})}
+                    options={["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12", "1st Year", "2nd Year", "3rd Year", "4th Year"]}
+                    onSelect={(t) => setEditForm({...editForm, class: t})}
                   />
 
                   <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">School</Text>
@@ -1225,22 +1226,20 @@ export const AdminPanelScreen: React.FC = () => {
                     value={editForm.school}
                     onChangeText={(t) => setEditForm({...editForm, school: t})}
                   />
-
-                  <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Faculty</Text>
-                  <TextInput
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
-                    value={editForm.faculty}
-                    onChangeText={(t) => setEditForm({...editForm, faculty: t})}
-                  />
                 </View>
               )}
 
-              <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects (Comma separated)</Text>
-              <TextInput
-                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
-                value={editForm.subjects}
-                onChangeText={(t) => setEditForm({...editForm, subjects: t})}
-              />
+              {editingUser?.role === 'TEACHER' && (
+                <View>
+                  <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects</Text>
+                  <MultiSelectDropdown
+                    label="Subjects"
+                    selectedValues={editForm.subjects ? editForm.subjects.split(',').map((s: string) => s.trim()).filter(Boolean) : []}
+                    options={["Physics", "Chemistry", "Maths", "Biology", "Computer", "English", "Electronics"]}
+                    onSelect={(v) => setEditForm({...editForm, subjects: v.join(',')})}
+                  />
+                </View>
+              )}
 
               <View className="mb-20">
                 <Button title="Save Changes" onPress={handleUpdateUser} loading={isUpdating} />
