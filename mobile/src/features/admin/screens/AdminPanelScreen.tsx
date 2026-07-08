@@ -124,13 +124,13 @@ const MultiSelectDropdown = ({ label, selectedValues, options, onSelect }: { lab
                   <TouchableOpacity
                     key={opt}
                     onPress={() => toggleSelection(opt)}
-                    className={`p-4 rounded-xl mb-1 flex-row items-center justify-between ${isSelected ? 'bg-slate-800' : 'bg-transparent'}`}
+                    className={`p-4 rounded-xl mb-1 flex-row items-center justify-between ${isSelected ? 'bg-[#2D8C82]' : 'bg-transparent'}`}
                   >
                     <Text className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-slate-300'}`}>
                       {opt}
                     </Text>
                     {isSelected && (
-                      <View className="w-5 h-5 rounded bg-[#2D8C82] items-center justify-center">
+                      <View className="w-5 h-5 rounded bg-white/30 items-center justify-center">
                         <Text className="text-white text-xs font-black">✓</Text>
                       </View>
                     )}
@@ -375,7 +375,7 @@ export const AdminPanelScreen: React.FC = () => {
       role === 'STUDENT' ? classText.trim() || undefined : undefined,
       undefined, // faculty removed
       role === 'STUDENT' ? normalizedSchool || undefined : undefined,
-      role === 'TEACHER' ? subjects.join(',') || undefined : undefined
+      subjects.length > 0 ? subjects.join(',') : undefined
     );
     setIsSubmitting(false);
 
@@ -956,17 +956,15 @@ export const AdminPanelScreen: React.FC = () => {
               </View>
             )}
 
-            {role === 'TEACHER' && (
-              <View className="mb-4">
-                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects</Text>
-                <MultiSelectDropdown
-                  label="Subjects"
-                  selectedValues={subjects}
-                  options={["Physics", "Chemistry", "Maths", "Biology", "Computer", "English", "Electronics"]}
-                  onSelect={setSubjects}
-                />
-              </View>
-            )}
+            <View className="mb-4">
+              <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects</Text>
+              <MultiSelectDropdown
+                label="Subjects"
+                selectedValues={subjects}
+                options={["Physics", "Chemistry", "Maths", "Biology", "Computer", "English", "Electronics"]}
+                onSelect={setSubjects}
+              />
+            </View>
 
             <Button
               title="Generate Credentials & Create"
@@ -1229,17 +1227,15 @@ export const AdminPanelScreen: React.FC = () => {
                 </View>
               )}
 
-              {editingUser?.role === 'TEACHER' && (
-                <View>
-                  <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects</Text>
-                  <MultiSelectDropdown
-                    label="Subjects"
-                    selectedValues={editForm.subjects ? editForm.subjects.split(',').map((s: string) => s.trim()).filter(Boolean) : []}
-                    options={["Physics", "Chemistry", "Maths", "Biology", "Computer", "English", "Electronics"]}
-                    onSelect={(v) => setEditForm({...editForm, subjects: v.join(',')})}
-                  />
-                </View>
-              )}
+              <View>
+                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects</Text>
+                <MultiSelectDropdown
+                  label="Subjects"
+                  selectedValues={editForm.subjects ? editForm.subjects.split(',').map((s: string) => s.trim()).filter(Boolean) : []}
+                  options={["Physics", "Chemistry", "Maths", "Biology", "Computer", "English", "Electronics"]}
+                  onSelect={(v) => setEditForm({...editForm, subjects: v.join(',')})}
+                />
+              </View>
 
               <View className="mb-20">
                 <Button title="Save Changes" onPress={handleUpdateUser} loading={isUpdating} />
