@@ -55,6 +55,99 @@ const FilterDropdown = ({ label, value, options, onSelect }: { label: string, va
   );
 };
 
+const SelectDropdown = ({ label, value, options, onSelect }: { label: string, value: string, options: string[], onSelect: (v: string) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <>
+      <TouchableOpacity onPress={() => setIsOpen(true)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 mb-4">
+        <Text className="text-slate-300 text-sm font-semibold">
+          {value || `Select ${label}`}
+        </Text>
+      </TouchableOpacity>
+      
+      <Modal visible={isOpen} transparent animationType="fade" onRequestClose={() => setIsOpen(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setIsOpen(false)} className="flex-1 bg-black/80 justify-center px-6">
+          <View className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden max-h-[70%]">
+            <View className="p-4 border-b border-slate-800 bg-slate-950">
+              <Text className="text-slate-100 text-sm font-black text-center">Select {label}</Text>
+            </View>
+            <ScrollView className="p-2">
+              {options.map((opt) => (
+                <TouchableOpacity
+                  key={opt}
+                  onPress={() => { onSelect(opt); setIsOpen(false); }}
+                  className={`p-4 rounded-xl mb-1 ${value === opt ? 'bg-[#2D8C82]' : 'bg-transparent'}`}
+                >
+                  <Text className={`text-center font-bold text-sm ${value === opt ? 'text-white' : 'text-slate-300'}`}>
+                    {opt}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity onPress={() => setIsOpen(false)} className="p-4 border-t border-slate-800 bg-slate-950 mt-2">
+              <Text className="text-slate-400 text-xs font-bold text-center">Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  );
+};
+
+const MultiSelectDropdown = ({ label, selectedValues, options, onSelect }: { label: string, selectedValues: string[], options: string[], onSelect: (v: string[]) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const toggleSelection = (opt: string) => {
+    if (selectedValues.includes(opt)) {
+      onSelect(selectedValues.filter(v => v !== opt));
+    } else {
+      onSelect([...selectedValues, opt]);
+    }
+  };
+  return (
+    <>
+      <TouchableOpacity onPress={() => setIsOpen(true)} className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 mb-4">
+        <Text className="text-slate-300 text-sm font-semibold">
+          {selectedValues.length > 0 ? selectedValues.join(', ') : `Select ${label}`}
+        </Text>
+      </TouchableOpacity>
+      
+      <Modal visible={isOpen} transparent animationType="fade" onRequestClose={() => setIsOpen(false)}>
+        <TouchableOpacity activeOpacity={1} onPress={() => setIsOpen(false)} className="flex-1 bg-black/80 justify-center px-6">
+          <View className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden max-h-[70%]">
+            <View className="p-4 border-b border-slate-800 bg-slate-950 flex-row justify-between items-center">
+              <Text className="text-slate-100 text-sm font-black flex-1 text-center">Select {label}</Text>
+            </View>
+            <ScrollView className="p-2">
+              {options.map((opt) => {
+                const isSelected = selectedValues.includes(opt);
+                return (
+                  <TouchableOpacity
+                    key={opt}
+                    onPress={() => toggleSelection(opt)}
+                    className={`p-4 rounded-xl mb-1 flex-row items-center justify-between ${isSelected ? 'bg-slate-800' : 'bg-transparent'}`}
+                  >
+                    <Text className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                      {opt}
+                    </Text>
+                    {isSelected && (
+                      <View className="w-5 h-5 rounded bg-[#2D8C82] items-center justify-center">
+                        <Text className="text-white text-xs font-black">✓</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <TouchableOpacity onPress={() => setIsOpen(false)} className="p-4 border-t border-slate-800 bg-[#2D8C82] mt-2">
+              <Text className="text-white text-xs font-black text-center uppercase tracking-wider">Done</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
+  );
+};
+
 export const AdminPanelScreen: React.FC = () => {
   const navigation = useNavigation<AdminPanelScreenNavigationProp>();
   const {
@@ -163,12 +256,10 @@ export const AdminPanelScreen: React.FC = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
-  const [email, setEmail] = useState('');
   const [stream, setStream] = useState('');
   const [classText, setClassText] = useState('');
-  const [faculty, setFaculty] = useState('');
   const [school, setSchool] = useState('');
-  const [subjects, setSubjects] = useState('');
+  const [subjects, setSubjects] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Generated Credentials Modal State
@@ -273,16 +364,18 @@ export const AdminPanelScreen: React.FC = () => {
     }
 
     setIsSubmitting(true);
+    const normalizedSchool = school.trim().toUpperCase();
+    
     const result = await adminCreateUser(
       name.trim(),
       phone.trim(),
       role,
-      email.trim() || undefined,
+      undefined, // email removed
       role === 'STUDENT' ? stream.trim() || undefined : undefined,
       role === 'STUDENT' ? classText.trim() || undefined : undefined,
-      role === 'STUDENT' ? faculty.trim() || undefined : undefined,
-      role === 'STUDENT' ? school.trim() || undefined : undefined,
-      role === 'TEACHER' ? subjects.trim() || undefined : undefined
+      undefined, // faculty removed
+      role === 'STUDENT' ? normalizedSchool || undefined : undefined,
+      role === 'TEACHER' ? subjects.join(',') || undefined : undefined
     );
     setIsSubmitting(false);
 
@@ -299,13 +392,10 @@ export const AdminPanelScreen: React.FC = () => {
       // Reset form
       setName('');
       setPhone('');
-      setEmail('');
-      setRole('STUDENT');
       setStream('');
       setClassText('');
-      setFaculty('');
       setSchool('');
-      setSubjects('');
+      setSubjects([]);
     } else {
       const errorMsg = useAuthStore.getState().error || 'Failed to create user.';
       Alert.alert('Creation Failed', errorMsg);
@@ -808,16 +898,6 @@ export const AdminPanelScreen: React.FC = () => {
               maxLength={10}
             />
 
-            <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Email Address (Optional)</Text>
-            <TextInput
-              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
-              placeholder="e.g. student@outlook.com"
-              placeholderTextColor="#5C5446"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-            />
-
             <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-3">User Role</Text>
             <View className="flex-row bg-slate-950 p-1 rounded-xl mb-6 border border-slate-800">
               <TouchableOpacity
@@ -848,7 +928,7 @@ export const AdminPanelScreen: React.FC = () => {
 
             {role === 'STUDENT' && (
               <View className="mb-4">
-                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Stream (Optional)</Text>
+                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Stream</Text>
                 <TextInput
                   className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                   placeholder="e.g. Science / Commerce / Arts"
@@ -857,16 +937,7 @@ export const AdminPanelScreen: React.FC = () => {
                   onChangeText={setStream}
                 />
 
-                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Class (Optional)</Text>
-                <TextInput
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
-                  placeholder="e.g. 11th / 12th"
-                  placeholderTextColor="#5C5446"
-                  value={classText}
-                  onChangeText={setClassText}
-                />
-
-                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">School (Optional)</Text>
+                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">School</Text>
                 <TextInput
                   className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
                   placeholder="e.g. Delhi Public School"
@@ -875,54 +946,27 @@ export const AdminPanelScreen: React.FC = () => {
                   onChangeText={setSchool}
                 />
 
-                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Faculty (Optional)</Text>
-                <TextInput
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
-                  placeholder="e.g. Prof. S. Sen"
-                  placeholderTextColor="#5C5446"
-                  value={faculty}
-                  onChangeText={setFaculty}
+                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Class</Text>
+                <SelectDropdown
+                  label="Class"
+                  value={classText}
+                  options={["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12", "1st Year", "2nd Year", "3rd Year", "4th Year"]}
+                  onSelect={setClassText}
                 />
               </View>
             )}
 
-            <View className="mb-4 z-50">
-              <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects (Comma separated)</Text>
-              <TextInput
-                className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
-                placeholder="e.g. Mathematics, Physics"
-                placeholderTextColor="#5C5446"
-                value={subjects}
-                onChangeText={setSubjects}
-              />
-              {(() => {
-                const parts = subjects.split(',');
-                const lastPart = parts[parts.length - 1].trim().toLowerCase();
-                if (lastPart.length > 0) {
-                  const suggestions = uniqueSubjects.filter(s => s.toLowerCase().includes(lastPart) && s.toLowerCase() !== lastPart);
-                  if (suggestions.length > 0) {
-                    return (
-                      <View className="bg-slate-800 border border-slate-700 rounded-xl mb-4 overflow-hidden shadow-sm shadow-black/20">
-                        {suggestions.map(s => (
-                          <TouchableOpacity 
-                            key={s} 
-                            className="px-4 py-3 border-b border-slate-700/50"
-                            onPress={() => {
-                              const newParts = [...parts];
-                              newParts[newParts.length - 1] = newParts.length > 1 ? ' ' + s : s;
-                              setSubjects(newParts.join(','));
-                            }}
-                          >
-                            <Text className="text-slate-200 text-xs font-bold">{s}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    );
-                  }
-                }
-                return null;
-              })()}
-            </View>
+            {role === 'TEACHER' && (
+              <View className="mb-4 z-50">
+                <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Subjects</Text>
+                <MultiSelectDropdown
+                  label="Subjects"
+                  selectedValues={subjects}
+                  options={["Physics", "Chemistry", "Maths", "Biology", "Computer", "English", "Electronics"]}
+                  onSelect={setSubjects}
+                />
+              </View>
+            )}
 
             <Button
               title="Generate Credentials & Create"

@@ -37,7 +37,6 @@ export const SuperuserAdminManagementTab: React.FC = () => {
   // Admin form state
   const [adminName, setAdminName] = useState('');
   const [adminPhone, setAdminPhone] = useState('');
-  const [adminEmail, setAdminEmail] = useState('');
   const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
 
   // Generated credentials state
@@ -204,8 +203,8 @@ export const SuperuserAdminManagementTab: React.FC = () => {
   }, []);
 
   const handleCreateAdmin = async () => {
-    if (!adminName.trim() || !adminPhone.trim()) {
-      Alert.alert('Error', 'Name and phone number are required.');
+    if (!adminPhone || adminPhone.length < 10) {
+      Alert.alert('Input Error', 'Please enter a valid 10-digit mobile number.');
       return;
     }
 
@@ -213,8 +212,7 @@ export const SuperuserAdminManagementTab: React.FC = () => {
       setIsSubmittingAdmin(true);
       const res = await apiClient.post('/superuser/admins', {
         name: adminName.trim(),
-        phoneNumber: adminPhone.trim(),
-        email: adminEmail.trim() || null,
+        phoneNumber: adminPhone.trim()
       });
 
       if (res.data.success) {
@@ -230,7 +228,6 @@ export const SuperuserAdminManagementTab: React.FC = () => {
         // Reset fields
         setAdminName('');
         setAdminPhone('');
-        setAdminEmail('');
 
         loadData();
       }
@@ -520,16 +517,6 @@ export const SuperuserAdminManagementTab: React.FC = () => {
               placeholder="e.g. +919876543210"
               placeholderTextColor="#5C5446"
               className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-3"
-            />
-
-            <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Email Address (Optional)</Text>
-            <TextInput
-              value={adminEmail}
-              onChangeText={setAdminEmail}
-              keyboardType="email-address"
-              placeholder="e.g. john@mathemaniac.com"
-              placeholderTextColor="#5C5446"
-              className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-4"
             />
 
             <View className="flex-row gap-4 mt-2">
