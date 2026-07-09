@@ -144,8 +144,8 @@ export const TeacherAttendanceScreen: React.FC = () => {
             setActiveSchedule(activeCourse);
             setSchedules([...todaysSchedules, ...otherSchedules]);
           } else {
-            setActiveSchedule(fetchedSchedules[0] || null);
-            setSchedules(fetchedSchedules);
+            setActiveSchedule(otherSchedules.length > 0 ? otherSchedules[0] : null);
+            setSchedules(otherSchedules);
           }
         } else {
           setSchedules([]);
