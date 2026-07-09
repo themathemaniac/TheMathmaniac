@@ -187,6 +187,46 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
   }
 });
 
+// Update User Name
+router.put('/name', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { name } = req.body;
+    if (!name || name.trim() === '') {
+      return res.status(400).json({ success: false, error: 'Name is required' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { name: name.trim() },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        stream: true,
+        class: true,
+        faculty: true,
+        school: true,
+        createdAt: true,
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: updatedUser,
+      message: 'Name updated successfully',
+    });
+  } catch (error: any) {
+    console.error('[Update Name Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 2. Get Purchased Courses list
 router.get('/courses', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   try {
