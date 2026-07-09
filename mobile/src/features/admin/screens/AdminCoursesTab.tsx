@@ -961,7 +961,7 @@ export const AdminCoursesTab: React.FC = () => {
                   
                   <View style={{ maxHeight: 160 }} className="bg-slate-950 border border-slate-800 rounded-xl mb-3 overflow-hidden">
                     <ScrollView nestedScrollEnabled className="p-2">
-                      {students.filter(s => !course.targetClass || s.class === course.targetClass).map(student => (
+                      {students.filter(s => !course.targetClass || s.class === course.targetClass || s.class === `Class ${course.targetClass}` || course.targetClass === `Class ${s.class}`).map(student => (
                         <TouchableOpacity 
                           key={student.id} 
                           onPress={() => setEnrollStudentId(student.id)}
@@ -980,7 +980,7 @@ export const AdminCoursesTab: React.FC = () => {
                           )}
                         </TouchableOpacity>
                       ))}
-                      {students.filter(s => !course.targetClass || s.class === course.targetClass).length === 0 && (
+                      {students.filter(s => !course.targetClass || s.class === course.targetClass || s.class === `Class ${course.targetClass}` || course.targetClass === `Class ${s.class}`).length === 0 && (
                         <Text className="text-slate-500 text-xs text-center py-4">No students found for this class.</Text>
                       )}
                     </ScrollView>
