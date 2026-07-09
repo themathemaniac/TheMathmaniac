@@ -108,7 +108,7 @@ export const SchoolAutocomplete: React.FC<SchoolAutocompleteProps> = ({
       {error && <Text className="text-red-400 text-[10px] mt-1 ml-1">{error}</Text>}
 
       {showDropdown && query.trim().length > 0 && (
-        <View className="absolute top-[52px] left-0 right-0 bg-white border border-slate-700 rounded-xl h-48 overflow-hidden shadow-xl z-50 elevation-5">
+        <View className="mt-2 bg-white border border-slate-700 rounded-xl h-48 overflow-hidden shadow-xl z-50 elevation-5">
           <ScrollView
             keyboardShouldPersistTaps="always"
             nestedScrollEnabled={true}
