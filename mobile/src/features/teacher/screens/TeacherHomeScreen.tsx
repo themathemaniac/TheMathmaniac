@@ -183,26 +183,6 @@ export const TeacherHomeScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Quick Statistics Grid */}
-            <Text className="text-slate-100 text-base font-bold mb-3">Academic Stats Overview</Text>
-            <View className="flex-row flex-wrap justify-between mb-6">
-              <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
-                <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">My Students</Text>
-                <Text className="text-slate-100 text-2xl font-black mt-2">{stats?.totalStudents ?? 0}</Text>
-              </View>
-              <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
-                <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Active Batches</Text>
-                <Text className="text-slate-100 text-2xl font-black mt-2">{stats?.totalCourses ?? 0}</Text>
-              </View>
-              <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
-                <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Quizzes Created</Text>
-                <Text className="text-emerald-400 text-2xl font-black mt-2">{stats?.totalTests ?? 0}</Text>
-              </View>
-              <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
-                <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Resources Shared</Text>
-                <Text className="text-slate-100 text-2xl font-black mt-2">{stats?.totalMaterials ?? 0}</Text>
-              </View>
-            </View>
           </View>
         )}
       </ScrollView>

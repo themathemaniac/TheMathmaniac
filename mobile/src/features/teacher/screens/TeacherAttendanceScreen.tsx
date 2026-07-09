@@ -121,6 +121,11 @@ export const TeacherAttendanceScreen: React.FC = () => {
           let todaysSchedules = fetchedSchedules.filter((s: any) => s.date === localDateStr);
           const otherSchedules = fetchedSchedules.filter((s: any) => s.date !== localDateStr);
           
+          otherSchedules.sort((a: any, b: any) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return a.startTime.localeCompare(b.startTime);
+          });
+          
           if (todaysSchedules.length > 0) {
             const currentTimeStr = `${String(localDate.getHours()).padStart(2, '0')}:${String(localDate.getMinutes()).padStart(2, '0')}`;
             
@@ -672,7 +677,7 @@ export const TeacherAttendanceScreen: React.FC = () => {
                           {record.title} {isActive ? ' (Selected)' : ''}
                         </Text>
                         <Text className="text-slate-500 text-[10px] mt-1 font-semibold">
-                          📅 Date: {record.date} | ⏱️ {record.startTime} - {record.endTime}
+                          ⏱️ {record.startTime} - {record.endTime}
                         </Text>
                         {(record.class || record.subject) && (
                           <Text className="text-slate-500 text-[10px] mt-0.5 font-semibold">
@@ -681,8 +686,13 @@ export const TeacherAttendanceScreen: React.FC = () => {
                           </Text>
                          )}
                       </View>
-                      <View className={`px-2.5 py-1 rounded-full border ${isActive ? 'bg-[#2D8C82]/20 border-[#2D8C82]' : 'bg-blue-900/20 border-blue-500/30'}`}>
-                        <Text className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-[#2D8C82]' : 'text-blue-400'}`}>{record.campus}</Text>
+                      <View className="items-end justify-center">
+                        <Text className={`text-xs font-black mb-1.5 ${isActive ? 'text-[#2D8C82]' : 'text-slate-300'}`}>
+                          {new Date(record.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </Text>
+                        <View className={`px-2.5 py-1 rounded-full border ${isActive ? 'bg-[#2D8C82]/20 border-[#2D8C82]' : 'bg-blue-900/20 border-blue-500/30'}`}>
+                          <Text className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-[#2D8C82]' : 'text-blue-400'}`}>{record.campus}</Text>
+                        </View>
                       </View>
                     </View>
                   </TouchableOpacity>

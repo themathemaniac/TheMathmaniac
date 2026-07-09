@@ -40,7 +40,7 @@ export const TeacherProfileScreen: React.FC = () => {
     try {
       const res = await apiClient.get('/profile');
       if (res.data.success) {
-        setProfileStats(res.data.stats);
+        setProfileStats(res.data.data.stats);
       }
     } catch (e) {
       console.log('Error fetching profile stats:', e);
@@ -105,27 +105,31 @@ export const TeacherProfileScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Teacher Info / Analytics */}
-          <Text className="text-slate-100 text-base font-bold mb-4">Teaching Analytics</Text>
-          <View className="flex-row flex-wrap justify-between mb-8">
+          {/* Academic Stats Overview */}
+          <Text className="text-slate-100 text-base font-bold mb-4">Academic Stats Overview</Text>
+          <View className="flex-row flex-wrap justify-between mb-6">
             <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
-              <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Batches Managed</Text>
+              <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">My Students</Text>
               <Text className="text-slate-100 text-2xl font-black mt-2">
-                {loadingStats ? '...' : (profileStats?.batchesManaged ?? 0)}
+                {loadingStats ? '...' : (profileStats?.totalStudents ?? 0)}
               </Text>
             </View>
             <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
-              <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Avg Ratings</Text>
-              <Text className="text-emerald-400 text-2xl font-black mt-2">N/A</Text>
-            </View>
-            <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
-              <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Feedback Sheets</Text>
-              <Text className="text-slate-100 text-2xl font-black mt-2">0</Text>
-            </View>
-            <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
-              <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Teaching Hours</Text>
+              <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Active Batches</Text>
               <Text className="text-slate-100 text-2xl font-black mt-2">
-                {loadingStats ? '...' : (profileStats?.teachingHours ?? 0)} hrs
+                {loadingStats ? '...' : (profileStats?.totalCourses ?? 0)}
+              </Text>
+            </View>
+            <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
+              <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Quizzes Created</Text>
+              <Text className="text-emerald-400 text-2xl font-black mt-2">
+                {loadingStats ? '...' : (profileStats?.totalTests ?? 0)}
+              </Text>
+            </View>
+            <View className="w-[47%] bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4">
+              <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider">Resources Shared</Text>
+              <Text className="text-slate-100 text-2xl font-black mt-2">
+                {loadingStats ? '...' : (profileStats?.totalMaterials ?? 0)}
               </Text>
             </View>
           </View>

@@ -421,42 +421,7 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
         </View>
       </Modal>
 
-      {/* Floating Action Button for Live Classes */}
-      <TouchableOpacity
-        onPress={() => {
-          Alert.alert(
-            "Start Online Class",
-            "Do you want to start a live interactive online class for this batch?",
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Start Class",
-                onPress: () => {
-                  Alert.alert("Success", "Live meeting room created! Students have been notified.\n\nMeeting Room: TheMathemaniac-" + courseId.substring(0,8));
-                }
-              }
-            ]
-          );
-        }}
-        style={{
-          position: 'absolute',
-          bottom: 24,
-          right: 24,
-          backgroundColor: '#2563eb',
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          justifyContent: 'center',
-          alignItems: 'center',
-          elevation: 5,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 3.84,
-        }}
-      >
-        <Text style={{ fontSize: 24, color: '#fff' }}>🎥</Text>
-      </TouchableOpacity>
+
     </View>
   );
 };
