@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Keyboard } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, ActivityIndicator, Keyboard, ScrollView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { apiClient } from '../../../core/api/client';
 
@@ -109,34 +109,33 @@ export const SchoolAutocomplete: React.FC<SchoolAutocompleteProps> = ({
 
       {showDropdown && query.trim().length > 0 && (
         <View className="absolute top-[52px] left-0 right-0 bg-white border border-slate-700 rounded-xl h-48 overflow-hidden shadow-xl z-50 elevation-5">
-          <FlatList
-            data={results}
-            keyExtractor={item => item.id}
-            keyboardShouldPersistTaps="handled"
+          <ScrollView
+            keyboardShouldPersistTaps="always"
             nestedScrollEnabled={true}
-            renderItem={({ item }) => (
+            className="flex-1"
+          >
+            {results.map((item) => (
               <TouchableOpacity
+                key={item.id}
                 className="px-4 py-3 border-b border-slate-700 flex-row items-center"
                 onPress={() => handleSelect(item.name)}
               >
                 <MaterialIcons name="business" size={16} color="#5C5446" />
                 <Text className="text-slate-300 font-semibold text-sm ml-3 flex-1">{item.name}</Text>
               </TouchableOpacity>
+            ))}
+            {!exactMatchExists && !loading && query.trim().length > 0 && (
+              <TouchableOpacity
+                className="px-4 py-3 bg-blue-500/10 flex-row items-center"
+                onPress={handleAddNew}
+              >
+                <MaterialIcons name="add-circle-outline" size={16} color="#3b82f6" />
+                <Text className="text-blue-400 font-medium text-sm ml-3 flex-1">
+                  Add "{query}" as new school
+                </Text>
+              </TouchableOpacity>
             )}
-            ListFooterComponent={
-              !exactMatchExists && !loading && query.trim().length > 0 ? (
-                <TouchableOpacity
-                  className="px-4 py-3 bg-blue-500/10 flex-row items-center"
-                  onPress={handleAddNew}
-                >
-                  <MaterialIcons name="add-circle-outline" size={16} color="#3b82f6" />
-                  <Text className="text-blue-400 font-medium text-sm ml-3 flex-1">
-                    Add "{query}" as new school
-                  </Text>
-                </TouchableOpacity>
-              ) : null
-            }
-          />
+          </ScrollView>
         </View>
       )}
     </View>
