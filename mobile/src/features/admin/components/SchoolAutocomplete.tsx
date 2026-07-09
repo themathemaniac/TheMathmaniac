@@ -86,12 +86,11 @@ export const SchoolAutocomplete: React.FC<SchoolAutocompleteProps> = ({
 
   return (
     <View className="mb-4 z-50">
-      <View className={`flex-row items-center bg-slate-800/50 rounded-xl px-4 h-12 border ${error ? 'border-red-500' : 'border-slate-700/50'}`}>
-        <MaterialIcons name="school" size={20} color={error ? '#ef4444' : '#94a3b8'} />
+      <View className={`bg-slate-950 rounded-xl px-4 py-3 border ${error ? 'border-red-500' : 'border-slate-800'}`}>
         <TextInput
-          className="flex-1 ml-3 text-slate-100 font-medium text-sm h-full"
+          className="text-slate-300 text-sm font-semibold"
           placeholder={placeholder}
-          placeholderTextColor="#64748b"
+          placeholderTextColor="#5C5446"
           value={query}
           onChangeText={handleTextChange}
           onFocus={() => {
@@ -109,7 +108,7 @@ export const SchoolAutocomplete: React.FC<SchoolAutocompleteProps> = ({
       {error && <Text className="text-red-400 text-[10px] mt-1 ml-1">{error}</Text>}
 
       {showDropdown && query.trim().length > 0 && (
-        <View className="absolute top-14 left-0 right-0 bg-slate-800 border border-slate-700 rounded-xl max-h-60 overflow-hidden shadow-lg z-50">
+        <View className="absolute top-[52px] left-0 right-0 bg-white border border-slate-700 rounded-xl h-48 overflow-hidden shadow-xl z-50 elevation-5">
           <FlatList
             data={results}
             keyExtractor={item => item.id}
@@ -117,11 +116,11 @@ export const SchoolAutocomplete: React.FC<SchoolAutocompleteProps> = ({
             nestedScrollEnabled={true}
             renderItem={({ item }) => (
               <TouchableOpacity
-                className="px-4 py-3 border-b border-slate-700/50 flex-row items-center"
+                className="px-4 py-3 border-b border-slate-700 flex-row items-center"
                 onPress={() => handleSelect(item.name)}
               >
-                <MaterialIcons name="business" size={16} color="#94a3b8" />
-                <Text className="text-slate-200 text-sm ml-3 flex-1">{item.name}</Text>
+                <MaterialIcons name="business" size={16} color="#5C5446" />
+                <Text className="text-slate-300 font-semibold text-sm ml-3 flex-1">{item.name}</Text>
               </TouchableOpacity>
             )}
             ListFooterComponent={
