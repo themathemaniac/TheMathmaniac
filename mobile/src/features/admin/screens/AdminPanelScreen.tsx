@@ -11,6 +11,7 @@ import { AdminRoutineTab } from './AdminRoutineTab';
 import { SuperuserAdminManagementTab } from './SuperuserAdminManagementTab';
 import { apiClient } from '../../../core/api/client';
 import { MiniCalendar } from '../../../shared/components/MiniCalendar';
+import { SchoolAutocomplete } from '../components/SchoolAutocomplete';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 type AdminPanelScreenNavigationProp = StackNavigationProp<RootStackParamList, 'AdminPanel'>;
@@ -926,12 +927,9 @@ export const AdminPanelScreen: React.FC = () => {
                 />
 
                 <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">School</Text>
-                <TextInput
-                  className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
-                  placeholder="e.g. Delhi Public School"
-                  placeholderTextColor="#5C5446"
+                <SchoolAutocomplete
                   value={school}
-                  onChangeText={setSchool}
+                  onChange={setSchool}
                 />
 
                 <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">Class</Text>
@@ -1207,10 +1205,9 @@ export const AdminPanelScreen: React.FC = () => {
                   />
 
                   <Text className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-2">School</Text>
-                  <TextInput
-                    className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-sm font-semibold mb-4"
+                  <SchoolAutocomplete
                     value={editForm.school}
-                    onChangeText={(t) => setEditForm({...editForm, school: t})}
+                    onChange={(t) => setEditForm({...editForm, school: t})}
                   />
                 </View>
               )}

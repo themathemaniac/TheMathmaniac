@@ -424,3 +424,11 @@ model AdminBranchSwapRequest {
   @@unique([adminId, date])
   @@index([adminId])
 }
+
+model School {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  aliases   String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
