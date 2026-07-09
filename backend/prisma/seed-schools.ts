@@ -1,11 +1,10 @@
 import { PrismaClient } from '@prisma/client';
-import process from 'process';
 
 const prisma = new PrismaClient();
 
 const schools = [
   // User provided
-  { name: "St. Jude's High School", aliases: ["SJHS", "St Judes", "St. Jude's"] },
+  { name: "St. Jude's High School", aliases: ["SJHS", "St Judes", "St. Jude's", "st judes", "st. jude's"] },
   { name: "Sudhir Memorial Institute", aliases: ["SMI", "Sudhir Memorial"] },
   { name: "St. Xavier's Institution, Panihati", aliases: ["St Xaviers Panihati", "SXI Panihati", "St Xavier's Panihati"] },
   { name: "St. Xavier's Institution, Ruiya", aliases: ["St Xaviers Ruiya", "SXI Ruiya", "St Xavier's Ruiya"] },
@@ -14,12 +13,12 @@ const schools = [
   { name: "Kalyani Public School", aliases: ["KPS", "Kalyani Public", "Kalyani Public High School"] },
   { name: "Central Modern School", aliases: ["CMS", "Central Modern"] },
   { name: "National Model School", aliases: ["NMS", "National Model"] },
-  
+
   // Added based on location (Madhyamgram, Sodepur, Barasat, Birati)
   { name: "Julien Day School, Ganganagar", aliases: ["JDS", "Julien Day", "JDS Ganganagar"] },
   { name: "Adamas International School", aliases: ["AIS", "Adamas"] },
   { name: "Narayana School, Barasat", aliases: ["Narayana Barasat", "Narayana"] },
-  { name: "Narayana School, Sodepur", aliases: ["Narayana Sodepur"] },
+  { name: "Narayana School, Sodepur", aliases: ["Narayana Sodepur", "Narayana"] },
   { name: "Aditya Academy Secondary, Barasat", aliases: ["AAS", "Aditya Academy"] },
   { name: "St. Stephen's School, Dum Dum", aliases: ["St Stephens", "SSS"] },
   { name: "National English School", aliases: ["NES", "National English"] },
@@ -75,7 +74,7 @@ async function main() {
 main()
   .catch((e) => {
     console.error(e);
-    process.exit(1);
+    throw e;
   })
   .finally(async () => {
     await prisma.$disconnect();
