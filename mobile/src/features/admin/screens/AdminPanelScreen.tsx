@@ -520,22 +520,10 @@ export const AdminPanelScreen: React.FC = () => {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
-              onPress={() => {
-                Alert.alert('Confirm Logout', 'Are you sure you want to sign out?', [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Sign Out',
-                    onPress: async () => {
-                      await logout();
-                      navigation.replace('Login');
-                    },
-                    style: 'destructive',
-                  },
-                ]);
-              }}
-              className="bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl"
+              onPress={() => navigation.navigate('AdminProfile' as any)}
+              className="bg-blue-600/10 border border-blue-500/20 px-4 py-2.5 rounded-xl"
             >
-              <Text className="text-red-400 text-xs font-bold">Sign Out</Text>
+              <Text className="text-blue-400 text-xs font-bold">Profile</Text>
             </TouchableOpacity>
           )}
           <Image

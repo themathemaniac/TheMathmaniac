@@ -18,6 +18,7 @@ export type RootStackParamList = {
   MandatoryChangePassword: undefined;
   ChangePassword: undefined;
   AdminPanel: undefined;
+  AdminProfile: undefined;
   AppTabs: NavigatorScreenParams<AppTabsParamList>;
   CourseDetails: { courseId: string; initialTab?: 'VIDEOS' | 'MATERIALS' | 'NOTICES' };
   LecturePlayer: { lectureId: string };

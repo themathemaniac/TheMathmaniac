@@ -16,6 +16,7 @@ import { ForgotPasswordResetScreen } from '../features/authentication/screens/Fo
 import { MandatoryChangePasswordScreen } from '../features/authentication/screens/MandatoryChangePasswordScreen';
 import { ChangePasswordScreen } from '../features/profile/screens/ChangePasswordScreen';
 import { AdminPanelScreen } from '../features/admin/screens/AdminPanelScreen';
+import { AdminProfileScreen } from '../features/admin/screens/AdminProfileScreen';
 import { AdminAttendanceScreen } from '../features/admin/screens/AdminAttendanceScreen';
 import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { CoursesExploreScreen } from '../features/courses/screens/CoursesExploreScreen';
@@ -181,6 +182,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="MandatoryChangePassword" component={MandatoryChangePasswordScreen} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="AdminPanel" component={AdminPanelScreen} />
+        <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
         <Stack.Screen name="AppTabs" component={AppTabsWrapper} />
         <Stack.Screen name="CourseDetails" component={CourseDetailsScreen} />
         <Stack.Screen name="LecturePlayer" component={LecturePlayerScreen} />

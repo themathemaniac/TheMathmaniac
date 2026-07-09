@@ -24,6 +24,7 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
         faculty: true,
         school: true,
         createdAt: true,
+        adminWeeklyPatterns: true,
       },
     });
 
