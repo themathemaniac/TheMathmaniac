@@ -59,6 +59,8 @@ interface PingLogItem {
   coords: string;
 }
 
+export const GEOFENCE_LOCATION_TASK = 'background-geofence-task';
+
 export const TeacherAttendanceScreen: React.FC = () => {
   const navigation = useNavigation<TeacherAttendanceNavigationProp>();
   const { user } = useAuthStore();
@@ -108,6 +110,18 @@ export const TeacherAttendanceScreen: React.FC = () => {
 
   const fetchSchedulesAndHistory = async () => {
     try {
+      let trackingScheduleId: string | null = null;
+      try {
+        const hasStarted = await Location.hasStartedLocationUpdatesAsync(GEOFENCE_LOCATION_TASK);
+        if (hasStarted) {
+          const { secureStorage } = require('../../../core/storage/secure');
+          trackingScheduleId = await secureStorage.getGeofenceScheduleId();
+          setIsLogging(true);
+        } else {
+          setIsLogging(false);
+        }
+      } catch(e) { console.log('Location status check error:', e); }
+
       const scheduleRes = await apiClient.get('/attendance/teacher/schedule');
       if (scheduleRes.data.success) {
         const fetchedSchedules = scheduleRes.data.data;
@@ -132,9 +146,15 @@ export const TeacherAttendanceScreen: React.FC = () => {
             // Sort by start time
             todaysSchedules.sort((a: any, b: any) => a.startTime.localeCompare(b.startTime));
             
-            // Find the active or upcoming schedule
-            const activeIndex = todaysSchedules.findIndex((s: any) => s.endTime >= currentTimeStr);
-            const activeIdxToUse = activeIndex !== -1 ? activeIndex : 0;
+            let activeIdxToUse = 0;
+            if (trackingScheduleId) {
+               const trackedIndex = todaysSchedules.findIndex((s: any) => s.id === trackingScheduleId);
+               if (trackedIndex !== -1) activeIdxToUse = trackedIndex;
+            } else {
+               const activeIndex = todaysSchedules.findIndex((s: any) => s.endTime >= currentTimeStr);
+               if (activeIndex !== -1) activeIdxToUse = activeIndex;
+            }
+
             const activeCourse = todaysSchedules[activeIdxToUse];
             
             // Hoist to top
@@ -167,9 +187,7 @@ export const TeacherAttendanceScreen: React.FC = () => {
   useEffect(() => {
     checkPermissions();
     fetchSchedulesAndHistory();
-    return () => {
-      stopLogging();
-    };
+    // Intentionally omitting stopLogging() from cleanup so background task persists when component unmounts
   }, []);
 
   // Update isLoggingRef whenever isLogging state changes
@@ -289,7 +307,6 @@ export const TeacherAttendanceScreen: React.FC = () => {
     }
   };
   // We use Background Location API for teachers instead of setTimeout
-  const GEOFENCE_LOCATION_TASK = 'background-geofence-task';
   const startLogging = async () => {
     if (!activeSchedule) {
       Alert.alert('No Schedule', 'Please select or generate a class schedule first.');
@@ -326,9 +343,9 @@ export const TeacherAttendanceScreen: React.FC = () => {
       try {
         await Location.startLocationUpdatesAsync(GEOFENCE_LOCATION_TASK, {
           accuracy: Location.Accuracy.Balanced,
-          timeInterval: 25 * 60 * 1000, // Roughly every 25 mins
+          timeInterval: 35 * 60 * 1000, // Roughly every 35 mins
           distanceInterval: 10,
-          deferredUpdatesInterval: 25 * 60 * 1000,
+          deferredUpdatesInterval: 35 * 60 * 1000,
           showsBackgroundLocationIndicator: true,
           foregroundService: {
             notificationTitle: "📍 GPS Tracking Active",

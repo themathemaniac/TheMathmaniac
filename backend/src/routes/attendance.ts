@@ -502,9 +502,9 @@ router.post('/teacher/checkout', authenticateJWT, requireTeacherOrAdmin, async (
     const presenceRatio = totalPings > 0 ? insidePings / totalPings : 0;
 
     let status = 'ABSENT';
-    if (presenceRatio >= 0.8) {
+    if (presenceRatio >= 0.6) {
       status = 'PRESENT';
-    } else if (presenceRatio >= 0.2) {
+    } else if (presenceRatio >= 0.15) {
       status = 'PARTIAL';
     }
 
