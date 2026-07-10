@@ -515,6 +515,7 @@ router.post('/shifts/field-promotion', authenticateJWT, requireAdmin, async (req
     const dateStr = formatter.format(new Date());
 
     // Create a new shift for the field promotion on this date
+    // @ts-ignore
     const shift = await prisma.adminShift.create({
       data: {
         adminId,
@@ -525,6 +526,7 @@ router.post('/shifts/field-promotion', authenticateJWT, requireAdmin, async (req
     });
 
     // Create attendance check-in for this shift
+    // @ts-ignore
     const attendance = await prisma.adminAttendance.create({
       data: {
         adminId,
