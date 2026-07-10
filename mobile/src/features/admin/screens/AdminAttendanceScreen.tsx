@@ -256,6 +256,43 @@ export const AdminAttendanceScreen: React.FC = () => {
     );
   };
 
+  const handleAdHocFieldPromotion = async () => {
+    Alert.alert(
+      'Log Ad-Hoc Field Duty',
+      'This will capture your current location and log a field promotion event. Proceed?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            setIsCheckingIn(true);
+            const locResult = await triggerLocationFetch('Madhyamgram'); // Just to get coords
+            if (!locResult) {
+              setIsCheckingIn(false);
+              return;
+            }
+            try {
+              const res = await apiClient.post('/admin-attendance/shifts/field-promotion', {
+                latitude: locResult.coords.latitude,
+                longitude: locResult.coords.longitude,
+                locationName: 'Ad-hoc Field Work'
+              });
+              if (res.data.success) {
+                Alert.alert('Success', 'Field Promotion logged successfully.');
+                fetchShifts();
+              }
+            } catch (error: any) {
+              console.log('Field Promo Error:', error);
+              Alert.alert('Error', error.response?.data?.error || 'Failed to log field promotion.');
+            } finally {
+              setIsCheckingIn(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleRequestSwap = async (altBranch: string) => {
     if (!activeShift) return;
     try {
@@ -401,6 +438,14 @@ export const AdminAttendanceScreen: React.FC = () => {
             );
           })}
         </ScrollView>
+
+        <TouchableOpacity 
+          onPress={handleAdHocFieldPromotion}
+          disabled={isCheckingIn}
+          className="bg-purple-600 border border-purple-700 py-3.5 rounded-2xl items-center shadow-lg active:opacity-90 mb-6 flex-row justify-center gap-2"
+        >
+          <Text className="text-white text-xs font-black uppercase tracking-wider">📢 Log Ad-Hoc Field Promotion</Text>
+        </TouchableOpacity>
 
         {/* Branch Swap Suggestion Alert */}
         {alternateBranch && !isCheckedIn && (

@@ -73,17 +73,19 @@ router.get('/shifts/my', authenticateJWT, requireAdmin, async (req: Authenticate
       dates.push({ dateStr, dayOfWeek });
     }
 
-    const existingShiftsByDate = new Map<string, any>();
+    const existingBranchShiftsByDate = new Set<string>();
     for (const shift of shifts) {
       if (swapMap.has(shift.date)) {
         shift.branch = swapMap.get(shift.date)!;
       }
-      existingShiftsByDate.set(shift.date, shift);
+      if (shift.type === 'BRANCH_DUTY') {
+        existingBranchShiftsByDate.add(shift.date);
+      }
     }
 
     const resultShifts = [...shifts];
     for (const item of dates) {
-      if (!existingShiftsByDate.has(item.dateStr)) {
+      if (!existingBranchShiftsByDate.has(item.dateStr)) {
         const pattern = patterns.find(p => p.dayOfWeek === item.dayOfWeek);
         if (pattern) {
           const activeBranch = swapMap.get(item.dateStr) || pattern.branch;
@@ -494,6 +496,52 @@ router.post('/shifts/approve-swap', authenticateJWT, requireSuperuser, async (re
     });
   } catch (error: any) {
     console.error('[Approve/Reject Swap Request Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 9. Check-in for Field Promotion
+router.post('/shifts/field-promotion', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const adminId = req.user!.id;
+    const { latitude, longitude, locationName } = req.body;
+
+    if (latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ success: false, error: 'Missing latitude or longitude.' });
+    }
+
+    const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' };
+    const formatter = new Intl.DateTimeFormat('en-CA', options);
+    const dateStr = formatter.format(new Date());
+
+    // Create a new shift for the field promotion on this date
+    const shift = await prisma.adminShift.create({
+      data: {
+        adminId,
+        branch: 'Field',
+        date: dateStr,
+        type: 'FIELD_PROMOTION',
+      },
+    });
+
+    // Create attendance check-in for this shift
+    const attendance = await prisma.adminAttendance.create({
+      data: {
+        adminId,
+        shiftId: shift.id,
+        loginTime: new Date(),
+        checkInLat: latitude,
+        checkInLng: longitude,
+        locationName: locationName || null,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: { shift, attendance },
+    });
+  } catch (error: any) {
+    console.error('[Admin Field Promotion Error]', error);
     return res.status(500).json({ success: false, error: error.message });
   }
 });

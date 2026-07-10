@@ -357,8 +357,8 @@ model AdminShift {
   admin            User              @relation(fields: [adminId], references: [id], onDelete: Cascade)
   branch           String            // e.g. "Sodepur", "Belgharia"
   date             String            // YYYY-MM-DD format
-  startTime        String            // hh:mm AM/PM
-  endTime          String            // hh:mm AM/PM
+  startTime        String?           // hh:mm AM/PM
+  endTime          String?           // hh:mm AM/PM
   type             String            @default("BRANCH_DUTY") // "BRANCH_DUTY" | "FIELD_PROMOTION"
   attendances      AdminAttendance[]
   createdAt        DateTime          @default(now())
@@ -380,6 +380,7 @@ model AdminAttendance {
   checkInLng     Float?
   checkOutLat    Float?
   checkOutLng    Float?
+  locationName   String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
