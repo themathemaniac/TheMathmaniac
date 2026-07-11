@@ -25,8 +25,6 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   horizontal = false,
   teacherName,
 }) => {
-  const formattedPrice = price === 0 ? 'FREE' : `₹${(price / 100).toLocaleString('en-IN')}`;
-
   if (horizontal) {
     return (
       <TouchableOpacity
@@ -55,9 +53,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </View>
             <View className="flex-row justify-between items-center mt-2">
               <Text className="text-xs text-slate-500 font-medium">{lectureCount} Lectures</Text>
-              <Text className="text-sm font-bold text-blue-600">
-                {isPurchased ? 'Unlocked' : formattedPrice}
-              </Text>
+              {isPurchased && (
+                <Text className="text-sm font-bold text-blue-600">
+                  Unlocked
+                </Text>
+              )}
             </View>
           </View>
         </View>
@@ -93,10 +93,12 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             )}
           </View>
 
-          <View className="flex-row justify-between items-center mt-4 pt-3 border-t border-slate-200">
-            <Text className="text-base font-bold text-blue-600">
-              {isPurchased ? 'Unlocked' : formattedPrice}
-            </Text>
+          <View className="flex-row justify-end items-center mt-4 pt-3 border-t border-slate-200">
+            {isPurchased && (
+              <Text className="text-base font-bold text-blue-600 mr-auto">
+                Unlocked
+              </Text>
+            )}
             <View className="bg-blue-100 px-3 py-1.5 rounded-full border border-blue-200">
               <Text className="text-xs font-semibold text-blue-600">
                 {isPurchased ? 'Start Study' : 'Get Course'}

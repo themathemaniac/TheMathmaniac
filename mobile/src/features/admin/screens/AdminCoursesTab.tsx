@@ -330,11 +330,6 @@ export const AdminCoursesTab: React.FC = () => {
       return;
     }
     
-    if (!newCourse.price) {
-      Alert.alert('Error', 'Please enter a Price.');
-      return;
-    }
-    
     const generatedTitle = newCourse.isBundle 
       ? newCourse.title 
       : `${selectedSubject} ${selectedClass} B${selectedBatch}`;
@@ -342,7 +337,7 @@ export const AdminCoursesTab: React.FC = () => {
     const courseData = {
       ...newCourse,
       title: generatedTitle,
-      price: parseInt(newCourse.price, 10) * 100, // Convert Rs to Paisa
+      price: newCourse.price ? parseInt(newCourse.price, 10) * 100 : 0, // Convert Rs to Paisa
       timeSlots: newCourse.timeSlots,
       branch: newCourse.branch,
       targetClass: selectedClass
@@ -731,7 +726,7 @@ export const AdminCoursesTab: React.FC = () => {
               )}
               
 
-              <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Price (in Rs)</Text>
+              <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Price (in Rs) (Optional)</Text>
               <TextInput className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-3" placeholder="e.g. 500" placeholderTextColor="#5C5446" value={newCourse.price} onChangeText={(t) => setNewCourse({...newCourse, price: t})} keyboardType="number-pad" />
 
               {/* Target Class Text Input Removed - now selected via dropdown */}
