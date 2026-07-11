@@ -79,9 +79,14 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
     return map[shortDay] || shortDay;
   };
 
+  const getLocalDate = (dStr: string) => {
+    const [y, m, d] = dStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  };
+
   // Determine what classes happen on a specific date string
   const getCoursesForDate = (dateStr: string) => {
-    const d = new Date(dateStr);
+    const d = getLocalDate(dateStr);
     const fullWeekDaysMap: Record<number, string> = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 0: 'Sun' };
     const dayOfWeek = fullWeekDaysMap[d.getDay()];
 
@@ -95,7 +100,7 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
   };
 
   const isFutureDate = (dateStr: string) => {
-    const checkDate = new Date(dateStr);
+    const checkDate = getLocalDate(dateStr);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return checkDate > today;
@@ -106,8 +111,7 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const target = new Date(selectedDateStr);
-    target.setHours(0, 0, 0, 0);
+    const target = getLocalDate(selectedDateStr);
     
     const diffTime = today.getTime() - target.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -285,7 +289,7 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
       {/* Selected Day Agenda */}
       <View className="mt-4 pt-4 border-t border-slate-850">
         <Text className="text-slate-500 text-[9px] font-black uppercase tracking-wider mb-2">
-          Agenda: {new Date(selectedDateStr).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+          Agenda: {getLocalDate(selectedDateStr).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
         </Text>
         
         {isSelectedHoliday && (

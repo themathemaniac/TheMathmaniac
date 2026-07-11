@@ -95,7 +95,8 @@ router.post('/', authenticateJWT, requireTeacherOrAdmin, async (req: Authenticat
     // Check for retroactive edits (older than yesterday)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const target = new Date(date);
+    const [year, month, day] = date.split('-').map(Number);
+    const target = new Date(year, month - 1, day);
     target.setHours(0, 0, 0, 0);
 
     const diffTime = today.getTime() - target.getTime();
