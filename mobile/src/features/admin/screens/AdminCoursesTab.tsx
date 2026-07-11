@@ -175,7 +175,8 @@ export const AdminCoursesTab: React.FC = () => {
   const [courses, setCourses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
-  const [enrollStudentId, setEnrollStudentId] = useState('');
+  const [enrollStudentIds, setEnrollStudentIds] = useState<string[]>([]);
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const [assignTeacherIds, setAssignTeacherIds] = useState<string[]>([]);
   const [loadingActions, setLoadingActions] = useState({ assignTeacher: false, enrollStudent: false, removeTeacher: false });
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -268,6 +269,30 @@ export const AdminCoursesTab: React.FC = () => {
 
   const isSuperuser = true;
   const isCourseCreator = true;
+
+  const getFilteredAndSortedStudents = (course: any) => {
+    const q = studentSearchQuery.toLowerCase().trim();
+    let filtered = students;
+    
+    if (q) {
+      filtered = students.filter(s => 
+        (s.name && s.name.toLowerCase().includes(q)) || 
+        (s.phoneNumber && s.phoneNumber.includes(q))
+      );
+    } else {
+      filtered = students.filter(s => !course.targetClass || s.class === course.targetClass || s.class === `Class ${course.targetClass}` || course.targetClass === `Class ${s.class}`);
+    }
+
+    filtered.sort((a, b) => {
+      const aMatches = !course.targetClass || a.class === course.targetClass || a.class === `Class ${course.targetClass}` || course.targetClass === `Class ${a.class}`;
+      const bMatches = !course.targetClass || b.class === course.targetClass || b.class === `Class ${course.targetClass}` || course.targetClass === `Class ${b.class}`;
+      if (aMatches && !bMatches) return -1;
+      if (!aMatches && bMatches) return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    return filtered;
+  };
 
   const loadCourses = async () => {
     const data = await adminListCourses();
@@ -388,21 +413,26 @@ export const AdminCoursesTab: React.FC = () => {
   };
 
   const handleEnroll = async (courseId: string) => {
-    if (!enrollStudentId.trim()) {
-      Alert.alert('Input Error', 'Please enter a Student ID.');
+    if (enrollStudentIds.length === 0) {
+      Alert.alert('Input Error', 'Please select at least one student.');
       return;
     }
     setLoadingActions(prev => ({ ...prev, enrollStudent: true }));
-    const success = await adminEnrollStudent(courseId, enrollStudentId.trim());
+    let successCount = 0;
+    for (const sid of enrollStudentIds) {
+      const success = await adminEnrollStudent(courseId, sid);
+      if (success) successCount++;
+    }
     setLoadingActions(prev => ({ ...prev, enrollStudent: false }));
     
-    if (success) {
-      setEnrollStudentId('');
+    if (successCount > 0) {
+      setEnrollStudentIds([]);
+      setStudentSearchQuery('');
       setSelectedCourseId(null);
-      Alert.alert('Success', 'Student enrolled successfully.');
+      Alert.alert('Success', `Successfully enrolled ${successCount} student(s).`);
       loadCourses();
     } else {
-      const errorMsg = useAuthStore.getState().error || 'Failed to enroll student.';
+      const errorMsg = useAuthStore.getState().error || 'Failed to enroll students.';
       Alert.alert('Error', errorMsg);
     }
   };
@@ -907,7 +937,11 @@ export const AdminCoursesTab: React.FC = () => {
                 <Text className="text-slate-300 text-[10px] font-bold">Edit</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => setSelectedCourseId(selectedCourseId === course.id ? null : course.id)}
+                onPress={() => {
+                  setSelectedCourseId(selectedCourseId === course.id ? null : course.id);
+                  setEnrollStudentIds([]);
+                  setStudentSearchQuery('');
+                }}
                 className="flex-1 bg-slate-600 border border-slate-500 py-1.5 rounded-lg items-center"
               >
                 <Text className="text-white text-[10px] font-bold">{selectedCourseId === course.id ? 'Close' : 'Manage'}</Text>
@@ -922,7 +956,7 @@ export const AdminCoursesTab: React.FC = () => {
                   <View className="bg-slate-950 rounded-t-3xl h-[75%] border-t border-slate-800">
                     <View className="flex-row justify-between items-center p-5 border-b border-slate-850">
                       <Text className="text-slate-100 text-lg font-black" numberOfLines={1} style={{ flex: 1, marginRight: 10 }}>Manage: {course.title}</Text>
-                      <TouchableOpacity onPress={() => setSelectedCourseId(null)} className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700/50">
+                      <TouchableOpacity onPress={() => { setSelectedCourseId(null); setEnrollStudentIds([]); setStudentSearchQuery(''); }} className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700/50">
                         <Text className="text-slate-300 font-bold text-xs">Close</Text>
                       </TouchableOpacity>
                     </View>
@@ -954,29 +988,40 @@ export const AdminCoursesTab: React.FC = () => {
                     Enroll Student {course.targetClass ? `(Class ${course.targetClass})` : '(All Classes)'}
                   </Text>
                   
+                  <TextInput
+                    className="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-300 text-xs mb-3"
+                    placeholder="Search students by name or phone..."
+                    placeholderTextColor="#5C5446"
+                    value={studentSearchQuery}
+                    onChangeText={setStudentSearchQuery}
+                  />
+
                   <View style={{ maxHeight: 160 }} className="bg-slate-950 border border-slate-800 rounded-xl mb-3 overflow-hidden">
                     <ScrollView nestedScrollEnabled className="p-2">
-                      {students.filter(s => !course.targetClass || s.class === course.targetClass || s.class === `Class ${course.targetClass}` || course.targetClass === `Class ${s.class}`).map(student => (
-                        <TouchableOpacity 
-                          key={student.id} 
-                          onPress={() => setEnrollStudentId(student.id)}
-                          className={`p-3 rounded-lg border mb-1 flex-row justify-between items-center ${enrollStudentId === student.id ? 'bg-blue-600/20 border-blue-500' : 'bg-slate-900 border-slate-800'}`}
-                        >
-                          <View>
-                            <Text className={`text-xs font-bold ${enrollStudentId === student.id ? 'text-blue-400' : 'text-slate-200'}`}>{student.name}</Text>
-                            <Text className={`text-[10px] mt-0.5 ${enrollStudentId === student.id ? 'text-blue-300/70' : 'text-slate-500'}`}>
-                              {student.phoneNumber} {student.class ? `| Class ${student.class}` : ''}
-                            </Text>
-                          </View>
-                          {enrollStudentId === student.id && (
-                            <View className="bg-blue-500 rounded-full w-4 h-4 items-center justify-center">
-                              <Text className="text-white text-[9px] font-black">✓</Text>
+                      {getFilteredAndSortedStudents(course).map(student => {
+                        const isSelected = enrollStudentIds.includes(student.id);
+                        return (
+                          <TouchableOpacity 
+                            key={student.id} 
+                            onPress={() => setEnrollStudentIds(prev => isSelected ? prev.filter(id => id !== student.id) : [...prev, student.id])}
+                            className={`p-3 rounded-lg border mb-1 flex-row justify-between items-center ${isSelected ? 'bg-blue-600/20 border-blue-500' : 'bg-slate-900 border-slate-800'}`}
+                          >
+                            <View>
+                              <Text className={`text-xs font-bold ${isSelected ? 'text-blue-400' : 'text-slate-200'}`}>{student.name}</Text>
+                              <Text className={`text-[10px] mt-0.5 ${isSelected ? 'text-blue-300/70' : 'text-slate-500'}`}>
+                                {student.phoneNumber} {student.class ? `| Class ${student.class}` : ''}
+                              </Text>
                             </View>
-                          )}
-                        </TouchableOpacity>
-                      ))}
-                      {students.filter(s => !course.targetClass || s.class === course.targetClass || s.class === `Class ${course.targetClass}` || course.targetClass === `Class ${s.class}`).length === 0 && (
-                        <Text className="text-slate-500 text-xs text-center py-4">No students found for this class.</Text>
+                            {isSelected && (
+                              <View className="bg-blue-500 rounded-full w-4 h-4 items-center justify-center">
+                                <Text className="text-white text-[9px] font-black">✓</Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                      {getFilteredAndSortedStudents(course).length === 0 && (
+                        <Text className="text-slate-500 text-xs text-center py-4">No students found.</Text>
                       )}
                     </ScrollView>
                   </View>
@@ -992,7 +1037,7 @@ export const AdminCoursesTab: React.FC = () => {
                         <Text className="text-white text-xs font-bold uppercase tracking-wider">Enrolling...</Text>
                       </>
                     ) : (
-                      <Text className="text-white text-xs font-bold uppercase tracking-wider">Enroll Selected Student</Text>
+                      <Text className="text-white text-xs font-bold uppercase tracking-wider">Enroll Selected Students</Text>
                     )}
                   </TouchableOpacity>
                 </View>
