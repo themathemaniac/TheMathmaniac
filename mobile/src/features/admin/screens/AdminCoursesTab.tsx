@@ -8,7 +8,7 @@ import { COURSE_THEMES, getThemeUrl, extractThemeColor } from '../../../core/con
 
 const COMMON_SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'Computer Science', 'English'];
 const SUBJECT_OPTIONS = ['Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer', 'English'];
-const CLASS_OPTIONS = ['6', '7', '8', '9', '10', '11', '12', '1st Year', '2nd Year', '3rd Year', '4th Year'];
+const CLASS_OPTIONS = ['6', '7', '8', '9', '10', '11', '12', '1st Year', '2nd Year', '3rd Year', '4th Year', 'Dropper'];
 
 const parseCourseTitle = (title: string) => {
   if (!title) return { subject: '', targetClass: '', batch: '' };

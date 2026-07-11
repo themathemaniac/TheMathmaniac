@@ -358,8 +358,8 @@ export const AdminPanelScreen: React.FC = () => {
     }
 
     if (role === 'STUDENT') {
-      if (!stream.trim() || !classText.trim() || !school.trim()) {
-        Alert.alert('Input Error', 'Stream, Class, and School are mandatory for students.');
+      if (!stream.trim() || !classText.trim()) {
+        Alert.alert('Input Error', 'Stream and Class are mandatory for students.');
         return;
       }
     }
@@ -936,7 +936,7 @@ export const AdminPanelScreen: React.FC = () => {
                 <SelectDropdown
                   label="Class"
                   value={classText}
-                  options={["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12", "1st Year", "2nd Year", "3rd Year", "4th Year"]}
+                  options={["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12", "1st Year", "2nd Year", "3rd Year", "4th Year", "Dropper"]}
                   onSelect={setClassText}
                 />
               </View>
@@ -1200,7 +1200,7 @@ export const AdminPanelScreen: React.FC = () => {
                   <SelectDropdown
                     label="Class"
                     value={editForm.class}
-                    options={["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12", "1st Year", "2nd Year", "3rd Year", "4th Year"]}
+                    options={["Class 6", "Class 7", "Class 8", "Class 9", "Class 10", "Class 11", "Class 12", "1st Year", "2nd Year", "3rd Year", "4th Year", "Dropper"]}
                     onSelect={(t) => setEditForm({...editForm, class: t})}
                   />
 
