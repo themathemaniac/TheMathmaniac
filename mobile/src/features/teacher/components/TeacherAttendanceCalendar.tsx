@@ -20,16 +20,21 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c; 
 };
 
-const parseTimeTo24Hour = (timeStr: string) => {
-  if (!timeStr) return "00:00";
-  const parts = timeStr.split(' ');
-  if (parts.length !== 2) return timeStr;
-  const [time, modifier] = parts;
-  let [hours, minutes] = time.split(':');
-  if (hours === '12') hours = '00';
-  if (modifier === 'PM') hours = String(parseInt(hours, 10) + 12);
-  return `${hours.padStart(2, '0')}:${minutes}`;
-};
+  const parseTimeTo24Hour = (timeStr: string) => {
+    if (!timeStr) return "00:00";
+    const cleanStr = timeStr.trim().toUpperCase();
+    const match = cleanStr.match(/(\d+):(\d+)\s*(AM|PM)?/);
+    if (!match) return "00:00";
+    
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const modifier = match[3];
+    
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+    
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  };
 
 interface TeacherAttendanceCalendarProps {
   courses: any[];
@@ -55,7 +60,12 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
   const [dayStatus, setDayStatus] = useState<'CLASS_HELD' | 'CANCELLED' | 'HOLIDAY'>('CLASS_HELD');
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [reason, setReason] = useState('');
+  const [teacherAttendanceTaken, setTeacherAttendanceTaken] = useState(false);
+  const [studentAttendanceRecorded, setStudentAttendanceRecorded] = useState(false);
+
+  const todayObj = new Date();
+  const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+  const isPastDate = selectedDateStr < todayStr;
 
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
@@ -136,18 +146,6 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
     return checkDate > today;
   };
 
-  const requiresReason = () => {
-    if (!selectedDateStr) return false;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const target = getLocalDate(selectedDateStr);
-    
-    const diffTime = today.getTime() - target.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays >= 2;
-  };
 
   const openAttendanceModal = async (course: any) => {
     if (isFutureDate(selectedDateStr)) {
@@ -158,7 +156,6 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
     setSelectedCourseId(course.id);
     setSelectedCourseName(course.title);
     setSelectedCourse(course);
-    setReason('');
     setModalVisible(true);
     setLoadingRoster(true);
     
@@ -168,8 +165,12 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
       });
       
       if (response.data.success) {
-        const { dayStatus: dbDayStatus, roster: dbRoster } = response.data.data;
+        const { dayStatus: dbDayStatus, roster: dbRoster, teacherAttendanceTaken: isTaken } = response.data.data;
         setDayStatus(dbDayStatus || 'CLASS_HELD');
+        setTeacherAttendanceTaken(!!isTaken);
+        
+        const hasRecorded = dbRoster.some((s: any) => s.status !== null);
+        setStudentAttendanceRecorded(hasRecorded);
         
         const mappedRoster = dbRoster.map((student: any) => ({
           id: student.id,
@@ -194,13 +195,8 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
   };
 
   const handleSaveAttendance = async () => {
-    if (!selectedDateStr || !selectedCourseId) return;
+    if (!selectedDateStr || !selectedCourseId || isPastDate) return;
     
-    if (requiresReason() && reason.trim() === '') {
-      Alert.alert('Reason Required', 'Please enter a reason for this retroactive attendance change.');
-      return;
-    }
-
     setSaving(true);
     
     try {
@@ -214,7 +210,6 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
         courseId: selectedCourseId,
         dayStatus,
         records,
-        reason: requiresReason() ? reason.trim() : undefined
       });
 
       if (response.data.success) {
@@ -246,25 +241,39 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
     const dayOfWeek = fullWeekDaysMap[d.getDay()];
     
     let slots: any[] = typeof selectedCourse.timeSlots === 'string' ? JSON.parse(selectedCourse.timeSlots) : (selectedCourse.timeSlots || []);
-    const slot = slots.find((s: any) => s.day === dayOfWeek || s.day === getFullDayName(dayOfWeek));
+    const todaysSlots = slots.filter((s: any) => s.day === dayOfWeek || s.day === getFullDayName(dayOfWeek));
     
-    if (!slot || !slot.startTime || !slot.endTime) {
-      Alert.alert('Error', 'Could not find the time slot for this class.');
+    if (todaysSlots.length === 0) {
+      Alert.alert('Error', 'Could not find any time slots for this class today.');
       return;
     }
 
-    const startTime24 = parseTimeTo24Hour(slot.startTime);
-    const endTime24 = parseTimeTo24Hour(slot.endTime);
-    const currentTimeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+    const currentMins = today.getHours() * 60 + today.getMinutes();
 
-    if (currentTimeStr < startTime24) {
-      Alert.alert('Early', 'You are early, you should give your attendance after your class starts.');
+    let isValidTime = false;
+    let validSlot: any = null;
+    for (const slot of todaysSlots) {
+      if (!slot.startTime || !slot.endTime) continue;
+      const startTime24 = parseTimeTo24Hour(slot.startTime);
+      const endTime24 = parseTimeTo24Hour(slot.endTime);
+      const startMins = parseInt(startTime24.split(':')[0]) * 60 + parseInt(startTime24.split(':')[1]);
+      const endMins = parseInt(endTime24.split(':')[0]) * 60 + parseInt(endTime24.split(':')[1]);
+
+      if (currentMins >= startMins - 30 && currentMins <= endMins) {
+        isValidTime = true;
+        validSlot = slot;
+        break;
+      }
+    }
+
+    if (!isValidTime || !validSlot) {
+      Alert.alert('Not Allowed', 'You can only mark your attendance during your scheduled class timings.');
       return;
     }
 
     setCheckingTeacherAtt(true);
     let finalStatus: 'PRESENT' | 'ABSENT' = 'ABSENT';
-    let isLate = currentTimeStr > endTime24;
+    
     let dist: number | null = null;
 
     try {
@@ -296,18 +305,14 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
       const response = await apiClient.post('/attendance/teacher/instant', {
         date: selectedDateStr,
         title: selectedCourse.title,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
+        startTime: validSlot.startTime,
+        endTime: validSlot.endTime,
         status: finalStatus
       });
 
       if (response.data.success) {
-        Alert.alert(
-          finalStatus === 'PRESENT' ? 'Attendance Marked' : 'Marked Absent',
-          finalStatus === 'PRESENT' 
-            ? `You have been marked present. Distance: ${dist?.toFixed(1)}m` 
-            : `You were not within the 20m radius. Distance: ${dist?.toFixed(1)}m. Marked as absent.`
-        );
+        Alert.alert('Attendance Marked', `You have been marked ${finalStatus}. ${finalStatus === 'ABSENT' && dist !== null ? `(Distance: ${Math.round(dist)}m)` : ''}`);
+        setTeacherAttendanceTaken(true);
       }
     } catch (e: any) {
       console.error('[Instant Teacher Attendance Error]', e);
@@ -476,6 +481,7 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
                     return (
                       <TouchableOpacity
                         key={statusOption}
+                        disabled={isPastDate}
                         onPress={() => setDayStatus(statusOption)}
                         className={`flex-1 py-2 rounded-xl items-center justify-center ${active ? 'bg-slate-800 border border-slate-700/30' : 'bg-transparent'}`}
                       >
@@ -502,7 +508,7 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
               )}
 
               {/* Teacher Attendance Tracker Button */}
-              {selectedCourse && (
+              {selectedCourse && !isPastDate && !teacherAttendanceTaken && (
                 <View className="mb-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4">
                   <Text className="text-emerald-400 text-xs font-bold mb-2">👨‍🏫 Teacher Location Check</Text>
                   <Text className="text-slate-400 text-[10px] leading-4 mb-3">Mark your own attendance by verifying your GPS location against the scheduled branch.</Text>
@@ -517,6 +523,26 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
                       <Text className="text-white text-xs font-black uppercase tracking-wider">Mark My Attendance</Text>
                     )}
                   </TouchableOpacity>
+                </View>
+              )}
+
+              {teacherAttendanceTaken && (
+                <View className="mb-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 flex-row items-center">
+                  <Text className="text-emerald-400 text-base mr-3">✅</Text>
+                  <View className="flex-1">
+                    <Text className="text-emerald-400 text-xs font-bold mb-0.5">Teacher Attendance Recorded</Text>
+                    <Text className="text-slate-400 text-[10px] leading-3">Your attendance has been successfully logged for today.</Text>
+                  </View>
+                </View>
+              )}
+
+              {studentAttendanceRecorded && (
+                <View className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 flex-row items-center">
+                  <Text className="text-blue-400 text-base mr-3">✅</Text>
+                  <View className="flex-1">
+                    <Text className="text-blue-400 text-xs font-bold mb-0.5">Student Attendance Recorded</Text>
+                    <Text className="text-slate-400 text-[10px] leading-3">Attendance records have been submitted for this class.</Text>
+                  </View>
                 </View>
               )}
 
@@ -546,10 +572,10 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
                       <View key={student.id} className="bg-slate-950/30 border border-slate-800/60 rounded-2xl p-4 mb-3 flex-row justify-between items-center">
                         <Text className="text-slate-200 text-sm font-bold">{student.name}</Text>
                         <View className="flex-row items-center gap-2">
-                          <TouchableOpacity onPress={() => handleToggleStudentStatus(student.id, 'PRESENT')} className={`px-3 py-1.5 rounded-xl border ${isPresent ? 'bg-green-500/20 border-green-500/50' : 'bg-slate-900 border-slate-850'}`}>
+                          <TouchableOpacity disabled={isPastDate} onPress={() => handleToggleStudentStatus(student.id, 'PRESENT')} className={`px-3 py-1.5 rounded-xl border ${isPresent ? 'bg-green-500/20 border-green-500/50' : 'bg-slate-900 border-slate-850'} ${isPastDate && !isPresent ? 'opacity-50' : ''}`}>
                             <Text className={`text-[10px] font-bold uppercase tracking-wider ${isPresent ? 'text-green-400' : 'text-slate-500'}`}>Present</Text>
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={() => handleToggleStudentStatus(student.id, 'ABSENT')} className={`px-3 py-1.5 rounded-xl border ${!isPresent ? 'bg-red-500/20 border-red-500/50' : 'bg-slate-900 border-slate-850'}`}>
+                          <TouchableOpacity disabled={isPastDate} onPress={() => handleToggleStudentStatus(student.id, 'ABSENT')} className={`px-3 py-1.5 rounded-xl border ${!isPresent ? 'bg-red-500/20 border-red-500/50' : 'bg-slate-900 border-slate-850'} ${isPastDate && isPresent ? 'opacity-50' : ''}`}>
                             <Text className={`text-[10px] font-bold uppercase tracking-wider ${!isPresent ? 'text-red-400' : 'text-slate-500'}`}>Absent</Text>
                           </TouchableOpacity>
                         </View>
@@ -563,12 +589,14 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
             {/* Save Button */}
             {!loadingRoster && (
               <View className="border-t border-slate-850 pt-4 flex-row gap-3">
-                <TouchableOpacity onPress={() => setModalVisible(false)} className="flex-1 bg-slate-950/50 border border-slate-800 py-3.5 rounded-2xl items-center">
-                  <Text className="text-slate-400 text-xs font-bold">Cancel</Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)} className={`flex-1 bg-slate-950/50 border border-slate-800 py-3.5 rounded-2xl items-center`}>
+                  <Text className="text-slate-400 text-xs font-bold">Close</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleSaveAttendance} disabled={saving} className="flex-[2] bg-blue-600/90 py-3.5 rounded-2xl items-center justify-center shadow-lg shadow-blue-600/10">
-                  <Text className="text-white text-xs font-bold">{saving ? 'Saving...' : `Save (${presentCount}P / ${absentCount}A)`}</Text>
-                </TouchableOpacity>
+                {!isPastDate && (
+                  <TouchableOpacity onPress={handleSaveAttendance} disabled={saving} className="flex-[2] bg-blue-600/90 py-3.5 rounded-2xl items-center justify-center shadow-lg shadow-blue-600/10">
+                    <Text className="text-white text-xs font-bold">{saving ? 'Saving...' : `Save (${presentCount}P / ${absentCount}A)`}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>

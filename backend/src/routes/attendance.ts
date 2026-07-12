@@ -63,12 +63,21 @@ router.get('/', authenticateJWT, requireTeacherOrAdmin, async (req: Authenticate
       status: recordMap.get(student.id) || null, // null if unmarked
     }));
 
+    let teacherAttendanceTaken = false;
+    if (req.user!.role === 'TEACHER') {
+      const existingAtt = await prisma.teacherAttendance.findFirst({
+        where: { userId: req.user!.id, date },
+      });
+      teacherAttendanceTaken = !!existingAtt;
+    }
+
     return res.status(200).json({
       success: true,
       data: {
         date,
         dayStatus,
         roster,
+        teacherAttendanceTaken,
       },
     });
   } catch (error: any) {
@@ -101,9 +110,16 @@ router.post('/', authenticateJWT, requireTeacherOrAdmin, async (req: Authenticat
 
     const diffTime = today.getTime() - target.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const isRetroactive = diffDays >= 2;
+    if (diffDays > 0 && req.user!.role === 'TEACHER') {
+      return res.status(403).json({
+        success: false,
+        error: 'Teachers cannot record or modify student attendance for past dates.'
+      });
+    }
 
-    if (isRetroactive) {
+    // Admins can modify past dates, but still require a reason if older than 1 day
+    const isRetroactive = diffDays >= 2;
+    if (isRetroactive && req.user!.role !== 'TEACHER') {
       if (!reason || typeof reason !== 'string' || reason.trim() === '') {
         return res.status(400).json({
           success: false,
