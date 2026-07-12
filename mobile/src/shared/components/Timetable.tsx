@@ -22,8 +22,8 @@ export interface TimetableProps {
 
 const DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-const START_HOUR = 9; // 9:00 AM
-const END_HOUR = 21;  // 9:00 PM (21:00)
+const START_HOUR = 7; // 7:00 AM
+const END_HOUR = 23;  // 11:00 PM (23:00)
 const TOTAL_HOURS = END_HOUR - START_HOUR;
 
 const parseTime = (timeStr: string) => {
