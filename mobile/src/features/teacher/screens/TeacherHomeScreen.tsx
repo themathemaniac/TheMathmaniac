@@ -138,23 +138,6 @@ export const TeacherHomeScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Geofenced Attendance Card */}
-            <View className="bg-slate-900 border border-slate-800 rounded-3xl p-5 mb-6">
-              <View className="flex-row justify-between items-center">
-                <View className="flex-1 mr-4">
-                  <Text className="text-slate-100 text-sm font-bold">📍 Geofenced Attendance</Text>
-                  <Text className="text-slate-500 text-[10px] mt-1 leading-4 font-semibold">
-                    Clock in, track distance status, and log attendance matching your active schedules.
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('TeacherAttendanceTracking')}
-                  className="bg-[#2D8C82] border border-[#3CA79B] px-4 py-2.5 rounded-2xl active:opacity-90 shadow-md shadow-teal-500/10"
-                >
-                  <Text className="text-white text-xs font-extrabold uppercase tracking-wider">Start Tracking</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
 
             {/* Superuser Controls Card */}
             {isSuperuser && (

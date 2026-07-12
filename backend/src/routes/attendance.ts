@@ -590,4 +590,57 @@ router.get('/teacher/attendance', authenticateJWT, requireTeacherOrAdmin, async 
   }
 });
 
+// 9. Instant Teacher Attendance Check
+router.post('/teacher/instant', authenticateJWT, requireTeacherOrAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { date, title, startTime, endTime, status } = req.body;
+
+    const schedule = await prisma.teacherSchedule.findFirst({
+      where: { userId, date, title, startTime, endTime }
+    });
+
+    if (!schedule) {
+      return res.status(404).json({ success: false, error: 'Schedule not found for this date and time.' });
+    }
+
+    // Check if attendance already recorded
+    const existingAttendance = await prisma.teacherAttendance.findFirst({
+      where: { scheduleId: schedule.id },
+    });
+
+    if (existingAttendance) {
+      await prisma.teacherAttendance.update({
+        where: { id: existingAttendance.id },
+        data: {
+          status,
+          presenceRatio: status === 'PRESENT' ? 1.0 : 0.0,
+          totalPings: 1,
+          insidePings: status === 'PRESENT' ? 1 : 0,
+        },
+      });
+    } else {
+      await prisma.teacherAttendance.create({
+        data: {
+          userId,
+          scheduleId: schedule.id,
+          date,
+          status,
+          presenceRatio: status === 'PRESENT' ? 1.0 : 0.0,
+          totalPings: 1,
+          insidePings: status === 'PRESENT' ? 1 : 0,
+          loginTime: new Date(),
+          logoutTime: new Date(),
+          teachingHours: 1.0,
+        },
+      });
+    }
+
+    return res.status(200).json({ success: true, data: { message: `Attendance marked as ${status}.` } });
+  } catch (error: any) {
+    console.error('[Instant Teacher Attendance Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

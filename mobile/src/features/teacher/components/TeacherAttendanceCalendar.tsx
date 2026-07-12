@@ -2,6 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Modal, TextInput, Alert } from 'react-native';
 import { apiClient } from '../../../core/api/client';
 import { formatDateString } from '../../../shared/utils/calendar';
+import * as Location from 'expo-location';
+
+const CAMPUSES: Record<string, { lat: number; lon: number }> = {
+  'Madhyamgram': { lat: 22.693230336542225, lon: 88.45923267330267 },
+  'Sodepur': { lat: 22.703237523450426, lon: 88.37139070110229 },
+};
+
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const R = 6371e3;
+  const phi1 = lat1 * Math.PI / 180;
+  const phi2 = lat2 * Math.PI / 180;
+  const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+  const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; 
+};
+
+const parseTimeTo24Hour = (timeStr: string) => {
+  if (!timeStr) return "00:00";
+  const parts = timeStr.split(' ');
+  if (parts.length !== 2) return timeStr;
+  const [time, modifier] = parts;
+  let [hours, minutes] = time.split(':');
+  if (hours === '12') hours = '00';
+  if (modifier === 'PM') hours = String(parseInt(hours, 10) + 12);
+  return `${hours.padStart(2, '0')}:${minutes}`;
+};
 
 interface TeacherAttendanceCalendarProps {
   courses: any[];
@@ -20,6 +48,8 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [selectedCourseName, setSelectedCourseName] = useState<string>('');
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [checkingTeacherAtt, setCheckingTeacherAtt] = useState(false);
   
   const [roster, setRoster] = useState<{ id: string; name: string; status: 'PRESENT' | 'ABSENT' }[]>([]);
   const [dayStatus, setDayStatus] = useState<'CLASS_HELD' | 'CANCELLED' | 'HOLIDAY'>('CLASS_HELD');
@@ -127,6 +157,7 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
     
     setSelectedCourseId(course.id);
     setSelectedCourseName(course.title);
+    setSelectedCourse(course);
     setReason('');
     setModalVisible(true);
     setLoadingRoster(true);
@@ -196,6 +227,93 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
       Alert.alert('Error', e.response?.data?.error || 'Failed to save attendance.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTeacherAttendance = async () => {
+    if (!selectedCourse || !selectedDateStr) return;
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    
+    if (selectedDateStr !== todayStr) {
+      Alert.alert('Invalid Date', 'Teacher attendance can only be marked on the day of the class.');
+      return;
+    }
+
+    const d = getLocalDate(selectedDateStr);
+    const fullWeekDaysMap: Record<number, string> = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 0: 'Sun' };
+    const dayOfWeek = fullWeekDaysMap[d.getDay()];
+    
+    let slots: any[] = typeof selectedCourse.timeSlots === 'string' ? JSON.parse(selectedCourse.timeSlots) : (selectedCourse.timeSlots || []);
+    const slot = slots.find((s: any) => s.day === dayOfWeek || s.day === getFullDayName(dayOfWeek));
+    
+    if (!slot || !slot.startTime || !slot.endTime) {
+      Alert.alert('Error', 'Could not find the time slot for this class.');
+      return;
+    }
+
+    const startTime24 = parseTimeTo24Hour(slot.startTime);
+    const endTime24 = parseTimeTo24Hour(slot.endTime);
+    const currentTimeStr = `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+
+    if (currentTimeStr < startTime24) {
+      Alert.alert('Early', 'You are early, you should give your attendance after your class starts.');
+      return;
+    }
+
+    setCheckingTeacherAtt(true);
+    let finalStatus: 'PRESENT' | 'ABSENT' = 'ABSENT';
+    let isLate = currentTimeStr > endTime24;
+    let dist: number | null = null;
+
+    try {
+      const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+      if (locStatus !== 'granted') {
+        Alert.alert('Permission Denied', 'GPS permission is required to verify your location.');
+        setCheckingTeacherAtt(false);
+        return;
+      }
+      
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const branchCoords = CAMPUSES[selectedCourse.branch] || CAMPUSES['Madhyamgram'];
+      
+      dist = calculateDistance(loc.coords.latitude, loc.coords.longitude, branchCoords.lat, branchCoords.lon);
+      
+      if (dist <= 20) {
+        finalStatus = 'PRESENT';
+      } else {
+        finalStatus = 'ABSENT';
+      }
+    } catch (e) {
+      console.log('Location error:', e);
+      Alert.alert('Error', 'Failed to retrieve location. Make sure Location Services are enabled.');
+      setCheckingTeacherAtt(false);
+      return;
+    }
+
+    try {
+      const response = await apiClient.post('/attendance/teacher/instant', {
+        date: selectedDateStr,
+        title: selectedCourse.title,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        status: finalStatus
+      });
+
+      if (response.data.success) {
+        Alert.alert(
+          finalStatus === 'PRESENT' ? 'Attendance Marked' : 'Marked Absent',
+          finalStatus === 'PRESENT' 
+            ? `You have been marked present. Distance: ${dist?.toFixed(1)}m` 
+            : `You were not within the 20m radius. Distance: ${dist?.toFixed(1)}m. Marked as absent.`
+        );
+      }
+    } catch (e: any) {
+      console.error('[Instant Teacher Attendance Error]', e);
+      Alert.alert('Error', e.response?.data?.error || 'Failed to record teacher attendance.');
+    } finally {
+      setCheckingTeacherAtt(false);
     }
   };
 
@@ -380,6 +498,25 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
                     placeholderTextColor="#64748B"
                     className="bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-300 text-xs"
                   />
+                </View>
+              )}
+
+              {/* Teacher Attendance Tracker Button */}
+              {selectedCourse && (
+                <View className="mb-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4">
+                  <Text className="text-emerald-400 text-xs font-bold mb-2">👨‍🏫 Teacher Location Check</Text>
+                  <Text className="text-slate-400 text-[10px] leading-4 mb-3">Mark your own attendance by verifying your GPS location against the scheduled branch.</Text>
+                  <TouchableOpacity
+                    onPress={handleTeacherAttendance}
+                    disabled={checkingTeacherAtt}
+                    className="bg-emerald-600 border border-emerald-500 py-3 rounded-xl items-center shadow-lg active:opacity-90"
+                  >
+                    {checkingTeacherAtt ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text className="text-white text-xs font-black uppercase tracking-wider">Mark My Attendance</Text>
+                    )}
+                  </TouchableOpacity>
                 </View>
               )}
 

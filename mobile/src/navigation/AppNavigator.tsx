@@ -37,7 +37,7 @@ import { TeacherCoursesScreen } from '../features/teacher/screens/TeacherCourses
 import { TeacherTestsScreen } from '../features/teacher/screens/TeacherTestsScreen';
 import { TeacherMaterialsScreen } from '../features/teacher/screens/TeacherMaterialsScreen';
 import { TeacherProfileScreen } from '../features/teacher/screens/TeacherProfileScreen';
-import { TeacherAttendanceScreen } from '../features/teacher/screens/TeacherAttendanceScreen';
+
 import { SuperuserReportsScreen } from '../features/teacher/screens/SuperuserReportsScreen';
 import { TeacherCourseDetailsScreen } from '../features/teacher/screens/TeacherCourseDetailsScreen';
 import { TeacherPaymentsScreen } from '../features/teacher/screens/TeacherPaymentsScreen';
@@ -190,7 +190,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="TestInstructions" component={TestInstructionsScreen} />
         <Stack.Screen name="ActiveTest" component={ActiveTestScreen} />
         <Stack.Screen name="TestResult" component={TestResultScreen} />
-        <Stack.Screen name="TeacherAttendanceTracking" component={TeacherAttendanceScreen} />
+
         <Stack.Screen name="SuperuserReports" component={SuperuserReportsScreen} />
         <Stack.Screen name="TeacherCourseDetails" component={TeacherCourseDetailsScreen} />
         <Stack.Screen name="TeacherPayments" component={TeacherPaymentsScreen} />
