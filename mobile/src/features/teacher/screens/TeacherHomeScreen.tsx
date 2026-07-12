@@ -8,7 +8,7 @@ import { RootStackParamList } from '../../../navigation/types';
 import { Timetable, RoutineSession } from '../../../shared/components/Timetable';
 import { TeacherAttendanceCalendar } from '../components/TeacherAttendanceCalendar';
 
-type TeacherHomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'TeacherAttendanceTracking' | 'SuperuserReports'>;
+type TeacherHomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SuperuserReports'>;
 
 const SUPERUSER_PHONES = ['+917980357754', '+919831754957'];
 

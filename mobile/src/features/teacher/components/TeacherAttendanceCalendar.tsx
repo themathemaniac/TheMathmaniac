@@ -492,20 +492,6 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
                 </View>
               </View>
 
-              {/* Retroactive Warning */}
-              {!loadingRoster && requiresReason() && (
-                <View className="mb-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4">
-                  <Text className="text-amber-400 text-xs font-bold mb-1">⚠️ Retroactive Change Required</Text>
-                  <Text className="text-slate-400 text-[10px] leading-4 mb-3">This date is past the 24-hour grace period. Please provide a brief reason.</Text>
-                  <TextInput
-                    value={reason}
-                    onChangeText={setReason}
-                    placeholder="e.g., Student submitted medical slip"
-                    placeholderTextColor="#64748B"
-                    className="bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5 text-slate-300 text-xs"
-                  />
-                </View>
-              )}
 
               {/* Teacher Attendance Tracker Button */}
               {selectedCourse && !isPastDate && !teacherAttendanceTaken && (
