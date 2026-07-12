@@ -139,6 +139,37 @@ export function startScheduler() {
             }
           }
         }
+
+        // 3. Mid-class Student Attendance check
+        const midMin = Math.floor((startMin + endMin) / 2);
+        const diffMid = currentMinutes - midMin;
+
+        if (diffMid >= 0 && diffMid < 5) {
+          // Verify today is not a holiday
+          const isHoliday = await prisma.holiday.findFirst({ where: { date: todayStr } });
+          if (!isHoliday) {
+            const course = await prisma.course.findFirst({
+              where: { title: schedule.title }
+            });
+
+            if (course) {
+              // Check if student attendance is taken
+              const attendanceTaken = await prisma.attendance.findFirst({
+                where: { date: todayStr, courseId: course.id }
+              });
+
+              if (!attendanceTaken) {
+                // Send push notification
+                await createNotificationAndPush(
+                  schedule.userId,
+                  'Attendance Reminder 📋',
+                  `You are halfway through "${schedule.title}". Student attendance has not been taken, please take it now.`
+                );
+                console.log(`[Scheduler] Sent mid-class student attendance reminder to teacher ${schedule.userId} for schedule ${schedule.id}`);
+              }
+            }
+          }
+        }
       }
     } catch (err: any) {
       console.error('[Scheduler Error] Teacher attendance checks task failed:', err.message || err);
