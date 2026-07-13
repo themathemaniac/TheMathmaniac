@@ -289,7 +289,7 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
               announcements.map((notice) => (
                 <View key={notice.id} className="bg-white border-2 border-slate-900 rounded-2xl p-5 mb-3">
                   <View className="flex-row justify-between items-start">
-                    <Text className="text-slate-900 font-bold text-base flex-1 pr-2">{notice.title}</Text>
+                    <Text className="text-slate-900 font-bold text-base flex-1 pr-2" style={{ color: '#0f172a' }}>{notice.title}</Text>
                     <TouchableOpacity onPress={() => {
                       Alert.alert('Delete Notice', 'Are you sure you want to delete this notice?', [
                         { text: 'Cancel', style: 'cancel' },
@@ -307,8 +307,8 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
                       <Text className="text-red-500 text-[10px] font-bold uppercase">Delete</Text>
                     </TouchableOpacity>
                   </View>
-                  <Text className="text-slate-500 text-xs mt-2 leading-5">{notice.content}</Text>
-                  <Text className="text-slate-400 text-[10px] mt-3">
+                  <Text className="text-slate-500 text-xs mt-2 leading-5" style={{ color: '#64748b' }}>{notice.content}</Text>
+                  <Text className="text-slate-400 text-[10px] mt-3" style={{ color: '#94a3b8' }}>
                     Posted on {new Date(notice.createdAt).toLocaleDateString()}
                   </Text>
                 </View>
