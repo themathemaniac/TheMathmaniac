@@ -328,10 +328,10 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
           >
             <View className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl w-full">
               <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
-                <Text className="text-slate-100 text-lg font-black mb-6">Upload Material</Text>
+                <Text className="text-white text-lg font-black mb-6">Upload Material</Text>
                 
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 mb-4"
+                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-4"
                   placeholder="Material Title"
                   placeholderTextColor="#64748b"
                   value={materialTitle}
@@ -360,7 +360,7 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
                 </View>
 
                 <TouchableOpacity onPress={handlePickDocument} className="bg-slate-800 border border-slate-700 p-4 rounded-xl items-center mb-6">
-                  <Text className="text-slate-300 text-xs font-bold">{pickedFile ? pickedFile.name : 'Pick PDF Document'}</Text>
+                  <Text className="text-white text-xs font-bold">{pickedFile ? pickedFile.name : 'Pick PDF Document'}</Text>
                 </TouchableOpacity>
 
                 <View className="flex-row justify-between mt-4">
@@ -387,10 +387,10 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
           >
             <View className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl w-full">
               <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
-                <Text className="text-slate-100 text-lg font-black mb-6">Post Notice</Text>
+                <Text className="text-white text-lg font-black mb-6">Post Notice</Text>
                 
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 mb-4"
+                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-4"
                   placeholder="Notice Title"
                   placeholderTextColor="#64748b"
                   value={noticeTitle}
@@ -398,7 +398,7 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
                 />
 
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-300 mb-6 h-32"
+                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-6 h-32"
                   placeholder="Notice Content..."
                   placeholderTextColor="#64748b"
                   multiline
