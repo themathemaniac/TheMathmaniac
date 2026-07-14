@@ -326,12 +326,12 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
             className="w-full max-w-[400px]"
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
           >
-            <View className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl w-full">
+            <View className="bg-white rounded-3xl p-6 shadow-2xl w-full">
               <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
-                <Text className="text-white text-lg font-black mb-6">Upload Material</Text>
+                <Text className="text-slate-900 text-lg font-black mb-6">Upload Material</Text>
                 
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-4"
+                  className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 mb-4"
                   placeholder="Material Title"
                   placeholderTextColor="#64748b"
                   value={materialTitle}
@@ -359,13 +359,13 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
                   ))}
                 </View>
 
-                <TouchableOpacity onPress={handlePickDocument} className="bg-slate-800 border border-slate-700 p-4 rounded-xl items-center mb-6">
-                  <Text className="text-white text-xs font-bold">{pickedFile ? pickedFile.name : 'Pick PDF Document'}</Text>
+                <TouchableOpacity onPress={handlePickDocument} className="bg-slate-100 border border-slate-200 p-4 rounded-xl items-center mb-6">
+                  <Text className="text-slate-700 text-xs font-bold">{pickedFile ? pickedFile.name : 'Pick PDF Document'}</Text>
                 </TouchableOpacity>
 
                 <View className="flex-row justify-between mt-4">
                   <TouchableOpacity onPress={() => setShowMaterialModal(false)} disabled={uploadingMaterial} className="flex-1 py-3 mr-4 items-center">
-                    <Text className="text-slate-400 font-bold">Cancel</Text>
+                    <Text className="text-slate-500 font-bold">Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={handleUploadMaterial} disabled={uploadingMaterial} className="flex-1 bg-blue-600 py-3 rounded-xl items-center" style={{ backgroundColor: '#2D8C82' }}>
                     {uploadingMaterial ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-white font-bold">Upload</Text>}
@@ -385,12 +385,12 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
             className="w-full max-w-[400px]"
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
           >
-            <View className="bg-slate-900 rounded-3xl border border-slate-800 p-6 shadow-2xl w-full">
+            <View className="bg-white rounded-3xl p-6 shadow-2xl w-full">
               <ScrollView bounces={false} keyboardShouldPersistTaps="handled">
-                <Text className="text-white text-lg font-black mb-6">Post Notice</Text>
+                <Text className="text-slate-900 text-lg font-black mb-6">Post Notice</Text>
                 
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-4"
+                  className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 mb-4"
                   placeholder="Notice Title"
                   placeholderTextColor="#64748b"
                   value={noticeTitle}
@@ -398,7 +398,7 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
                 />
 
                 <TextInput
-                  className="bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white mb-6 h-32"
+                  className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 mb-6 h-32"
                   placeholder="Notice Content..."
                   placeholderTextColor="#64748b"
                   multiline
@@ -409,7 +409,7 @@ export const TeacherCourseDetailsScreen: React.FC<Props> = ({ route }) => {
 
                 <View className="flex-row justify-between mt-4">
                   <TouchableOpacity onPress={() => setShowNoticeModal(false)} disabled={postingNotice} className="flex-1 py-3 mr-4 items-center">
-                    <Text className="text-slate-400 font-bold">Cancel</Text>
+                    <Text className="text-slate-500 font-bold">Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={handlePostNotice} disabled={postingNotice} className="flex-1 bg-emerald-600 py-3 rounded-xl items-center" style={{ backgroundColor: '#5B6EF5' }}>
                     {postingNotice ? <ActivityIndicator size="small" color="#fff" /> : <Text className="text-white font-bold">Post Notice</Text>}
