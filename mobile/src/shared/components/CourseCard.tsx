@@ -42,7 +42,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           <View className="flex-1 ml-4 justify-between">
             <View>
               <Text className="text-xs font-bold text-amber-600 uppercase tracking-wider">{category}</Text>
-              <Text className="text-sm font-semibold text-slate-900 mt-1" numberOfLines={2}>
+              <Text className="text-xl font-black text-slate-900 mt-1 leading-7">
                 {title}
               </Text>
               {teacherName && (
@@ -83,7 +83,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <Text className="text-xs font-bold text-amber-600 uppercase tracking-wider">{category}</Text>
               <Text className="text-xs text-slate-500 font-medium">{lectureCount} Lectures</Text>
             </View>
-            <Text className="text-base font-semibold text-slate-900 mt-2" numberOfLines={2}>
+            <Text className="text-xl font-black text-slate-900 mt-2 leading-8">
               {title}
             </Text>
             {teacherName && (

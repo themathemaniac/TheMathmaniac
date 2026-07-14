@@ -138,7 +138,7 @@ export const HomeScreen: React.FC = () => {
             <MiniCalendar />
 
             {/* Unpaid Fee Warning Banner */}
-            {dashboardData.feeStatus?.hasPendingPayment && new Date().getDate() >= 8 && (
+            {false && dashboardData.feeStatus?.hasPendingPayment && new Date().getDate() >= 8 && (
               <View className="bg-amber-200 border border-amber-500 rounded-3xl p-5 mb-6">
                 <Text className="text-gray-900 text-xs font-black uppercase tracking-widest mb-1.5">
                   ⚠️ {new Date().getDate() > 10 ? 'Fee Overdue' : 'Fee Payment Due'}
