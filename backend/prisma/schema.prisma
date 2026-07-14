@@ -147,6 +147,7 @@ model Test {
   pdfUrl     String?
   pdfSize    Int?
   pdfName    String?
+  pdfData    Bytes?
 
   @@index([courseId])
 }
@@ -198,6 +199,7 @@ model StudyMaterial {
   type      String
   fileUrl   String
   fileSize  Int
+  fileData  Bytes?
   createdAt DateTime @default(now())
 
   @@index([courseId])

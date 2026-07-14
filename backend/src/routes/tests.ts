@@ -13,15 +13,7 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -115,14 +107,11 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
     }
 
     if (!isTeacher && test.courseId && userId) {
-      const course = await prisma.course.findUnique({ where: { id: test.courseId } });
-      if (course?.price !== 0) {
-        const purchase = await prisma.purchase.findFirst({
-          where: { userId, courseId: test.courseId, status: 'SUCCESS' }
-        });
-        if (!purchase) {
-          return res.status(403).json({ success: false, error: 'Access Denied: You are not enrolled in this batch.' });
-        }
+      const purchase = await prisma.purchase.findFirst({
+        where: { userId, courseId: test.courseId, status: 'SUCCESS' }
+      });
+      if (!purchase) {
+        return res.status(403).json({ success: false, error: 'Access Denied: You are not enrolled in this batch.' });
       }
     }
 
@@ -335,28 +324,14 @@ router.post('/:id/upload-pdf', authenticateJWT, upload.single('file'), async (re
       return res.status(404).json({ success: false, error: 'Test not found' });
     }
 
-    // Try deleting old file if it exists
-    if (test.pdfUrl) {
-      try {
-        const oldFilename = test.pdfUrl.split('/uploads/')[1];
-        if (oldFilename) {
-          const oldFilePath = path.join(uploadDir, oldFilename);
-          if (fs.existsSync(oldFilePath)) {
-            fs.unlinkSync(oldFilePath);
-          }
-        }
-      } catch (err) {
-        console.error('Error deleting old test PDF:', err);
-      }
-    }
-
-    const pdfUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    const pdfUrl = `${req.protocol}://${req.get('host')}/api/v1/tests/${id}/pdf`;
     const updatedTest = await prisma.test.update({
       where: { id },
       data: {
         pdfUrl,
         pdfSize: req.file.size,
         pdfName: req.file.originalname,
+        pdfData: req.file.buffer,
       },
     });
 
@@ -378,27 +353,13 @@ router.delete('/:id/pdf', authenticateJWT, async (req: AuthenticatedRequest, res
       return res.status(404).json({ success: false, error: 'Test not found' });
     }
 
-    // Delete file from disk
-    if (test.pdfUrl) {
-      try {
-        const filename = test.pdfUrl.split('/uploads/')[1];
-        if (filename) {
-          const filePath = path.join(uploadDir, filename);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        }
-      } catch (err) {
-        console.error('Error deleting test PDF file:', err);
-      }
-    }
-
     const updatedTest = await prisma.test.update({
       where: { id },
       data: {
         pdfUrl: null,
         pdfSize: null,
         pdfName: null,
+        pdfData: null,
       },
     });
 
@@ -408,7 +369,29 @@ router.delete('/:id/pdf', authenticateJWT, async (req: AuthenticatedRequest, res
   }
 });
 
-// 7. Create Test (Requires Auth - Teacher or Admin)
+// 7. Download Test PDF
+router.get('/:id/pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const test = await prisma.test.findUnique({
+      where: { id },
+      select: { pdfData: true, title: true }
+    });
+
+    if (!test || !test.pdfData) {
+      return res.status(404).send('File not found');
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(test.title)}.pdf"`);
+    res.send(test.pdfData);
+  } catch (error: any) {
+    console.error('Download error:', error);
+    res.status(500).send('Error downloading file');
+  }
+});
+
+// 8. Create Test (Requires Auth - Teacher or Admin)
 router.post('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userRole = req.user?.role;

@@ -14,15 +14,7 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  },
-});
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -69,12 +61,13 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
     }
 
     if (!isTeacher) {
-      whereClause.course = {
-        OR: [
-          { id: { in: purchasedCourseIds } },
-          { price: 0 }
-        ]
-      };
+      if (courseId) {
+        if (!purchasedCourseIds.includes(String(courseId))) {
+          return res.status(200).json({ success: true, data: [] });
+        }
+      } else {
+        whereClause.courseId = { in: purchasedCourseIds };
+      }
     }
 
     const materials = await prisma.studyMaterial.findMany({
@@ -88,7 +81,7 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
     });
 
     const materialsWithAccess = materials.map((mat) => {
-      const isAccessible = isTeacher || mat.course.price === 0 || purchasedCourseIds.includes(mat.courseId);
+      const isAccessible = isTeacher || purchasedCourseIds.includes(mat.courseId);
 
       return {
         id: mat.id,
@@ -128,16 +121,24 @@ router.post('/', authenticateJWT, upload.single('file'), async (req: Authenticat
       return res.status(404).json({ success: false, error: 'Course not found' });
     }
 
-    const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
     const material = await prisma.studyMaterial.create({
       data: {
         courseId,
         title,
         type,
         fileSize: req.file.size,
-        fileUrl,
+        fileData: req.file.buffer,
+        fileUrl: '',
       },
     });
+
+    const fileUrl = `${req.protocol}://${req.get('host')}/api/v1/materials/${material.id}/download`;
+
+    await prisma.studyMaterial.update({
+      where: { id: material.id },
+      data: { fileUrl },
+    });
+    material.fileUrl = fileUrl;
 
     // Notify all students who purchased the course
     const purchases = await prisma.purchase.findMany({
@@ -185,21 +186,8 @@ router.put('/:id', authenticateJWT, upload.single('file'), async (req: Authentic
 
     // If new file is uploaded
     if (req.file) {
-      // Try to delete old file
-      try {
-        const oldFilename = existingMaterial.fileUrl.split('/uploads/')[1];
-        if (oldFilename) {
-          const oldFilePath = path.join(uploadDir, oldFilename);
-          if (fs.existsSync(oldFilePath)) {
-            fs.unlinkSync(oldFilePath);
-          }
-        }
-      } catch (err) {
-        console.error('Error deleting old file:', err);
-      }
-
       updateData.fileSize = req.file.size;
-      updateData.fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+      updateData.fileData = req.file.buffer;
     }
 
     const updatedMaterial = await prisma.studyMaterial.update({
@@ -213,7 +201,7 @@ router.put('/:id', authenticateJWT, upload.single('file'), async (req: Authentic
   }
 });
 
-// 4. Delete Study Material (Unlinks file and deletes DB record)
+// 4. Delete Study Material (Deletes DB record along with binary data)
 router.delete('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -225,19 +213,6 @@ router.delete('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Re
       return res.status(404).json({ success: false, error: 'Study material not found' });
     }
 
-    // Delete file from disk
-    try {
-      const filename = existingMaterial.fileUrl.split('/uploads/')[1];
-      if (filename) {
-        const filePath = path.join(uploadDir, filename);
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      }
-    } catch (err) {
-      console.error('Error deleting file:', err);
-    }
-
     await prisma.studyMaterial.delete({
       where: { id },
     });
@@ -245,6 +220,28 @@ router.delete('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Re
     return res.status(200).json({ success: true, data: { message: 'Study material deleted successfully' } });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 5. Download Study Material PDF
+router.get('/:id/download', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const material = await prisma.studyMaterial.findUnique({
+      where: { id },
+      select: { fileData: true, title: true, type: true }
+    });
+
+    if (!material || !material.fileData) {
+      return res.status(404).send('File not found');
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(material.title)}.pdf"`);
+    res.send(material.fileData);
+  } catch (error: any) {
+    console.error('Download error:', error);
+    res.status(500).send('Error downloading file');
   }
 });
 
