@@ -47,22 +47,7 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const whereClause: any = {};
-    if (courseId) {
-      whereClause.courseId = String(courseId);
-    }
-
-    const materials = await prisma.studyMaterial.findMany({
-      where: whereClause,
-      include: {
-        course: {
-          select: { title: true, price: true },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN';
+    const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN' || userRole === 'SUPERUSER';
 
     let purchasedCourseIds: string[] = [];
     if (userId && !isTeacher) {
@@ -77,6 +62,30 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       });
       purchasedCourseIds = purchases.map((p) => p.courseId);
     }
+
+    const whereClause: any = {};
+    if (courseId) {
+      whereClause.courseId = String(courseId);
+    }
+
+    if (!isTeacher) {
+      whereClause.course = {
+        OR: [
+          { id: { in: purchasedCourseIds } },
+          { price: 0 }
+        ]
+      };
+    }
+
+    const materials = await prisma.studyMaterial.findMany({
+      where: whereClause,
+      include: {
+        course: {
+          select: { title: true, price: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
     const materialsWithAccess = materials.map((mat) => {
       const isAccessible = isTeacher || mat.course.price === 0 || purchasedCourseIds.includes(mat.courseId);

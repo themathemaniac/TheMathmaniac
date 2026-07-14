@@ -289,6 +289,23 @@ router.get('/:id/students', authenticateJWT, async (req: AuthenticatedRequest, r
 router.get('/:id/announcements', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+    
+    const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN' || userRole === 'SUPERUSER';
+
+    if (!isTeacher && userId) {
+      const course = await prisma.course.findUnique({ where: { id } });
+      if (course?.price !== 0) {
+        const purchase = await prisma.purchase.findFirst({
+          where: { userId, courseId: id, status: 'SUCCESS' }
+        });
+        if (!purchase) {
+          return res.status(200).json({ success: true, data: [] });
+        }
+      }
+    }
+
     const announcements = await prisma.announcement.findMany({
       where: { courseId: id },
       include: {

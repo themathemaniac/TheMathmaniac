@@ -90,6 +90,9 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
 router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+    const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN' || userRole === 'SUPERUSER';
 
     const test = await prisma.test.findUnique({
       where: { id },
@@ -109,6 +112,18 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
 
     if (!test) {
       return res.status(404).json({ success: false, error: 'Test not found' });
+    }
+
+    if (!isTeacher && test.courseId && userId) {
+      const course = await prisma.course.findUnique({ where: { id: test.courseId } });
+      if (course?.price !== 0) {
+        const purchase = await prisma.purchase.findFirst({
+          where: { userId, courseId: test.courseId, status: 'SUCCESS' }
+        });
+        if (!purchase) {
+          return res.status(403).json({ success: false, error: 'Access Denied: You are not enrolled in this batch.' });
+        }
+      }
     }
 
     // Hide answers payload
