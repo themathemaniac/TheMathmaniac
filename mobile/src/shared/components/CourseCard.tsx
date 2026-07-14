@@ -41,9 +41,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({
           />
           <View className="flex-1 ml-4 justify-between">
             <View>
-              <Text className="text-xs font-bold text-amber-600 uppercase tracking-wider">{category}</Text>
-              <Text className="text-xl font-black text-slate-900 mt-1 leading-7">
+              <Text className="text-xl font-black text-slate-900 leading-6">
                 {title}
+              </Text>
+              <Text className="text-xs font-bold text-amber-600 uppercase tracking-wider mt-1">
+                {category}
               </Text>
               {teacherName && (
                 <Text className="text-xs text-slate-500 mt-1 font-medium" numberOfLines={1}>
@@ -51,8 +53,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                 </Text>
               )}
             </View>
-            <View className="flex-row justify-between items-center mt-2">
-              <Text className="text-xs text-slate-500 font-medium">{lectureCount} Lectures</Text>
+            <View className="flex-row justify-end items-center mt-2">
               {isPurchased && (
                 <Text className="text-sm font-bold text-blue-600">
                   Unlocked
@@ -79,15 +80,14 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         />
         <View className="p-4 flex-1 justify-between">
           <View>
-            <View className="flex-row justify-between items-center">
-              <Text className="text-xs font-bold text-amber-600 uppercase tracking-wider">{category}</Text>
-              <Text className="text-xs text-slate-500 font-medium">{lectureCount} Lectures</Text>
-            </View>
-            <Text className="text-xl font-black text-slate-900 mt-2 leading-8">
+            <Text className="text-xl font-black text-slate-900 leading-7">
               {title}
             </Text>
+            <Text className="text-sm font-bold text-amber-600 uppercase tracking-wider mt-1">
+              {category}
+            </Text>
             {teacherName && (
-              <Text className="text-sm text-slate-500 mt-1 font-medium" numberOfLines={1}>
+              <Text className="text-sm text-slate-500 mt-2 font-medium" numberOfLines={1}>
                 Teacher: {teacherName}
               </Text>
             )}
