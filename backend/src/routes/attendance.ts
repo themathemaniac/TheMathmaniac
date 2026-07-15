@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
 import prisma from '../config/db';
 import { authenticateJWT, AuthenticatedRequest } from '../middleware/auth';
-
+import { syncAllSchedules } from '../services/scheduleSync';
 const router = Router();
 
 // Middleware to enforce Teacher or Admin role
@@ -612,9 +612,17 @@ router.post('/teacher/instant', authenticateJWT, requireTeacherOrAdmin, async (r
     const userId = req.user!.id;
     const { date, title, startTime, endTime, status } = req.body;
 
-    const schedule = await prisma.teacherSchedule.findFirst({
+    let schedule = await prisma.teacherSchedule.findFirst({
       where: { userId, date, title, startTime, endTime }
     });
+
+    if (!schedule) {
+      // Auto-generate schedules for this user and date if missing
+      await syncAllSchedules(date, userId);
+      schedule = await prisma.teacherSchedule.findFirst({
+        where: { userId, date, title, startTime, endTime }
+      });
+    }
 
     if (!schedule) {
       return res.status(404).json({ success: false, error: 'Schedule not found for this date and time.' });

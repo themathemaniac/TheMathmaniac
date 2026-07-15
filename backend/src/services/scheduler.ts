@@ -10,12 +10,16 @@ export function startScheduler() {
   cron.schedule('55 23 * * *', async () => {
     console.log('[Scheduler] Executing daily staff attendance PDF generation task...');
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' };
+      const todayStr = new Intl.DateTimeFormat('en-CA', options).format(new Date());
       const result = await generateDailyReport(todayStr);
       console.log(`[Scheduler] Daily report generated successfully: ${result.title} | URL: ${result.url}`);
     } catch (err: any) {
       console.error('[Scheduler Error] Daily report generation failed:', err.message || err);
     }
+  }, {
+    scheduled: true,
+    timezone: 'Asia/Kolkata'
   });
 
   // Schedule monthly late fee warning notification on the 8th of every month at 10:00 AM (0 10 8 * *)
@@ -63,13 +67,17 @@ export function startScheduler() {
     } catch (err: any) {
       console.error('[Scheduler Error] Monthly warning task failed:', err.message || err);
     }
+  }, {
+    scheduled: true,
+    timezone: 'Asia/Kolkata'
   });
 
   // Schedule attendance check-in and check-out reminders every 5 minutes
   cron.schedule('*/5 * * * *', async () => {
     console.log('[Scheduler] Executing teacher attendance checks...');
     try {
-      const todayStr = new Date().toISOString().split('T')[0];
+      const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' };
+      const todayStr = new Intl.DateTimeFormat('en-CA', options).format(new Date());
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
@@ -174,6 +182,9 @@ export function startScheduler() {
     } catch (err: any) {
       console.error('[Scheduler Error] Teacher attendance checks task failed:', err.message || err);
     }
+  }, {
+    scheduled: true,
+    timezone: 'Asia/Kolkata'
   });
 
   console.log('[Scheduler Service] Schedulers are active.');

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import PDFDocument from 'pdfkit';
 import prisma from '../config/db';
+import { syncAllSchedules } from './scheduleSync';
 
 export async function generateDailyReport(dateStr?: string): Promise<{ success: boolean; filepath: string; url: string; date: string; title: string }> {
   // Use today's date if not provided
@@ -18,6 +19,9 @@ export async function generateDailyReport(dateStr?: string): Promise<{ success: 
   const filepath = path.join(reportsDir, filename);
   const pdfUrl = `/uploads/reports/${filename}`;
 
+  // 0. Sync schedules
+  await syncAllSchedules(targetDate);
+
   // 1. Fetch schedules and finalized attendances for the target date
   const schedules = await prisma.teacherSchedule.findMany({
     where: { date: targetDate },
@@ -32,8 +36,16 @@ export async function generateDailyReport(dateStr?: string): Promise<{ success: 
     }
   });
 
+  const adminShifts = await prisma.adminShift.findMany({
+    where: { date: targetDate },
+    include: {
+      admin: true,
+      attendances: true
+    }
+  });
+
   // Calculate statistics
-  let totalScheduled = schedules.length;
+  let totalScheduled = schedules.length + adminShifts.length;
   let presentCount = 0;
   let partialCount = 0;
   let absentCount = 0;
@@ -46,6 +58,16 @@ export async function generateDailyReport(dateStr?: string): Promise<{ success: 
       else if (att.status === 'ABSENT') absentCount++;
     } else {
       // If no checked-out attendance record exists, categorize as ABSENT or UNFINISHED
+      absentCount++;
+    }
+  });
+
+  adminShifts.forEach(shift => {
+    const att = shift.attendances[0];
+    if (att) {
+      if (att.logoutTime) presentCount++;
+      else partialCount++;
+    } else {
       absentCount++;
     }
   });
@@ -125,42 +147,67 @@ export async function generateDailyReport(dateStr?: string): Promise<{ success: 
 
   let currentY = tableTop + 25;
 
-  if (schedules.length === 0) {
+  let combinedRows: any[] = [];
+  
+  schedules.forEach(sched => {
+    const attendance = sched.teacherAttendances[0];
+    const name = sched.user.name;
+    const role = sched.user.role;
+    const timeStr = `${sched.startTime} - ${sched.endTime}`;
+    const ratio = attendance ? `${(attendance.presenceRatio * 100).toFixed(0)}%` : '0% (No checkout)';
+    const pings = attendance ? `(${attendance.insidePings}/${attendance.totalPings} pings)` : '';
+    const verdict = attendance ? attendance.status : 'ABSENT';
+    combinedRows.push({ name, role, timeStr, ratio: `${ratio} ${pings}`, verdict });
+  });
+
+  adminShifts.forEach(shift => {
+    const attendance = shift.attendances[0];
+    const name = shift.admin.name;
+    const role = shift.admin.role; // Should be ADMIN
+    const timeStr = shift.startTime && shift.endTime ? `${shift.startTime} - ${shift.endTime}` : 'Flexible';
+    
+    let verdict = 'ABSENT';
+    let ratio = '0%';
+    if (attendance) {
+       if (attendance.logoutTime) {
+         verdict = 'PRESENT';
+         ratio = '100% (Completed)';
+       } else {
+         verdict = 'PARTIAL';
+         ratio = 'Check-in only';
+       }
+    }
+    
+    combinedRows.push({ name, role, timeStr, ratio, verdict });
+  });
+
+  if (combinedRows.length === 0) {
     doc.fillColor(secondaryColor)
        .font('Helvetica-Oblique')
        .text('No administrative shifts or classroom lectures were scheduled for today.', 70, currentY + 15, { align: 'center', width: doc.page.width - 140 });
     currentY += 40;
   } else {
     doc.font('Helvetica').fontSize(9);
-    schedules.forEach((sched) => {
-      const attendance = sched.teacherAttendances[0];
-      const name = sched.user.name;
-      const role = sched.user.role;
-      const timeStr = `${sched.startTime} - ${sched.endTime}`;
-      
-      const ratio = attendance ? `${(attendance.presenceRatio * 100).toFixed(0)}%` : '0% (No checkout)';
-      const pings = attendance ? `(${attendance.insidePings}/${attendance.totalPings} pings inside)` : '';
-      const verdict = attendance ? attendance.status : 'ABSENT';
-
+    combinedRows.forEach((row) => {
       // Draw thin separator line
       doc.rect(50, currentY, doc.page.width - 100, 1).fill(gridBorderColor);
 
       // Print Row Details
       doc.fillColor(primaryColor)
-         .text(name, 60, currentY + 10, { width: 120 })
+         .text(row.name, 60, currentY + 10, { width: 120 })
          .fillColor(secondaryColor)
-         .text(role, 190, currentY + 10, { width: 70 })
-         .text(timeStr, 260, currentY + 10, { width: 100 })
-         .text(`${ratio} ${pings}`, 365, currentY + 10, { width: 95 });
+         .text(row.role, 190, currentY + 10, { width: 70 })
+         .text(row.timeStr, 260, currentY + 10, { width: 100 })
+         .text(row.ratio, 365, currentY + 10, { width: 95 });
 
       // Color code verdict
       let verdictColor = '#EF4444'; // Red
-      if (verdict === 'PRESENT') verdictColor = '#10B981'; // Green
-      else if (verdict === 'PARTIAL') verdictColor = '#F59E0B'; // Amber
+      if (row.verdict === 'PRESENT') verdictColor = '#10B981'; // Green
+      else if (row.verdict === 'PARTIAL') verdictColor = '#F59E0B'; // Amber
 
       doc.fillColor(verdictColor)
          .font('Helvetica-Bold')
-         .text(verdict, 465, currentY + 10, { width: 70 });
+         .text(row.verdict, 465, currentY + 10, { width: 70 });
 
       doc.font('Helvetica'); // Reset font style
       currentY += 35;
