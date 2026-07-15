@@ -4,6 +4,7 @@ import { RouteProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
 import { WebView } from 'react-native-webview';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import { apiClient } from '../../../core/api/client';
 
@@ -50,6 +51,30 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
 
   const isAndroid = Platform.OS === 'android';
 
+  const [base64Pdf, setBase64Pdf] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isAndroid && resolvedFileUrl) {
+      const downloadPdf = async () => {
+        try {
+          // Download to a temporary local file
+          const tempUri = (FileSystem.documentDirectory || FileSystem.cacheDirectory) + 'temp_viewer.pdf';
+          const { uri } = await FileSystem.downloadAsync(
+            resolvedFileUrl,
+            tempUri
+          );
+          // Read as Base64 to inject directly into the WebView JS
+          const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+          setBase64Pdf(base64);
+        } catch (e) {
+          console.error("PDF download failed", e);
+          setWebViewError(true);
+        }
+      };
+      downloadPdf();
+    }
+  }, [resolvedFileUrl, isAndroid]);
+
   const htmlSource = `
 <!DOCTYPE html>
 <html>
@@ -69,10 +94,18 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
   <div id="pdf-container"></div>
 
   <script>
-    const url = '${resolvedFileUrl}';
+    const base64Data = '${base64Pdf}';
+    
+    // Convert base64 to Uint8Array
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    const loadingTask = pdfjsLib.getDocument(url);
+    const loadingTask = pdfjsLib.getDocument({ data: bytes });
     loadingTask.promise.then(function(pdf) {
       document.getElementById('loading').style.display = 'none';
       const container = document.getElementById('pdf-container');
@@ -134,7 +167,12 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
 
       {/* PDF View Container */}
       <View className="flex-1">
-        {showWebView ? (
+        {isAndroid && !base64Pdf && !webViewError ? (
+          <View className="flex-1 justify-center items-center bg-slate-950">
+            <ActivityIndicator size="large" color="#2D8C82" />
+            <Text className="text-slate-500 text-xs mt-3 font-semibold">Downloading Document...</Text>
+          </View>
+        ) : showWebView ? (
           <WebView
             source={webViewSource}
             className="flex-1"
@@ -146,7 +184,7 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
             renderLoading={() => (
               <View className="absolute inset-0 justify-center items-center bg-slate-950">
                  <ActivityIndicator size="large" color="#2D8C82" />
-                <Text className="text-slate-500 text-xs mt-3 font-semibold">Loading PDF Document...</Text>
+                <Text className="text-slate-500 text-xs mt-3 font-semibold">Rendering PDF Document...</Text>
               </View>
             )}
           />
