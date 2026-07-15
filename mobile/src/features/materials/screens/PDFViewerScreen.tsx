@@ -21,9 +21,12 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
   const apiBase = apiClient.defaults.baseURL || '';
   const rootUrl = apiBase.replace('/api/v1', '');
 
-  // Dynamically resolve local server IP changes for uploaded files
+  // Dynamically resolve local server IP changes or http->https for API routes and uploads
   let resolvedFileUrl = fileUrl;
-  if (fileUrl && fileUrl.includes('/uploads/')) {
+  if (fileUrl && fileUrl.includes('/api/v1/materials/')) {
+    const apiPath = fileUrl.substring(fileUrl.indexOf('/api/v1/materials/'));
+    resolvedFileUrl = `${rootUrl}${apiPath}`;
+  } else if (fileUrl && fileUrl.includes('/uploads/')) {
     const uploadPath = fileUrl.substring(fileUrl.indexOf('/uploads/'));
     resolvedFileUrl = `${rootUrl}${uploadPath}`;
   }
