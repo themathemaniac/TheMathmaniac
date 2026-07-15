@@ -293,6 +293,20 @@ router.get('/:id/students', auth_1.authenticateJWT, async (req, res) => {
 router.get('/:id/announcements', auth_1.authenticateJWT, async (req, res) => {
     try {
         const { id } = req.params;
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN' || userRole === 'SUPERUSER';
+        if (!isTeacher && userId) {
+            const course = await db_1.default.course.findUnique({ where: { id } });
+            if (course?.price !== 0) {
+                const purchase = await db_1.default.purchase.findFirst({
+                    where: { userId, courseId: id, status: 'SUCCESS' }
+                });
+                if (!purchase) {
+                    return res.status(200).json({ success: true, data: [] });
+                }
+            }
+        }
         const announcements = await db_1.default.announcement.findMany({
             where: { courseId: id },
             include: {

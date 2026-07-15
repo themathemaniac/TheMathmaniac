@@ -26,6 +26,7 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
                 faculty: true,
                 school: true,
                 createdAt: true,
+                adminWeeklyPatterns: true,
             },
         });
         if (!user) {
@@ -37,7 +38,7 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
         };
         // Performance numbers
         let stats = {};
-        if (user.role === 'TEACHER' || user.role === 'ADMIN') {
+        if (user.role === 'ADMIN' || user.role === 'SUPERUSER') {
             const totalStudents = await db_1.default.user.count({
                 where: { role: 'STUDENT' },
             });
@@ -54,6 +55,43 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
             const batchesManaged = await db_1.default.courseTeacher.count({
                 where: { userId }
             });
+            stats = {
+                totalStudents,
+                totalCourses,
+                totalTests,
+                totalMaterials,
+                teachingHours: Math.round(teachingHoursSum * 10) / 10,
+                batchesManaged,
+            };
+        }
+        else if (user.role === 'TEACHER') {
+            const courseTeachers = await db_1.default.courseTeacher.findMany({
+                where: { userId },
+                select: { courseId: true }
+            });
+            const assignedCourseIds = courseTeachers.map(ct => ct.courseId);
+            const totalCourses = assignedCourseIds.length;
+            const batchesManaged = totalCourses;
+            const purchases = await db_1.default.purchase.findMany({
+                where: {
+                    courseId: { in: assignedCourseIds },
+                    status: 'SUCCESS'
+                },
+                select: { userId: true }
+            });
+            const uniqueStudentIds = new Set(purchases.map(p => p.userId));
+            const totalStudents = uniqueStudentIds.size;
+            const totalTests = await db_1.default.test.count({
+                where: { courseId: { in: assignedCourseIds } }
+            });
+            const totalMaterials = await db_1.default.studyMaterial.count({
+                where: { courseId: { in: assignedCourseIds } }
+            });
+            const teacherAttendance = await db_1.default.teacherAttendance.findMany({
+                where: { userId },
+                select: { teachingHours: true }
+            });
+            const teachingHoursSum = teacherAttendance.reduce((acc, row) => acc + (row.teachingHours || 0), 0);
             stats = {
                 totalStudents,
                 totalCourses,
@@ -128,6 +166,43 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
         });
     }
     catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+});
+// Update User Name
+router.put('/name', auth_1.authenticateJWT, async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ success: false, error: 'Unauthorized' });
+        }
+        const { name } = req.body;
+        if (!name || name.trim() === '') {
+            return res.status(400).json({ success: false, error: 'Name is required' });
+        }
+        const updatedUser = await db_1.default.user.update({
+            where: { id: userId },
+            data: { name: name.trim() },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                stream: true,
+                class: true,
+                faculty: true,
+                school: true,
+                createdAt: true,
+            }
+        });
+        return res.status(200).json({
+            success: true,
+            data: updatedUser,
+            message: 'Name updated successfully',
+        });
+    }
+    catch (error) {
+        console.error('[Update Name Error]', error);
         return res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -269,74 +344,57 @@ router.get('/calendar', auth_1.authenticateJWT, async (req, res) => {
             orderBy: { date: 'asc' },
         });
         let classes = [];
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const mapDayToNumber = (day) => {
+            const map = { 'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6 };
+            return map[day] !== undefined ? map[day] : parseInt(day, 10);
+        };
+        let targetCourses = [];
         if (user.role === 'STUDENT') {
-            // Fetch purchased courses
             const purchases = await db_1.default.purchase.findMany({
                 where: { userId, status: 'SUCCESS' },
-                include: {
-                    course: {
-                        include: {
-                            teachers: {
-                                include: {
-                                    user: {
-                                        select: { name: true }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                include: { course: { include: { teachers: { include: { user: { select: { name: true } } } } } } }
             });
-            const now = new Date();
-            const currentYear = now.getFullYear();
-            for (const p of purchases) {
-                const slots = JSON.parse(p.course.timeSlots || '[]');
-                const teacherName = p.course.teachers[0]?.user?.name || 'Faculty';
-                slots.forEach((slot) => {
-                    const targetDay = parseInt(slot.day, 10);
-                    if (isNaN(targetDay))
-                        return;
-                    let tempDate = new Date(currentYear, 0, 1);
-                    while (tempDate.getFullYear() === currentYear) {
-                        if (tempDate.getDay() === targetDay) {
-                            const dateStr = tempDate.toISOString().split('T')[0];
-                            classes.push({
-                                date: dateStr,
-                                title: `${p.course.title}`,
-                                subtitle: `${slot.time || 'Class'} (${teacherName})`,
-                                type: 'CLASS',
-                            });
-                        }
-                        tempDate.setDate(tempDate.getDate() + 1);
-                    }
-                });
-            }
+            targetCourses = purchases.map(p => p.course);
         }
         else if (user.role === 'TEACHER') {
-            const schedules = await db_1.default.teacherSchedule.findMany({
-                where: { userId },
+            targetCourses = await db_1.default.course.findMany({
+                where: { teachers: { some: { userId } } },
+                include: { teachers: { include: { user: { select: { name: true } } } } }
             });
-            classes = schedules.map(s => ({
-                date: s.date,
-                title: s.title,
-                subtitle: `${s.startTime} - ${s.endTime} (${s.campus})`,
-                type: 'CLASS',
-            }));
         }
         else {
-            const schedules = await db_1.default.teacherSchedule.findMany({
-                include: {
-                    user: {
-                        select: { name: true }
+            // ADMIN or SUPERUSER
+            targetCourses = await db_1.default.course.findMany({
+                include: { teachers: { include: { user: { select: { name: true } } } } }
+            });
+        }
+        for (const c of targetCourses) {
+            let slots = [];
+            try {
+                slots = typeof c.timeSlots === 'string' ? JSON.parse(c.timeSlots || '[]') : (c.timeSlots || []);
+            }
+            catch (e) { }
+            const teacherName = c.teachers && c.teachers[0]?.user?.name ? c.teachers[0].user.name : 'Faculty';
+            slots.forEach((slot) => {
+                const targetDay = mapDayToNumber(slot.day);
+                if (isNaN(targetDay))
+                    return;
+                let tempDate = new Date(currentYear, 0, 1);
+                while (tempDate.getFullYear() === currentYear) {
+                    if (tempDate.getDay() === targetDay) {
+                        const dateStr = tempDate.toISOString().split('T')[0];
+                        classes.push({
+                            date: dateStr,
+                            title: c.title,
+                            subtitle: `${slot.time || (slot.startTime ? slot.startTime + ' - ' + slot.endTime : 'Class')} (${teacherName})`,
+                            type: 'CLASS',
+                        });
                     }
+                    tempDate.setDate(tempDate.getDate() + 1);
                 }
             });
-            classes = schedules.map(s => ({
-                date: s.date,
-                title: s.title,
-                subtitle: `${s.startTime} - ${s.endTime} (${s.user?.name || 'Teacher'})`,
-                type: 'CLASS',
-            }));
         }
         const calendarEvents = [
             ...holidays.map(h => ({

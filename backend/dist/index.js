@@ -52,8 +52,10 @@ const attendance_1 = __importDefault(require("./routes/attendance"));
 const superuser_1 = __importDefault(require("./routes/superuser"));
 const payments_1 = __importDefault(require("./routes/payments"));
 const adminAttendance_1 = __importDefault(require("./routes/adminAttendance"));
+const schools_1 = __importDefault(require("./routes/schools"));
 const firestoreListener_1 = require("./services/firestoreListener");
 const scheduler_1 = require("./services/scheduler");
+const compression_1 = __importDefault(require("compression"));
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 3000;
 // Start Firestore real-time sync listener
@@ -61,6 +63,7 @@ const PORT = process.env.PORT || 3000;
 // Start Daily Cron Scheduler
 (0, scheduler_1.startScheduler)();
 // Middleware configurations
+app.use((0, compression_1.default)());
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use((req, res, next) => {
@@ -106,6 +109,7 @@ app.use('/api/v1/attendance', attendance_1.default);
 app.use('/api/v1/superuser', superuser_1.default);
 app.use('/api/v1/payments', payments_1.default);
 app.use('/api/v1/admin-attendance', adminAttendance_1.default);
+app.use('/api/v1/schools', schools_1.default);
 // Health check endpoint
 app.get('/api/health', (req, res) => {
     res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });

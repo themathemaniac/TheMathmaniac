@@ -15,15 +15,7 @@ const uploadDir = path_1.default.join(__dirname, '../../uploads');
 if (!fs_1.default.existsSync(uploadDir)) {
     fs_1.default.mkdirSync(uploadDir, { recursive: true });
 }
-const storage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
-    },
-});
+const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({
     storage,
     fileFilter: (req, file, cb) => {
@@ -89,6 +81,9 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
 router.get('/:id', auth_1.authenticateJWT, async (req, res) => {
     try {
         const { id } = req.params;
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+        const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN' || userRole === 'SUPERUSER';
         const test = await db_1.default.test.findUnique({
             where: { id },
             include: {
@@ -106,6 +101,14 @@ router.get('/:id', auth_1.authenticateJWT, async (req, res) => {
         });
         if (!test) {
             return res.status(404).json({ success: false, error: 'Test not found' });
+        }
+        if (!isTeacher && test.courseId && userId) {
+            const purchase = await db_1.default.purchase.findFirst({
+                where: { userId, courseId: test.courseId, status: 'SUCCESS' }
+            });
+            if (!purchase) {
+                return res.status(403).json({ success: false, error: 'Access Denied: You are not enrolled in this batch.' });
+            }
         }
         // Hide answers payload
         const safeQuestions = test.questions.map((q) => {
@@ -295,28 +298,14 @@ router.post('/:id/upload-pdf', auth_1.authenticateJWT, upload.single('file'), as
         if (!test) {
             return res.status(404).json({ success: false, error: 'Test not found' });
         }
-        // Try deleting old file if it exists
-        if (test.pdfUrl) {
-            try {
-                const oldFilename = test.pdfUrl.split('/uploads/')[1];
-                if (oldFilename) {
-                    const oldFilePath = path_1.default.join(uploadDir, oldFilename);
-                    if (fs_1.default.existsSync(oldFilePath)) {
-                        fs_1.default.unlinkSync(oldFilePath);
-                    }
-                }
-            }
-            catch (err) {
-                console.error('Error deleting old test PDF:', err);
-            }
-        }
-        const pdfUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+        const pdfUrl = `${req.protocol}://${req.get('host')}/api/v1/tests/${id}/pdf`;
         const updatedTest = await db_1.default.test.update({
             where: { id },
             data: {
                 pdfUrl,
                 pdfSize: req.file.size,
                 pdfName: req.file.originalname,
+                pdfData: req.file.buffer,
             },
         });
         return res.status(200).json({ success: true, data: updatedTest });
@@ -335,27 +324,13 @@ router.delete('/:id/pdf', auth_1.authenticateJWT, async (req, res) => {
         if (!test) {
             return res.status(404).json({ success: false, error: 'Test not found' });
         }
-        // Delete file from disk
-        if (test.pdfUrl) {
-            try {
-                const filename = test.pdfUrl.split('/uploads/')[1];
-                if (filename) {
-                    const filePath = path_1.default.join(uploadDir, filename);
-                    if (fs_1.default.existsSync(filePath)) {
-                        fs_1.default.unlinkSync(filePath);
-                    }
-                }
-            }
-            catch (err) {
-                console.error('Error deleting test PDF file:', err);
-            }
-        }
         const updatedTest = await db_1.default.test.update({
             where: { id },
             data: {
                 pdfUrl: null,
                 pdfSize: null,
                 pdfName: null,
+                pdfData: null,
             },
         });
         return res.status(200).json({ success: true, data: updatedTest });
@@ -364,7 +339,27 @@ router.delete('/:id/pdf', auth_1.authenticateJWT, async (req, res) => {
         return res.status(500).json({ success: false, error: error.message });
     }
 });
-// 7. Create Test (Requires Auth - Teacher or Admin)
+// 7. Download Test PDF
+router.get('/:id/pdf', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const test = await db_1.default.test.findUnique({
+            where: { id },
+            select: { pdfData: true, title: true }
+        });
+        if (!test || !test.pdfData) {
+            return res.status(404).send('File not found');
+        }
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(test.title)}.pdf"`);
+        res.send(test.pdfData);
+    }
+    catch (error) {
+        console.error('Download error:', error);
+        res.status(500).send('Error downloading file');
+    }
+});
+// 8. Create Test (Requires Auth - Teacher or Admin)
 router.post('/', auth_1.authenticateJWT, async (req, res) => {
     try {
         const userRole = req.user?.role;

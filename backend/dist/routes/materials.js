@@ -16,15 +16,7 @@ const uploadDir = path_1.default.join(__dirname, '../../uploads');
 if (!fs_1.default.existsSync(uploadDir)) {
     fs_1.default.mkdirSync(uploadDir, { recursive: true });
 }
-const storage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + path_1.default.extname(file.originalname));
-    },
-});
+const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({
     storage,
     fileFilter: (req, file, cb) => {
@@ -46,20 +38,7 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
         if (!userId) {
             return res.status(401).json({ success: false, error: 'Unauthorized' });
         }
-        const whereClause = {};
-        if (courseId) {
-            whereClause.courseId = String(courseId);
-        }
-        const materials = await db_1.default.studyMaterial.findMany({
-            where: whereClause,
-            include: {
-                course: {
-                    select: { title: true, price: true },
-                },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
-        const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN';
+        const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN' || userRole === 'SUPERUSER';
         let purchasedCourseIds = [];
         if (userId && !isTeacher) {
             const purchases = await db_1.default.purchase.findMany({
@@ -73,8 +52,31 @@ router.get('/', auth_1.authenticateJWT, async (req, res) => {
             });
             purchasedCourseIds = purchases.map((p) => p.courseId);
         }
+        const whereClause = {};
+        if (courseId) {
+            whereClause.courseId = String(courseId);
+        }
+        if (!isTeacher) {
+            if (courseId) {
+                if (!purchasedCourseIds.includes(String(courseId))) {
+                    return res.status(200).json({ success: true, data: [] });
+                }
+            }
+            else {
+                whereClause.courseId = { in: purchasedCourseIds };
+            }
+        }
+        const materials = await db_1.default.studyMaterial.findMany({
+            where: whereClause,
+            include: {
+                course: {
+                    select: { title: true, price: true },
+                },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
         const materialsWithAccess = materials.map((mat) => {
-            const isAccessible = isTeacher || mat.course.price === 0 || purchasedCourseIds.includes(mat.courseId);
+            const isAccessible = isTeacher || purchasedCourseIds.includes(mat.courseId);
             return {
                 id: mat.id,
                 courseId: mat.courseId,
@@ -109,16 +111,22 @@ router.post('/', auth_1.authenticateJWT, upload.single('file'), async (req, res)
         if (!course) {
             return res.status(404).json({ success: false, error: 'Course not found' });
         }
-        const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
         const material = await db_1.default.studyMaterial.create({
             data: {
                 courseId,
                 title,
                 type,
                 fileSize: req.file.size,
-                fileUrl,
+                fileData: req.file.buffer,
+                fileUrl: '',
             },
         });
+        const fileUrl = `${req.protocol}://${req.get('host')}/api/v1/materials/${material.id}/download`;
+        await db_1.default.studyMaterial.update({
+            where: { id: material.id },
+            data: { fileUrl },
+        });
+        material.fileUrl = fileUrl;
         // Notify all students who purchased the course
         const purchases = await db_1.default.purchase.findMany({
             where: { courseId, status: 'SUCCESS' },
@@ -158,21 +166,8 @@ router.put('/:id', auth_1.authenticateJWT, upload.single('file'), async (req, re
         }
         // If new file is uploaded
         if (req.file) {
-            // Try to delete old file
-            try {
-                const oldFilename = existingMaterial.fileUrl.split('/uploads/')[1];
-                if (oldFilename) {
-                    const oldFilePath = path_1.default.join(uploadDir, oldFilename);
-                    if (fs_1.default.existsSync(oldFilePath)) {
-                        fs_1.default.unlinkSync(oldFilePath);
-                    }
-                }
-            }
-            catch (err) {
-                console.error('Error deleting old file:', err);
-            }
             updateData.fileSize = req.file.size;
-            updateData.fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+            updateData.fileData = req.file.buffer;
         }
         const updatedMaterial = await db_1.default.studyMaterial.update({
             where: { id },
@@ -184,7 +179,7 @@ router.put('/:id', auth_1.authenticateJWT, upload.single('file'), async (req, re
         return res.status(500).json({ success: false, error: error.message });
     }
 });
-// 4. Delete Study Material (Unlinks file and deletes DB record)
+// 4. Delete Study Material (Deletes DB record along with binary data)
 router.delete('/:id', auth_1.authenticateJWT, async (req, res) => {
     try {
         const { id } = req.params;
@@ -194,19 +189,6 @@ router.delete('/:id', auth_1.authenticateJWT, async (req, res) => {
         if (!existingMaterial) {
             return res.status(404).json({ success: false, error: 'Study material not found' });
         }
-        // Delete file from disk
-        try {
-            const filename = existingMaterial.fileUrl.split('/uploads/')[1];
-            if (filename) {
-                const filePath = path_1.default.join(uploadDir, filename);
-                if (fs_1.default.existsSync(filePath)) {
-                    fs_1.default.unlinkSync(filePath);
-                }
-            }
-        }
-        catch (err) {
-            console.error('Error deleting file:', err);
-        }
         await db_1.default.studyMaterial.delete({
             where: { id },
         });
@@ -214,6 +196,26 @@ router.delete('/:id', auth_1.authenticateJWT, async (req, res) => {
     }
     catch (error) {
         return res.status(500).json({ success: false, error: error.message });
+    }
+});
+// 5. Download Study Material PDF
+router.get('/:id/download', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const material = await db_1.default.studyMaterial.findUnique({
+            where: { id },
+            select: { fileData: true, title: true, type: true }
+        });
+        if (!material || !material.fileData) {
+            return res.status(404).send('File not found');
+        }
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(material.title)}.pdf"`);
+        res.send(material.fileData);
+    }
+    catch (error) {
+        console.error('Download error:', error);
+        res.status(500).send('Error downloading file');
     }
 });
 exports.default = router;
