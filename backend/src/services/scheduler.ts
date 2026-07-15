@@ -18,7 +18,6 @@ export function startScheduler() {
       console.error('[Scheduler Error] Daily report generation failed:', err.message || err);
     }
   }, {
-    scheduled: true,
     timezone: 'Asia/Kolkata'
   });
 
@@ -68,7 +67,6 @@ export function startScheduler() {
       console.error('[Scheduler Error] Monthly warning task failed:', err.message || err);
     }
   }, {
-    scheduled: true,
     timezone: 'Asia/Kolkata'
   });
 
@@ -183,7 +181,6 @@ export function startScheduler() {
       console.error('[Scheduler Error] Teacher attendance checks task failed:', err.message || err);
     }
   }, {
-    scheduled: true,
     timezone: 'Asia/Kolkata'
   });
 
