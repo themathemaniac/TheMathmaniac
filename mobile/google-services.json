@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "315337713091",
+    "project_id": "mathemaniac-trial",
+    "storage_bucket": "mathemaniac-trial.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:315337713091:android:57f06d281da36357580976",
+        "android_client_info": {
+          "package_name": "com.synapseedutech.mathemaniac"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBt14c5r8WzzQISQhFaKk8Hkz5jS3P6aAg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

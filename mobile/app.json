@@ -19,6 +19,7 @@
         "backgroundColor": "#EAE7DF"
       },
       "package": "com.synapseedutech.mathemaniac",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -38,6 +39,7 @@
     "plugins": [
       "expo-secure-store",
       "expo-video",
+      "expo-notifications",
       [
         "expo-location",
         {

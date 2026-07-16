@@ -31,7 +31,7 @@ export async function sendPushNotification(
     const token = user.pushToken.trim();
 
     // Verify token follows Expo Push Token pattern
-    if (!token.startsWith('ExponentPushToken[')) {
+    if (!token.startsWith('ExponentPushToken[') && !token.startsWith('ExpoPushToken[')) {
       console.log(`[Push Notification] Skipping invalid token format for user ${userId}: ${token}`);
       return;
     }
