@@ -384,7 +384,10 @@ router.get('/calendar', auth_1.authenticateJWT, async (req, res) => {
                 let tempDate = new Date(currentYear, 0, 1);
                 while (tempDate.getFullYear() === currentYear) {
                     if (tempDate.getDay() === targetDay) {
-                        const dateStr = tempDate.toISOString().split('T')[0];
+                        const yyyy = tempDate.getFullYear();
+                        const mm = String(tempDate.getMonth() + 1).padStart(2, '0');
+                        const dd = String(tempDate.getDate()).padStart(2, '0');
+                        const dateStr = `${yyyy}-${mm}-${dd}`;
                         classes.push({
                             date: dateStr,
                             title: c.title,
