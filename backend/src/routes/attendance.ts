@@ -65,10 +65,23 @@ router.get('/', authenticateJWT, requireTeacherOrAdmin, async (req: Authenticate
 
     let teacherAttendanceTaken = false;
     if (req.user!.role === 'TEACHER') {
-      const existingAtt = await prisma.teacherAttendance.findFirst({
-        where: { userId: req.user!.id, date },
+      const course = await prisma.course.findUnique({
+        where: { id: courseId },
+        select: { title: true }
       });
-      teacherAttendanceTaken = !!existingAtt;
+
+      if (course) {
+        const existingAtt = await prisma.teacherAttendance.findFirst({
+          where: {
+            userId: req.user!.id,
+            date,
+            schedule: {
+              title: course.title
+            }
+          },
+        });
+        teacherAttendanceTaken = !!existingAtt;
+      }
     }
 
     return res.status(200).json({
