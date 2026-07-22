@@ -171,7 +171,7 @@ const MiniDropdown: React.FC<MiniDropdownProps> = ({
 const SUPERUSER_PHONES = ['+917980357754', '+919831754957'];
 
 export const AdminCoursesTab: React.FC = () => {
-  const { user, adminListCourses, adminEnrollStudent, adminAssignTeacher, adminRemoveTeacher, adminDeleteCourse, adminListUsers, isLoading } = useAuthStore();
+  const { user, adminListCourses, adminEnrollStudent, adminAssignTeacher, adminRemoveTeacher, adminRemoveStudent, adminDeleteCourse, adminListUsers, isLoading } = useAuthStore();
   const [courses, setCourses] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
@@ -473,6 +473,26 @@ export const AdminCoursesTab: React.FC = () => {
             loadCourses();
           } else {
             const errorMsg = useAuthStore.getState().error || 'Failed to remove teacher.';
+            Alert.alert('Error', errorMsg);
+          }
+        }
+      }
+    ]);
+  };
+
+  const handleRemoveStudent = (courseId: string, studentId: string) => {
+    Alert.alert('Confirm Remove', 'Are you sure you want to remove this student from the course?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          const success = await adminRemoveStudent(courseId, studentId);
+          if (success) {
+            Alert.alert('Success', 'Student removed successfully.');
+            loadCourses();
+          } else {
+            const errorMsg = useAuthStore.getState().error || 'Failed to remove student.';
             Alert.alert('Error', errorMsg);
           }
         }
@@ -977,6 +997,24 @@ export const AdminCoursesTab: React.FC = () => {
                             <Text className="text-red-400 text-[10px] font-bold">Remove</Text>
                           </TouchableOpacity>
                         )}
+                      </View>
+                    ))}
+                  </View>
+                )}
+
+                {/* Enrolled Students List */}
+                {course.purchases && course.purchases.length > 0 && (
+                  <View className="mb-4">
+                    <Text className="text-slate-400 text-[10px] font-bold uppercase mb-2">Enrolled Students</Text>
+                    {course.purchases.map((p: any) => (
+                      <View key={p.id} className="flex-row justify-between items-center bg-slate-950 p-3 rounded-lg border border-slate-800 mb-2">
+                        <View>
+                          <Text className="text-slate-300 text-xs font-semibold">{p.user?.name}</Text>
+                          <Text className="text-slate-500 text-[10px]">{p.user?.phoneNumber || p.user?.email || 'No contact'}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => handleRemoveStudent(course.id, p.userId)} className="bg-red-500/10 px-3 py-1.5 rounded-md border border-red-500/20">
+                          <Text className="text-red-400 text-[10px] font-bold">Remove</Text>
+                        </TouchableOpacity>
                       </View>
                     ))}
                   </View>

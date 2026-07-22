@@ -494,6 +494,22 @@ router.delete('/courses/:id/teachers/:teacherId', authenticateJWT, requireAdmin,
   }
 });
 
+// 8.5 Remove Student from Course (Allowed for all Admins)
+router.delete('/courses/:id/students/:studentId', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id, studentId } = req.params;
+
+    await prisma.purchase.deleteMany({
+      where: { courseId: id, userId: studentId }
+    });
+
+    return res.status(200).json({ success: true, data: { message: 'Student removed successfully.' } });
+  } catch (error: any) {
+    console.error('[Remove Student Error]', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to remove student.' });
+  }
+});
+
 const COURSE_CREATOR_PHONE = '+919831754957'; // Shubhadeep Biswas
 
 // 9. Create Course (Allowed for all Admins)

@@ -43,6 +43,7 @@ interface AuthState {
   adminEnrollStudent: (courseId: string, studentId: string) => Promise<boolean>;
   adminAssignTeacher: (courseId: string, teacherId: string) => Promise<boolean>;
   adminRemoveTeacher: (courseId: string, teacherId: string) => Promise<boolean>;
+  adminRemoveStudent: (courseId: string, studentId: string) => Promise<boolean>;
   adminCreateCourse: (data: any) => Promise<boolean>;
   adminUpdateCourse: (courseId: string, data: any) => Promise<boolean>;
   adminDeleteCourse: (courseId: string) => Promise<boolean>;
@@ -337,6 +338,21 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch (error: any) {
       const msg = error.response?.data?.error || error.message || 'Failed to assign teacher';
       set({ error: msg, isLoading: false });
+      return false;
+    }
+  },
+
+  adminRemoveStudent: async (courseId, studentId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await apiClient.delete(`/admin/courses/${courseId}/students/${studentId}`);
+      if (res.data.success) {
+        set({ isLoading: false });
+        return true;
+      }
+      throw new Error(res.data.error || 'Failed to remove student');
+    } catch (error: any) {
+      set({ error: error.response?.data?.error || error.message, isLoading: false });
       return false;
     }
   },
