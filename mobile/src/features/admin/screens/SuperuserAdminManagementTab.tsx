@@ -33,6 +33,10 @@ export const SuperuserAdminManagementTab: React.FC = () => {
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [showCredsModal, setShowCredsModal] = useState(false);
   const [showPatternModal, setShowPatternModal] = useState(false);
+  const [showAssignBranchModal, setShowAssignBranchModal] = useState(false);
+  const [selectedAdminForBranch, setSelectedAdminForBranch] = useState<any>(null);
+  const [assignBranchValue, setAssignBranchValue] = useState('Sodepur');
+  const [isAssigningBranch, setIsAssigningBranch] = useState(false);
 
   // Admin form state
   const [adminName, setAdminName] = useState('');
@@ -265,6 +269,27 @@ export const SuperuserAdminManagementTab: React.FC = () => {
     );
   };
 
+  const handleAssignBranch = async () => {
+    if (!selectedAdminForBranch || !assignBranchValue) return;
+
+    try {
+      setIsAssigningBranch(true);
+      const res = await apiClient.put(`/superuser/admins/${selectedAdminForBranch.id}/branch`, {
+        branch: assignBranchValue
+      });
+      if (res.data.success) {
+        Alert.alert('Success', 'Admin branch assigned successfully.');
+        setShowAssignBranchModal(false);
+        loadData();
+      }
+    } catch (error: any) {
+      console.error('Assign Branch Error:', error);
+      Alert.alert('Error', error.response?.data?.error || 'Failed to assign branch.');
+    } finally {
+      setIsAssigningBranch(false);
+    }
+  };
+
   const handleCreateShift = async () => {
     if (!selectedAdminId) {
       Alert.alert('Error', 'Please select an Admin.');
@@ -423,8 +448,24 @@ export const SuperuserAdminManagementTab: React.FC = () => {
               <Text className="text-slate-100 text-sm font-black">{admin.name}</Text>
               <Text className="text-slate-400 text-xs mt-0.5">{admin.phoneNumber}</Text>
               {admin.email && <Text className="text-slate-500 text-[10px] mt-0.5">{admin.email}</Text>}
+              {admin.assignedBranch && (
+                <View className="mt-1.5 flex-row items-center gap-1.5">
+                  <View className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                  <Text className="text-blue-400 text-[10px] font-bold uppercase tracking-widest">{admin.assignedBranch} Branch</Text>
+                </View>
+              )}
             </View>
             <View className="flex-row items-center gap-2">
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedAdminForBranch(admin);
+                  setAssignBranchValue(admin.assignedBranch || 'Sodepur');
+                  setShowAssignBranchModal(true);
+                }}
+                className="bg-blue-500/10 border border-blue-500/20 px-3 py-2 rounded-xl"
+              >
+                <Text className="text-blue-400 font-extrabold text-[10px] uppercase">Assign</Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
                   setSelectedAdminForPattern(admin);
@@ -493,6 +534,53 @@ export const SuperuserAdminManagementTab: React.FC = () => {
           )}
         </>
       )}
+
+      {/* ASSIGN BRANCH MODAL */}
+      <Modal visible={showAssignBranchModal} transparent animationType="fade" onRequestClose={() => setShowAssignBranchModal(false)}>
+        <View className="flex-1 bg-black/85 justify-center px-6">
+          <View className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl">
+            <Text className="text-slate-100 text-lg font-black mb-1">Assign Permanent Branch</Text>
+            <Text className="text-slate-500 text-[10px] mb-4 uppercase font-bold">
+              Set the actual home branch for {selectedAdminForBranch?.name}.
+            </Text>
+
+            <View className="flex-row gap-3 mb-5">
+              <TouchableOpacity
+                onPress={() => setAssignBranchValue('Sodepur')}
+                className={`flex-1 p-3 rounded-xl border ${assignBranchValue === 'Sodepur' ? 'bg-[#2D8C82]/20 border-[#2D8C82]' : 'bg-slate-950 border-slate-800'}`}
+              >
+                <Text className={`text-center font-bold text-xs ${assignBranchValue === 'Sodepur' ? 'text-[#2D8C82]' : 'text-slate-400'}`}>Sodepur</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setAssignBranchValue('Madhyamgram')}
+                className={`flex-1 p-3 rounded-xl border ${assignBranchValue === 'Madhyamgram' ? 'bg-[#2D8C82]/20 border-[#2D8C82]' : 'bg-slate-950 border-slate-800'}`}
+              >
+                <Text className={`text-center font-bold text-xs ${assignBranchValue === 'Madhyamgram' ? 'text-[#2D8C82]' : 'text-slate-400'}`}>Madhyamgram</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View className="flex-row gap-4 mt-2">
+              <TouchableOpacity
+                onPress={() => setShowAssignBranchModal(false)}
+                className="flex-1 bg-slate-800 py-3 rounded-xl items-center"
+              >
+                <Text className="text-slate-300 text-xs font-bold">Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleAssignBranch}
+                disabled={isAssigningBranch}
+                className="flex-1 bg-[#2D8C82] py-3 rounded-xl items-center"
+              >
+                {isAssigningBranch ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-white text-xs font-bold">Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* CREATE ADMIN MODAL */}
       <Modal visible={showAdminModal} transparent animationType="slide" onRequestClose={() => setShowAdminModal(false)}>

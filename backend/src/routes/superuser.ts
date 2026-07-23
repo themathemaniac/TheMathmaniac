@@ -223,6 +223,46 @@ router.delete('/admins/:id', authenticateJWT, requireSuperuser, async (req: Auth
   }
 });
 
+// 5b. Update Admin Assigned Branch (Superuser only)
+router.put('/admins/:id/branch', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const targetUserId = req.params.id;
+    const { branch } = req.body;
+
+    if (!branch || !['Sodepur', 'Madhyamgram'].includes(branch)) {
+      return res.status(400).json({ success: false, error: 'Invalid or missing branch. Must be Sodepur or Madhyamgram.' });
+    }
+
+    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!targetUser) {
+      return res.status(404).json({ success: false, error: 'Admin not found.' });
+    }
+    if (targetUser.role !== 'ADMIN') {
+      return res.status(400).json({ success: false, error: 'This user is not an Admin.' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: targetUserId },
+      data: { assignedBranch: branch }
+    });
+
+    // Audit log
+    await prisma.auditLog.create({
+      data: {
+        action: 'ADMIN_BRANCH_ASSIGNED',
+        userId: targetUserId,
+        actorId: req.user!.id,
+        details: `Superuser assigned branch ${branch} to admin ${targetUser.name}.`,
+      },
+    });
+
+    return res.status(200).json({ success: true, data: updatedUser, message: 'Branch assigned successfully.' });
+  } catch (error: any) {
+    console.error('[Assign Branch Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 6. Create / Assign Shift to Admin (Superuser or Admin)
 router.post('/shifts', authenticateJWT, requireAdminOrSuperuser, async (req: AuthenticatedRequest, res: Response) => {
   try {
