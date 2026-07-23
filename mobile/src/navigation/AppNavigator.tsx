@@ -19,6 +19,7 @@ import { AdminPanelScreen } from '../features/admin/screens/AdminPanelScreen';
 import { AdminProfileScreen } from '../features/admin/screens/AdminProfileScreen';
 import { AdminAttendanceScreen } from '../features/admin/screens/AdminAttendanceScreen';
 import { HomeScreen } from '../features/home/screens/HomeScreen';
+import { AllAnnouncementsScreen } from '../features/home/screens/AllAnnouncementsScreen';
 import { CoursesExploreScreen } from '../features/courses/screens/CoursesExploreScreen';
 import { CourseDetailsScreen } from '../features/courses/screens/CourseDetailsScreen';
 import { LecturePlayerScreen } from '../features/lectures/screens/LecturePlayerScreen';
@@ -196,6 +197,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="TeacherPayments" component={TeacherPaymentsScreen} />
         <Stack.Screen name="FeePayment" component={FeePaymentScreen} />
         <Stack.Screen name="AdminAttendance" component={AdminAttendanceScreen} />
+        <Stack.Screen name="AllAnnouncements" component={AllAnnouncementsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

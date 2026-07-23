@@ -24,8 +24,8 @@ export const PDFViewerScreen: React.FC<Props> = ({ route }) => {
 
   // Dynamically resolve local server IP changes or http->https for API routes and uploads
   let resolvedFileUrl = fileUrl;
-  if (fileUrl && fileUrl.includes('/api/v1/materials/')) {
-    const apiPath = fileUrl.substring(fileUrl.indexOf('/api/v1/materials/'));
+  if (fileUrl && fileUrl.includes('/api/v1/')) {
+    const apiPath = fileUrl.substring(fileUrl.indexOf('/api/v1/'));
     resolvedFileUrl = `${rootUrl}${apiPath}`;
   } else if (fileUrl && fileUrl.includes('/uploads/')) {
     const uploadPath = fileUrl.substring(fileUrl.indexOf('/uploads/'));

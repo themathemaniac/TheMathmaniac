@@ -318,7 +318,12 @@ export const HomeScreen: React.FC = () => {
 
             {/* 5. Recent Announcements */}
             <View className="mb-6">
-              <Text className="text-slate-100 text-lg font-bold mb-3">Recent Announcements</Text>
+              <View className="flex-row justify-between items-baseline mb-3">
+                <Text className="text-slate-100 text-lg font-bold">Recent Announcements</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('AllAnnouncements')}>
+                  <Text className="text-blue-600 text-xs font-bold">See all announcements</Text>
+                </TouchableOpacity>
+              </View>
               {(() => {
                 const courseAnnouncements = dashboardData.announcements.filter(
                   (item) => item.courseId && item.course

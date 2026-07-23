@@ -34,9 +34,32 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
     const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN';
     const userId = req.user?.id;
 
+    const isAdminOrSuper = userRole === 'ADMIN' || userRole === 'SUPERUSER';
+    const isTeacherRole = userRole === 'TEACHER';
+
     let tests;
-    if (isTeacher) {
+    if (isAdminOrSuper) {
       tests = await prisma.test.findMany({
+        include: {
+          course: {
+            select: { title: true },
+          },
+        },
+      });
+    } else if (isTeacherRole) {
+      const assigned = await prisma.courseTeacher.findMany({
+        where: { userId },
+        select: { courseId: true },
+      });
+      const assignedCourseIds = assigned.map((a) => a.courseId);
+
+      tests = await prisma.test.findMany({
+        where: {
+          OR: [
+            { courseId: null },
+            { courseId: { in: assignedCourseIds } }
+          ]
+        },
         include: {
           course: {
             select: { title: true },
@@ -84,7 +107,8 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
     const { id } = req.params;
     const userId = req.user?.id;
     const userRole = req.user?.role;
-    const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN' || userRole === 'SUPERUSER';
+    const isAdminOrSuper = userRole === 'ADMIN' || userRole === 'SUPERUSER';
+    const isTeacherRole = userRole === 'TEACHER';
 
     const test = await prisma.test.findUnique({
       where: { id },
@@ -106,12 +130,21 @@ router.get('/:id', authenticateJWT, async (req: AuthenticatedRequest, res: Respo
       return res.status(404).json({ success: false, error: 'Test not found' });
     }
 
-    if (!isTeacher && test.courseId && userId) {
-      const purchase = await prisma.purchase.findFirst({
-        where: { userId, courseId: test.courseId, status: 'SUCCESS' }
-      });
-      if (!purchase) {
-        return res.status(403).json({ success: false, error: 'Access Denied: You are not enrolled in this batch.' });
+    if (!isAdminOrSuper && test.courseId && userId) {
+      if (isTeacherRole) {
+        const assigned = await prisma.courseTeacher.findFirst({
+          where: { userId, courseId: test.courseId }
+        });
+        if (!assigned) {
+          return res.status(403).json({ success: false, error: 'Access Denied: You are not assigned to this batch.' });
+        }
+      } else {
+        const purchase = await prisma.purchase.findFirst({
+          where: { userId, courseId: test.courseId, status: 'SUCCESS' }
+        });
+        if (!purchase) {
+          return res.status(403).json({ success: false, error: 'Access Denied: You are not enrolled in this batch.' });
+        }
       }
     }
 

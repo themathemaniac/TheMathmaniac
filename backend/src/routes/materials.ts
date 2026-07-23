@@ -39,20 +39,29 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN' || userRole === 'SUPERUSER';
+    const isAdminOrSuper = userRole === 'ADMIN' || userRole === 'SUPERUSER';
+    const isTeacherRole = userRole === 'TEACHER';
 
-    let purchasedCourseIds: string[] = [];
-    if (userId && !isTeacher) {
-      const purchases = await prisma.purchase.findMany({
-        where: {
-          userId,
-          status: 'SUCCESS',
-        },
-        select: {
-          courseId: true,
-        },
-      });
-      purchasedCourseIds = purchases.map((p) => p.courseId);
+    let allowedCourseIds: string[] = [];
+    if (userId && !isAdminOrSuper) {
+      if (isTeacherRole) {
+        const assigned = await prisma.courseTeacher.findMany({
+          where: { userId },
+          select: { courseId: true },
+        });
+        allowedCourseIds = assigned.map((a) => a.courseId);
+      } else {
+        const purchases = await prisma.purchase.findMany({
+          where: {
+            userId,
+            status: 'SUCCESS',
+          },
+          select: {
+            courseId: true,
+          },
+        });
+        allowedCourseIds = purchases.map((p) => p.courseId);
+      }
     }
 
     const whereClause: any = {};
@@ -60,13 +69,13 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
       whereClause.courseId = String(courseId);
     }
 
-    if (!isTeacher) {
+    if (!isAdminOrSuper) {
       if (courseId) {
-        if (!purchasedCourseIds.includes(String(courseId))) {
+        if (!allowedCourseIds.includes(String(courseId))) {
           return res.status(200).json({ success: true, data: [] });
         }
       } else {
-        whereClause.courseId = { in: purchasedCourseIds };
+        whereClause.courseId = { in: allowedCourseIds };
       }
     }
 
@@ -81,7 +90,7 @@ router.get('/', authenticateJWT, async (req: AuthenticatedRequest, res: Response
     });
 
     const materialsWithAccess = materials.map((mat) => {
-      const isAccessible = isTeacher || purchasedCourseIds.includes(mat.courseId);
+      const isAccessible = isAdminOrSuper || allowedCourseIds.includes(mat.courseId);
 
       return {
         id: mat.id,

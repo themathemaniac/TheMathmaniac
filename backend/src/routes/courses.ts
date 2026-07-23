@@ -291,10 +291,19 @@ router.get('/:id/announcements', authenticateJWT, async (req: AuthenticatedReque
     const { id } = req.params;
     const userId = req.user?.id;
     const userRole = req.user?.role;
-    
-    const isTeacher = userRole === 'TEACHER' || userRole === 'ADMIN' || userRole === 'SUPERUSER';
+    const isAdminOrSuper = userRole === 'ADMIN' || userRole === 'SUPERUSER';
+    const isTeacherRole = userRole === 'TEACHER';
 
-    if (!isTeacher && userId) {
+    if (isTeacherRole && userId) {
+      const assigned = await prisma.courseTeacher.findFirst({
+        where: { userId, courseId: id }
+      });
+      if (!assigned) {
+        return res.status(403).json({ success: false, error: 'Access Denied: You are not assigned to this batch.' });
+      }
+    }
+
+    if (!isAdminOrSuper && !isTeacherRole && userId) {
       const course = await prisma.course.findUnique({ where: { id } });
       if (course?.price !== 0) {
         const purchase = await prisma.purchase.findFirst({
@@ -345,10 +354,22 @@ router.post('/:id/announcements', authenticateJWT, async (req: AuthenticatedRequ
     const { id } = req.params;
     const { title, content } = req.body;
     const userRole = req.user?.role;
-
     const isSuperuser = req.user?.phoneNumber === '+917980357754' || req.user?.phoneNumber === '+919831754957';
-    if (userRole !== 'TEACHER' && userRole !== 'ADMIN' && !isSuperuser) {
+    const isAdminOrSuper = userRole === 'ADMIN' || isSuperuser;
+    const isTeacherRole = userRole === 'TEACHER';
+    const userId = req.user?.id;
+
+    if (!isTeacherRole && !isAdminOrSuper) {
       return res.status(403).json({ success: false, error: 'Access Denied' });
+    }
+
+    if (isTeacherRole && userId) {
+      const assigned = await prisma.courseTeacher.findFirst({
+        where: { userId, courseId: id }
+      });
+      if (!assigned) {
+        return res.status(403).json({ success: false, error: 'Access Denied: You are not assigned to this batch.' });
+      }
     }
 
     if (!title || !content) {
@@ -396,10 +417,22 @@ router.delete('/:id/announcements/:announcementId', authenticateJWT, async (req:
   try {
     const { id, announcementId } = req.params;
     const userRole = req.user?.role;
-
     const isSuperuser = req.user?.phoneNumber === '+917980357754' || req.user?.phoneNumber === '+919831754957';
-    if (userRole !== 'TEACHER' && userRole !== 'ADMIN' && !isSuperuser) {
+    const isAdminOrSuper = userRole === 'ADMIN' || isSuperuser;
+    const isTeacherRole = userRole === 'TEACHER';
+    const userId = req.user?.id;
+
+    if (!isTeacherRole && !isAdminOrSuper) {
       return res.status(403).json({ success: false, error: 'Access Denied' });
+    }
+
+    if (isTeacherRole && userId) {
+      const assigned = await prisma.courseTeacher.findFirst({
+        where: { userId, courseId: id }
+      });
+      if (!assigned) {
+        return res.status(403).json({ success: false, error: 'Access Denied: You are not assigned to this batch.' });
+      }
     }
 
     await prisma.announcement.delete({

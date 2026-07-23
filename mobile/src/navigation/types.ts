@@ -27,6 +27,7 @@ export type RootStackParamList = {
   ActiveTest: { testId: string };
   TestResult: { resultData: any };
   FeePayment: undefined;
+  AllAnnouncements: undefined;
 
   SuperuserReports: undefined;
   TeacherCourseDetails: { courseId: string; courseTitle: string; };

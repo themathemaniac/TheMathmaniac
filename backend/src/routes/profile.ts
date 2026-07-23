@@ -308,7 +308,7 @@ router.get('/announcements', authenticateJWT, async (req: AuthenticatedRequest, 
         }
       },
       orderBy: { createdAt: 'desc' },
-      take: 15,
+      ...(req.query.limit !== 'all' && { take: 15 }),
     });
 
     const mapped = announcements.map((announce) => {
