@@ -385,9 +385,9 @@ export const SuperuserAdminManagementTab: React.FC = () => {
         <View className="flex-row justify-between mb-6">
           <TouchableOpacity
             onPress={() => setShowAdminModal(true)}
-            className="flex-1 bg-[#2D8C82] border border-[#237068] py-3.5 rounded-2xl items-center mr-2 shadow-md"
+            className="flex-1 bg-[#2D8C82] border border-[#237068] py-2.5 rounded-xl items-center mr-2 shadow-sm"
           >
-            <Text className="text-white text-xs font-black uppercase">Create Admin</Text>
+            <Text className="text-white text-[10px] font-black uppercase tracking-widest">Create Admin</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
@@ -398,9 +398,9 @@ export const SuperuserAdminManagementTab: React.FC = () => {
               setSelectedAdminId(admins[0]?.id || '');
               setShowShiftModal(true);
             }}
-            className="flex-1 bg-blue-600 border border-blue-700 py-3.5 rounded-2xl items-center ml-2 shadow-md"
+            className="flex-1 bg-blue-600 border border-blue-700 py-2.5 rounded-xl items-center ml-2 shadow-sm"
           >
-            <Text className="text-white text-xs font-black uppercase">Assign Shift</Text>
+            <Text className="text-white text-[10px] font-black uppercase tracking-widest">Assign Shift</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -443,8 +443,8 @@ export const SuperuserAdminManagementTab: React.FC = () => {
       <Text className="text-slate-500 text-[10px] font-black uppercase tracking-wider mb-3">Branch Admins Directory</Text>
       {admins.length > 0 ? (
         admins.map(admin => (
-          <View key={admin.id} className="bg-slate-900 border border-slate-850 rounded-2xl p-4 mb-3 shadow flex-row justify-between items-center">
-            <View>
+          <View key={admin.id} className="bg-slate-900 border border-slate-850 rounded-2xl p-4 mb-3 shadow flex-col justify-between">
+            <View className="mb-3">
               <Text className="text-slate-100 text-sm font-black">{admin.name}</Text>
               <Text className="text-slate-400 text-xs mt-0.5">{admin.phoneNumber}</Text>
               {admin.email && <Text className="text-slate-500 text-[10px] mt-0.5">{admin.email}</Text>}
@@ -455,7 +455,7 @@ export const SuperuserAdminManagementTab: React.FC = () => {
                 </View>
               )}
             </View>
-            <View className="flex-row items-center gap-2">
+            <View className="flex-row items-center flex-wrap gap-2">
               <TouchableOpacity
                 onPress={() => {
                   setSelectedAdminForBranch(admin);
