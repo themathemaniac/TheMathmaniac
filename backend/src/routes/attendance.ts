@@ -367,8 +367,9 @@ router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, async (r
         const slotDayStr = slot.day.substring(0, 3); 
         
         for (const dateStr of next14Days) {
-          const d = new Date(dateStr);
-          const dayName = shortDays[d.getDay()];
+          const [y, m, dNum] = dateStr.split('-').map(Number);
+          const dObj = new Date(y, m - 1, dNum);
+          const dayName = shortDays[dObj.getDay()];
           if (dayName === slotDayStr) {
             const title = course.title;
             const campus = course.branch || 'Madhyamgram';
