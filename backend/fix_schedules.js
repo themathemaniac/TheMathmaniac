@@ -17,7 +17,7 @@ async function main() {
   });
 
   const next14Days = [];
-  for (let i = 0; i < 14; i++) {
+  for (let i = 0; i < 30; i++) {
     const dMs = todayMs + i * 24 * 60 * 60 * 1000;
     next14Days.push(getISTDateStr(dMs));
   }

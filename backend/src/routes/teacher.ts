@@ -20,18 +20,21 @@ router.get('/schedules', authenticateJWT, requireTeacher, async (req: Authentica
     const getISTDateStr = (timestamp: number) => new Date(timestamp + istOffset).toISOString().split('T')[0];
 
     const todayMs = Date.now();
-    const todayStr = getISTDateStr(todayMs);
     
-    // Get date 7 days from now in IST
-    const nextWeekMs = todayMs + 7 * 24 * 60 * 60 * 1000;
-    const nextWeekStr = getISTDateStr(nextWeekMs);
+    // Get date 30 days ago in IST
+    const lastMonthMs = todayMs - 30 * 24 * 60 * 60 * 1000;
+    const lastMonthStr = getISTDateStr(lastMonthMs);
+    
+    // Get date 30 days from now in IST
+    const nextMonthMs = todayMs + 30 * 24 * 60 * 60 * 1000;
+    const nextMonthStr = getISTDateStr(nextMonthMs);
 
     const schedules = await prisma.teacherSchedule.findMany({
       where: {
         userId: req.user!.id,
         date: {
-          gte: todayStr,
-          lte: nextWeekStr,
+          gte: lastMonthStr,
+          lte: nextMonthStr,
         }
       },
       orderBy: [

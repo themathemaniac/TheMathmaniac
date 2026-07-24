@@ -169,7 +169,34 @@ export const TeacherHomeScreen: React.FC = () => {
         ) : (
           <View className="pb-12">
             {/* Institute Calendar for Teachers */}
-            <TeacherAttendanceCalendar courses={courses} />
+            <TeacherAttendanceCalendar 
+              courses={courses} 
+              schedules={schedules}
+              onReschedule={(sched: any) => {
+                setSelectedSchedule(sched);
+                const [rsY, rsM, rsD] = sched.date.split('-').map(Number);
+                setRescheduleDate(new Date(rsY, rsM - 1, rsD));
+                setRescheduleBranch(sched.campus);
+                
+                const parseTime = (timeStr: string) => {
+                  const d = new Date();
+                  const match = timeStr.match(/(\d+):(\d+)\s+(AM|PM)/i);
+                  if (match) {
+                    let h = parseInt(match[1]);
+                    const m = parseInt(match[2]);
+                    const ampm = match[3].toUpperCase();
+                    if (ampm === 'PM' && h < 12) h += 12;
+                    if (ampm === 'AM' && h === 12) h = 0;
+                    d.setHours(h, m, 0);
+                  }
+                  return d;
+                };
+                
+                setRescheduleStartTime(parseTime(sched.startTime));
+                setRescheduleEndTime(parseTime(sched.endTime));
+                setShowRescheduleModal(true);
+              }}
+            />
 
             {mappedSchedules.length > 0 ? (
               <View className="mb-6">
