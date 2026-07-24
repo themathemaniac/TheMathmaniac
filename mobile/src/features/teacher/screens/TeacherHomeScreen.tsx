@@ -107,22 +107,31 @@ export const TeacherHomeScreen: React.FC = () => {
 
   const COLORS = ['#3CA79B', '#D97706', '#2563EB', '#9333EA', '#E11D48'];
 
-  const mappedSchedules: RoutineSession[] = schedules.map((schedule, idx) => {
-    const d = new Date(schedule.date);
-    const dayMap: any = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
-    const dayOfWeek = dayMap[d.getDay()];
+  const uniqueSchedules = new Map<string, RoutineSession>();
 
-    return {
-      id: schedule.id,
-      dayOfWeek,
-      startTime: schedule.startTime,
-      endTime: schedule.endTime,
-      courseName: schedule.title,
-      batchName: schedule.class || schedule.subject || 'Class',
-      location: schedule.campus,
-      color: COLORS[idx % COLORS.length]
-    };
+  schedules.forEach((schedule, idx) => {
+    // Safely parse YYYY-MM-DD
+    const [y, m, d] = schedule.date.split('-').map(Number);
+    const dObj = new Date(y, m - 1, d);
+    const dayMap: any = { 0: 'Sunday', 1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday' };
+    const dayOfWeek = dayMap[dObj.getDay()];
+
+    const key = `${dayOfWeek}-${schedule.startTime}-${schedule.endTime}-${schedule.title}`;
+    if (!uniqueSchedules.has(key)) {
+      uniqueSchedules.set(key, {
+        id: schedule.id,
+        dayOfWeek,
+        startTime: schedule.startTime,
+        endTime: schedule.endTime,
+        courseName: schedule.title,
+        batchName: schedule.class || schedule.subject || 'Class',
+        location: schedule.campus,
+        color: COLORS[idx % COLORS.length]
+      });
+    }
   });
+  
+  const mappedSchedules: RoutineSession[] = Array.from(uniqueSchedules.values());
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -171,7 +180,8 @@ export const TeacherHomeScreen: React.FC = () => {
                     const sched = schedules.find(s => s.id === session.id);
                     if (sched) {
                       setSelectedSchedule(sched);
-                      setRescheduleDate(new Date(sched.date));
+                      const [rsY, rsM, rsD] = sched.date.split('-').map(Number);
+                      setRescheduleDate(new Date(rsY, rsM - 1, rsD));
                       setRescheduleBranch(sched.campus);
                       
                       // Quick parse for times (format "hh:mm AM")

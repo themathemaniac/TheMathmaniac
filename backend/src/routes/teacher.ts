@@ -15,14 +15,16 @@ function requireTeacher(req: AuthenticatedRequest, res: Response, next: any) {
 // 1. Get Teacher Schedules for the next 7 days
 router.get('/schedules', authenticateJWT, requireTeacher, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const today = new Date();
-    // Get date string YYYY-MM-DD
-    const todayStr = today.toISOString().split('T')[0];
+    // Shift by IST offset (5 hours 30 mins) to ensure we evaluate "today" in IST
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const getISTDateStr = (timestamp: number) => new Date(timestamp + istOffset).toISOString().split('T')[0];
+
+    const todayMs = Date.now();
+    const todayStr = getISTDateStr(todayMs);
     
-    // Get date 7 days from now
-    const nextWeek = new Date();
-    nextWeek.setDate(today.getDate() + 7);
-    const nextWeekStr = nextWeek.toISOString().split('T')[0];
+    // Get date 7 days from now in IST
+    const nextWeekMs = todayMs + 7 * 24 * 60 * 60 * 1000;
+    const nextWeekStr = getISTDateStr(nextWeekMs);
 
     const schedules = await prisma.teacherSchedule.findMany({
       where: {

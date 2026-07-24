@@ -324,8 +324,11 @@ router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, async (r
     const userId = req.user!.id;
     const isAdmin = req.user?.role === 'ADMIN';
 
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayMs = Date.now();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const getISTDateStr = (timestamp: number) => new Date(timestamp + istOffset).toISOString().split('T')[0];
+
+    const todayStr = getISTDateStr(todayMs);
 
     // CLEANUP: Delete future schedules that have no attendance logged, 
     // so if a course was deleted, its future schedules disappear.
@@ -340,9 +343,8 @@ router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, async (r
     // Auto-generate schedules for the next 14 days based on Course assignments
     const next14Days: string[] = [];
     for (let i = 0; i < 14; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() + i);
-      next14Days.push(d.toISOString().split('T')[0]);
+      const dMs = todayMs + i * 24 * 60 * 60 * 1000;
+      next14Days.push(getISTDateStr(dMs));
     }
     const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
