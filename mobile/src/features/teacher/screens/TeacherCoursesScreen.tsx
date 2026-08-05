@@ -136,6 +136,7 @@ export const TeacherCoursesScreen: React.FC = () => {
                         thumbnailUrl={course.thumbnailUrl}
                         lectureCount={course.lectureCount || 0}
                         teacherName={course.instructorName}
+                        branch={course.branch || 'Sodepur'}
                         horizontal={false}
                         onPress={() => navigation.navigate('TeacherCourseDetails', { courseId: course.id, courseTitle: course.title })}
                         onThemePress={(e) => {

@@ -12,6 +12,7 @@ interface CourseCardProps {
   horizontal?: boolean;
   teacherName?: string;
   onThemePress?: (e: any) => void;
+  branch?: string;
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
@@ -26,6 +27,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   horizontal = false,
   teacherName,
   onThemePress,
+  branch,
 }) => {
   if (horizontal) {
     return (
@@ -49,6 +51,11 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               <Text className="text-xs font-bold text-amber-600 uppercase tracking-wider mt-1">
                 {category}
               </Text>
+              {branch && (
+                <Text className="text-xs font-semibold text-emerald-700 mt-1">
+                  📍 {branch}
+                </Text>
+              )}
               {teacherName && (
                 <Text className="text-xs text-slate-500 mt-1 font-medium" numberOfLines={1}>
                   Teacher: {teacherName}
@@ -101,8 +108,13 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             <Text className="text-sm font-bold text-amber-600 uppercase tracking-wider mt-1">
               {category}
             </Text>
+            {branch && (
+              <Text className="text-xs font-bold text-emerald-700 mt-1.5">
+                📍 {branch}
+              </Text>
+            )}
             {teacherName && (
-              <Text className="text-sm text-slate-500 mt-2 font-medium" numberOfLines={1}>
+              <Text className="text-sm text-slate-500 mt-1.5 font-medium" numberOfLines={1}>
                 Teacher: {teacherName}
               </Text>
             )}

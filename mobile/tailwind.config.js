@@ -44,8 +44,24 @@ module.exports = {
           800: '#3730A3',
           900: '#312E81',
         }
+      },
+      fontFamily: {
+        sans: ['Poppins_400Regular'],
+        poppins: ['Poppins_400Regular'],
       }
     },
   },
-  plugins: [],
+  plugins: [
+    function({ addUtilities }) {
+      addUtilities({
+        '.font-light': { fontWeight: '300', fontFamily: 'Poppins_300Light' },
+        '.font-normal': { fontWeight: '400', fontFamily: 'Poppins_400Regular' },
+        '.font-medium': { fontWeight: '500', fontFamily: 'Poppins_500Medium' },
+        '.font-semibold': { fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
+        '.font-bold': { fontWeight: '700', fontFamily: 'Poppins_700Bold' },
+        '.font-extrabold': { fontWeight: '800', fontFamily: 'Poppins_800ExtraBold' },
+        '.font-black': { fontWeight: '900', fontFamily: 'Poppins_900Black' },
+      });
+    }
+  ],
 }
