@@ -478,10 +478,21 @@ router.post('/courses/:id/teachers', authenticateJWT, requireAdmin, async (req: 
   }
 });
 
-// 8. Remove Teacher from Course (Allowed for all Admins)
+// 8. Remove Teacher from Course (Allowed for all Admins, except removing Administrative Help / Admins requires Superuser)
 router.delete('/courses/:id/teachers/:teacherId', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id, teacherId } = req.params;
+
+    const targetUser = await prisma.user.findUnique({ where: { id: teacherId } });
+    if (targetUser && targetUser.role === 'ADMIN') {
+      const isSuperuser = req.user?.phoneNumber && SUPERUSER_PHONES.includes(req.user.phoneNumber);
+      if (!isSuperuser) {
+        return res.status(403).json({
+          success: false,
+          error: 'Only superusers can remove administrative help or branch admins from a course or branch.'
+        });
+      }
+    }
 
     await prisma.courseTeacher.deleteMany({
       where: { courseId: id, userId: teacherId }
@@ -511,6 +522,31 @@ router.delete('/courses/:id/students/:studentId', authenticateJWT, requireAdmin,
 });
 
 const COURSE_CREATOR_PHONE = '+919831754957'; // Shubhadeep Biswas
+
+async function syncBranchAdminsToCourse(courseId: string, branch: string) {
+  if (!branch) return;
+  const admins = await prisma.user.findMany({
+    where: { role: 'ADMIN' },
+    select: { id: true, assignedBranch: true }
+  });
+  for (const adm of admins) {
+    const branches = (adm.assignedBranch || '').split(',').map(b => b.trim()).filter(Boolean);
+    const existing = await prisma.courseTeacher.findUnique({
+      where: { courseId_userId: { courseId, userId: adm.id } }
+    });
+    if (branches.includes(branch)) {
+      if (!existing) {
+        await prisma.courseTeacher.create({
+          data: { courseId, userId: adm.id }
+        });
+      }
+    } else if (existing && branches.length > 0) {
+      await prisma.courseTeacher.deleteMany({
+        where: { courseId, userId: adm.id }
+      });
+    }
+  }
+}
 
 // 9. Create Course (Allowed for all Admins)
 router.post('/courses', authenticateJWT, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
@@ -592,6 +628,9 @@ router.post('/courses', authenticateJWT, requireAdmin, async (req: Authenticated
         });
       }
     }
+
+    // Auto-enroll Administrative Help / Branch Admins
+    await syncBranchAdminsToCourse(course.id, course.branch);
 
     return res.status(201).json({ success: true, data: course });
   } catch (error: any) {
@@ -676,6 +715,9 @@ router.put('/courses/:id', authenticateJWT, requireAdmin, async (req: Authentica
         details: `Superuser updated course: ${updatedCourse.title}.`,
       },
     });
+
+    // Sync Administrative Help / Branch Admins if branch changed or updated
+    await syncBranchAdminsToCourse(updatedCourse.id, updatedCourse.branch);
 
     return res.status(200).json({ success: true, data: updatedCourse });
   } catch (error: any) {

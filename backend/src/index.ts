@@ -76,6 +76,7 @@ app.use('/api/v1/materials', materialRoutes);
 app.use('/api/v1/tests', testRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/attendance', attendanceRoutes);
+app.use('/api/v1/teacher', attendanceRoutes);
 app.use('/api/v1/superuser', superuserRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/admin-attendance', adminAttendanceRoutes);

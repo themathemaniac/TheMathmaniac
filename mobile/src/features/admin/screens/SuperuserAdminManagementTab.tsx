@@ -270,7 +270,7 @@ export const SuperuserAdminManagementTab: React.FC = () => {
   };
 
   const handleAssignBranch = async () => {
-    if (!selectedAdminForBranch || !assignBranchValue) return;
+    if (!selectedAdminForBranch) return;
 
     try {
       setIsAssigningBranch(true);
@@ -448,18 +448,18 @@ export const SuperuserAdminManagementTab: React.FC = () => {
               <Text className="text-slate-100 text-sm font-black">{admin.name}</Text>
               <Text className="text-slate-400 text-xs mt-0.5">{admin.phoneNumber}</Text>
               {admin.email && <Text className="text-slate-500 text-[10px] mt-0.5">{admin.email}</Text>}
-              {admin.assignedBranch && (
+              {admin.assignedBranch ? (
                 <View className="mt-1.5 flex-row items-center gap-1.5">
                   <View className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                  <Text className="text-blue-400 text-[10px] font-bold uppercase tracking-widest">{admin.assignedBranch} Branch</Text>
+                  <Text className="text-blue-400 text-[10px] font-bold uppercase tracking-widest">{admin.assignedBranch.replace(/,/g, ' & ')} Branch</Text>
                 </View>
-              )}
+              ) : null}
             </View>
             <View className="flex-row items-center flex-wrap gap-2">
               <TouchableOpacity
                 onPress={() => {
                   setSelectedAdminForBranch(admin);
-                  setAssignBranchValue(admin.assignedBranch || 'Sodepur');
+                  setAssignBranchValue(admin.assignedBranch || '');
                   setShowAssignBranchModal(true);
                 }}
                 className="bg-blue-500/10 border border-blue-500/20 px-3 py-2 rounded-xl"
@@ -541,23 +541,34 @@ export const SuperuserAdminManagementTab: React.FC = () => {
           <View className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl">
             <Text className="text-slate-100 text-lg font-black mb-1">Assign Permanent Branch</Text>
             <Text className="text-slate-500 text-[10px] mb-4 uppercase font-bold">
-              Set the actual home branch for {selectedAdminForBranch?.name}.
+              Set home branch(es) for {selectedAdminForBranch?.name}. (Select multiple if needed)
             </Text>
 
-            <View className="flex-row gap-3 mb-5">
-              <TouchableOpacity
-                onPress={() => setAssignBranchValue('Sodepur')}
-                className={`flex-1 p-3 rounded-xl border ${assignBranchValue === 'Sodepur' ? 'bg-[#2D8C82]/20 border-[#2D8C82]' : 'bg-slate-950 border-slate-800'}`}
-              >
-                <Text className={`text-center font-bold text-xs ${assignBranchValue === 'Sodepur' ? 'text-[#2D8C82]' : 'text-slate-400'}`}>Sodepur</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setAssignBranchValue('Madhyamgram')}
-                className={`flex-1 p-3 rounded-xl border ${assignBranchValue === 'Madhyamgram' ? 'bg-[#2D8C82]/20 border-[#2D8C82]' : 'bg-slate-950 border-slate-800'}`}
-              >
-                <Text className={`text-center font-bold text-xs ${assignBranchValue === 'Madhyamgram' ? 'text-[#2D8C82]' : 'text-slate-400'}`}>Madhyamgram</Text>
-              </TouchableOpacity>
-            </View>
+            {(() => {
+              const assignedList = (assignBranchValue || '').split(',').map(b => b.trim()).filter(Boolean);
+              const toggleBranch = (branch: string) => {
+                let next = [...assignedList];
+                if (next.includes(branch)) next = next.filter(b => b !== branch);
+                else next.push(branch);
+                setAssignBranchValue(next.join(','));
+              };
+              return (
+                <View className="flex-row gap-3 mb-5">
+                  <TouchableOpacity
+                    onPress={() => toggleBranch('Sodepur')}
+                    className={`flex-1 p-3 rounded-xl border ${assignedList.includes('Sodepur') ? 'bg-[#2D8C82]/20 border-[#2D8C82]' : 'bg-slate-950 border-slate-800'}`}
+                  >
+                    <Text className={`text-center font-bold text-xs ${assignedList.includes('Sodepur') ? 'text-[#2D8C82]' : 'text-slate-400'}`}>Sodepur</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => toggleBranch('Madhyamgram')}
+                    className={`flex-1 p-3 rounded-xl border ${assignedList.includes('Madhyamgram') ? 'bg-[#2D8C82]/20 border-[#2D8C82]' : 'bg-slate-950 border-slate-800'}`}
+                  >
+                    <Text className={`text-center font-bold text-xs ${assignedList.includes('Madhyamgram') ? 'text-[#2D8C82]' : 'text-slate-400'}`}>Madhyamgram</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })()}
 
             <View className="flex-row gap-4 mt-2">
               <TouchableOpacity

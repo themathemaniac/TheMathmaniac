@@ -21,6 +21,7 @@ model User {
   faculty             String?
   school              String?
   subjects            String?
+  assignedBranch      String?
   purchases           Purchase[]
   lectureProgress     LectureProgress[]
   results             Result[]

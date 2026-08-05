@@ -1164,14 +1164,30 @@ export const AdminCoursesTab: React.FC = () => {
               </TouchableOpacity>
             </View>
             
-            {expandedCourse?.teachers && expandedCourse.teachers.length > 0 && (
-              <View className="mb-4 bg-slate-950 p-3 rounded-xl border border-slate-800/50">
-                <Text className="text-purple-400 text-[10px] font-bold uppercase tracking-wider mb-2">Assigned Faculty</Text>
-                {expandedCourse.teachers.map((t: any) => (
-                  <Text key={t.userId} className="text-slate-200 text-xs mb-1">• {t.user?.name}</Text>
-                ))}
-              </View>
-            )}
+            {(() => {
+              const faculty = (expandedCourse?.teachers || []).filter((t: any) => t.user?.role !== 'ADMIN');
+              const adminHelp = (expandedCourse?.teachers || []).filter((t: any) => t.user?.role === 'ADMIN');
+              return (
+                <>
+                  {faculty.length > 0 && (
+                    <View className="mb-4 bg-slate-950 p-3 rounded-xl border border-slate-800/50">
+                      <Text className="text-purple-400 text-[10px] font-bold uppercase tracking-wider mb-2">Assigned Faculty</Text>
+                      {faculty.map((t: any) => (
+                        <Text key={t.userId} className="text-slate-200 text-xs mb-1">• {t.user?.name}</Text>
+                      ))}
+                    </View>
+                  )}
+                  {adminHelp.length > 0 && (
+                    <View className="mb-4 bg-slate-950 p-3 rounded-xl border border-slate-800/50">
+                      <Text className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider mb-2">Administrative Help</Text>
+                      {adminHelp.map((t: any) => (
+                        <Text key={t.userId} className="text-slate-200 text-xs mb-1">• {t.user?.name} (Branch Admin)</Text>
+                      ))}
+                    </View>
+                  )}
+                </>
+              );
+            })()}
             
             {expandedCourse?.purchases && expandedCourse.purchases.length > 0 && (
               <View className="mb-2 bg-slate-950 p-3 rounded-xl border border-slate-800/50">

@@ -11,6 +11,7 @@ interface CourseCardProps {
   onPress: () => void;
   horizontal?: boolean;
   teacherName?: string;
+  onThemePress?: (e: any) => void;
 }
 
 export const CourseCard: React.FC<CourseCardProps> = ({
@@ -24,6 +25,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
   onPress,
   horizontal = false,
   teacherName,
+  onThemePress,
 }) => {
   if (horizontal) {
     return (
@@ -53,11 +55,24 @@ export const CourseCard: React.FC<CourseCardProps> = ({
                 </Text>
               )}
             </View>
-            <View className="flex-row justify-end items-center mt-2">
-              {isPurchased && (
-                <Text className="text-sm font-bold text-blue-600">
-                  Unlocked
-                </Text>
+            <View className="flex-row justify-between items-center mt-2">
+              <View>
+                {isPurchased && (
+                  <Text className="text-sm font-bold text-blue-600">
+                    Unlocked
+                  </Text>
+                )}
+              </View>
+              {onThemePress && (
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onThemePress(e);
+                  }}
+                  className="bg-blue-50 border border-blue-200 px-3 py-1 rounded-full"
+                >
+                  <Text className="text-[10px] font-bold text-blue-600 uppercase">Theme</Text>
+                </TouchableOpacity>
               )}
             </View>
           </View>

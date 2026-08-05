@@ -54,11 +54,11 @@ export const TeacherHomeScreen: React.FC = () => {
       if (coursesRes.data.success) {
         setCourses(coursesRes.data.data);
       }
-      const schedRes = await apiClient.get('/teacher/schedules');
+      const schedRes = await apiClient.get('/attendance/teacher/schedules');
       if (schedRes.data.success) {
         setSchedules(schedRes.data.data);
       }
-      const peersRes = await apiClient.get('/teacher/peers');
+      const peersRes = await apiClient.get('/attendance/teacher/peers');
       if (peersRes.data.success) {
         setPeers(peersRes.data.data);
       }
@@ -88,7 +88,7 @@ export const TeacherHomeScreen: React.FC = () => {
 
     try {
       setIsSubmittingReschedule(true);
-      const res = await apiClient.put(`/teacher/schedules/${selectedSchedule.id}/reschedule`, {
+      const res = await apiClient.put(`/attendance/teacher/schedules/${selectedSchedule.id}/reschedule`, {
         newDate: dateStr,
         newStartTime: formatTime(rescheduleStartTime),
         newEndTime: formatTime(rescheduleEndTime),

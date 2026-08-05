@@ -122,27 +122,53 @@ export const CourseDetailsScreen: React.FC<Props> = ({ route }) => {
 
 
 
-          {/* Assigned Faculty */}
-          {course.teachers && course.teachers.length > 0 && (
-            <View className="mt-4 border rounded-2xl p-4 bg-white" style={cardStyle}>
-              <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3" style={themeColor ? { color: themeColor } : { color: '#475569' }}>Assigned Faculty</Text>
-              {course.teachers.map((t: any) => (
-                <View key={t.user.id} className="flex-row items-center mb-2">
-                  <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-3 border border-blue-200">
-                    <Text className="text-blue-600 font-bold text-xs" style={{ color: '#2563eb' }}>
-                      {(t.user.name || '?').charAt(0).toUpperCase()}
-                    </Text>
+          {/* Assigned Faculty & Administrative Help */}
+          {(() => {
+            const faculty = (course.teachers || []).filter((t: any) => t.user?.role !== 'ADMIN');
+            const adminHelp = (course.teachers || []).filter((t: any) => t.user?.role === 'ADMIN');
+            return (
+              <>
+                {faculty.length > 0 && (
+                  <View className="mt-4 border rounded-2xl p-4 bg-white" style={cardStyle}>
+                    <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-3" style={themeColor ? { color: themeColor } : { color: '#475569' }}>Assigned Faculty</Text>
+                    {faculty.map((t: any) => (
+                      <View key={t.user.id} className="flex-row items-center mb-2">
+                        <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-3 border border-blue-200">
+                          <Text className="text-blue-600 font-bold text-xs" style={{ color: '#2563eb' }}>
+                            {(t.user?.name || '?').charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-slate-900 font-bold text-xs" style={{ color: '#0f172a' }}>{t.user?.name}</Text>
+                          {t.user?.subjects && (
+                            <Text className="text-blue-600 text-[10px] font-medium" style={{ color: '#2563eb' }}>{t.user.subjects}</Text>
+                          )}
+                        </View>
+                      </View>
+                    ))}
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-slate-900 font-bold text-xs" style={{ color: '#0f172a' }}>{t.user.name}</Text>
-                    {t.user.subjects && (
-                      <Text className="text-blue-600 text-[10px] font-medium" style={{ color: '#2563eb' }}>{t.user.subjects}</Text>
-                    )}
+                )}
+                {adminHelp.length > 0 && (
+                  <View className="mt-4 border rounded-2xl p-4 bg-white" style={cardStyle}>
+                    <Text className="text-emerald-600 text-[10px] font-bold uppercase tracking-widest mb-3" style={themeColor ? { color: themeColor } : { color: '#059669' }}>Administrative Help</Text>
+                    {adminHelp.map((t: any) => (
+                      <View key={t.user.id} className="flex-row items-center mb-2">
+                        <View className="w-8 h-8 bg-emerald-100 rounded-full items-center justify-center mr-3 border border-emerald-200">
+                          <Text className="text-emerald-600 font-bold text-xs" style={{ color: '#059669' }}>
+                            {(t.user?.name || '?').charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-slate-900 font-bold text-xs" style={{ color: '#0f172a' }}>{t.user?.name}</Text>
+                          <Text className="text-emerald-600 text-[10px] font-medium" style={{ color: '#059669' }}>Branch Administrative Assistance</Text>
+                        </View>
+                      </View>
+                    ))}
                   </View>
-                </View>
-              ))}
-            </View>
-          )}
+                )}
+              </>
+            );
+          })()}
 
           {/* 10-Second Value Outcomes */}
           {course.learningOutcomes && course.learningOutcomes.length > 0 && (

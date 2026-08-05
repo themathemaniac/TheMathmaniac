@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, Image, Alert } from 'react-native';
 import { apiClient } from '../../../core/api/client';
 import { COURSE_THEMES, getThemeUrl, extractThemeColor } from '../../../core/constants/courseThemes';
+import { CourseCard } from '../../../shared/components/CourseCard';
 
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -77,59 +78,69 @@ export const TeacherCoursesScreen: React.FC = () => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2D8C82" />}
         >
           <View className="pb-24">
-            {courses.length > 0 ? (
-              courses.map((course) => {
-                const themeColor = extractThemeColor(course.thumbnailUrl);
+            {(() => {
+              if (courses.length === 0) {
                 return (
-                  <TouchableOpacity
-                    key={course.id}
-                    onPress={() => navigation.navigate('TeacherCourseDetails', { courseId: course.id, courseTitle: course.title })}
-                    className="mb-4 rounded-2xl overflow-hidden active:opacity-90 shadow-lg border bg-white"
-                    style={{ borderColor: themeColor || '#e2e8f0' }}
-                    activeOpacity={0.85}
-                  >
-                    <View className="flex-row p-3 rounded-2xl relative">
-                      <Image
-                        source={course.thumbnailUrl ? { uri: course.thumbnailUrl } : undefined}
-                        className="w-24 h-24 rounded-xl bg-slate-200"
-                        resizeMode="cover"
-                      />
-                      <View className="flex-1 ml-4 justify-between">
-                        <View>
-                          <Text className="text-xs font-bold text-amber-600 uppercase tracking-wider" style={{ color: themeColor || '#d97706' }}>
-                            {course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
-                          </Text>
-                          <Text className="text-sm font-semibold text-slate-900 mt-1" numberOfLines={2} style={{ color: '#0f172a' }}>
-                            {course.title}
-                          </Text>
-                          <Text className="text-xs text-slate-500 mt-1 font-medium" style={{ color: '#64748b' }}>
-                            Instructor: {course.instructorName}
-                          </Text>
-                        </View>
-                        <View className="flex-row justify-between items-center mt-2">
-                          <Text className="text-xs text-slate-500 font-medium" style={{ color: '#64748b' }}>{course.lectureCount} Lectures</Text>
-                          <TouchableOpacity
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              setSelectedCourseForTheme(course);
-                              setShowThemeSelector(true);
-                            }}
-                            className="bg-blue-50 border border-blue-200 px-3 py-1 rounded-full"
-                          >
-                            <Text className="text-[10px] font-bold text-blue-600 uppercase">Theme</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
+                  <View className="items-center py-20">
+                    <Text className="text-4xl">📚</Text>
+                    <Text className="text-slate-400 font-bold mt-4">No batches available.</Text>
+                  </View>
                 );
-              })
-            ) : (
-              <View className="items-center py-20">
-                <Text className="text-4xl">📚</Text>
-                <Text className="text-slate-400 font-bold mt-4">No batches available.</Text>
-              </View>
-            )}
+              }
+
+              const groups: { [key: string]: any[] } = {};
+              const other: any[] = [];
+
+              courses.forEach((c) => {
+                if (c.targetClass && !isNaN(Number(c.targetClass))) {
+                  const num = Number(c.targetClass);
+                  if (!groups[num]) groups[num] = [];
+                  groups[num].push(c);
+                } else {
+                  other.push(c);
+                }
+              });
+
+              const sortedKeys = Object.keys(groups).map(Number).sort((a, b) => a - b);
+              const groupedResult = sortedKeys.map((k) => ({
+                title: `Class ${k}`,
+                items: groups[k],
+              }));
+
+              if (other.length > 0) {
+                groupedResult.push({
+                  title: 'Other Programs & Batches',
+                  items: other,
+                });
+              }
+
+              return groupedResult.map((group, gIdx) => (
+                <View key={gIdx} className="mb-6">
+                  <Text className="text-slate-300 text-sm font-black uppercase tracking-wider mb-3 px-1">
+                    {group.title}
+                  </Text>
+                  {group.items.map((course: any) => (
+                    <CourseCard
+                      key={course.id}
+                      id={course.id}
+                      title={course.title}
+                      category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
+                      price={course.price || 0}
+                      thumbnailUrl={course.thumbnailUrl}
+                      lectureCount={course.lectureCount || 0}
+                      teacherName={course.instructorName}
+                      horizontal={true}
+                      onPress={() => navigation.navigate('TeacherCourseDetails', { courseId: course.id, courseTitle: course.title })}
+                      onThemePress={(e) => {
+                        e?.stopPropagation && e.stopPropagation();
+                        setSelectedCourseForTheme(course);
+                        setShowThemeSelector(true);
+                      }}
+                    />
+                  ))}
+                </View>
+              ));
+            })()}
           </View>
         </ScrollView>
       )}

@@ -319,10 +319,11 @@ function calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lo
 }
 
 // 5. Get Teacher Schedules (Auto-Generated from Course TimeSlots)
-router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, async (req: AuthenticatedRequest, res: Response) => {
+const getTeacherSchedulesHandler = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.id;
     const isAdmin = req.user?.role === 'ADMIN';
+    const fetchAll = isAdmin && req.query.all === 'true';
 
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
@@ -333,7 +334,7 @@ router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, async (r
       where: {
         date: { gte: todayStr },
         teacherAttendances: { none: {} },
-        ...(isAdmin ? {} : { userId })
+        ...(fetchAll ? {} : { userId })
       }
     });
 
@@ -347,7 +348,7 @@ router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, async (r
     const shortDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     const courseTeachers = await prisma.courseTeacher.findMany({
-      where: isAdmin ? undefined : { userId },
+      where: fetchAll ? undefined : { userId },
       include: { course: { include: { category: true } }, user: true }
     });
 
@@ -398,7 +399,7 @@ router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, async (r
 
     // Now retrieve all schedules
     const schedules = await prisma.teacherSchedule.findMany({
-      where: isAdmin ? undefined : { userId },
+      where: fetchAll ? undefined : { userId },
       include: { user: { select: { name: true, email: true } } },
       orderBy: { date: 'desc' },
     });
@@ -417,7 +418,65 @@ router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, async (r
     console.error('[Get Teacher Schedules Error]', error);
     return res.status(500).json({ success: false, error: error.message });
   }
-});
+};
+
+router.get('/teacher/schedule', authenticateJWT, requireTeacherOrAdmin, getTeacherSchedulesHandler);
+router.get('/teacher/schedules', authenticateJWT, requireTeacherOrAdmin, getTeacherSchedulesHandler);
+router.get('/schedule', authenticateJWT, requireTeacherOrAdmin, getTeacherSchedulesHandler);
+router.get('/schedules', authenticateJWT, requireTeacherOrAdmin, getTeacherSchedulesHandler);
+
+// 5.2 Get Teacher Peers for Rescheduling Substitute Selection
+const getPeersHandler = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const peers = await prisma.user.findMany({
+      where: { role: { in: ['TEACHER', 'ADMIN'] } },
+      select: { id: true, name: true, email: true, role: true }
+    });
+    return res.status(200).json({ success: true, data: peers });
+  } catch (error: any) {
+    console.error('[Get Teacher Peers Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+router.get('/teacher/peers', authenticateJWT, requireTeacherOrAdmin, getPeersHandler);
+router.get('/peers', authenticateJWT, requireTeacherOrAdmin, getPeersHandler);
+
+// 5.3 Reschedule Teacher Class
+const rescheduleHandler = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const scheduleId = req.params.id;
+    const { newDate, newStartTime, newEndTime, newCampus, substituteTeacherId } = req.body;
+
+    const schedule = await prisma.teacherSchedule.findUnique({ where: { id: scheduleId } });
+    if (!schedule) {
+      return res.status(404).json({ success: false, error: 'Schedule not found.' });
+    }
+
+    const updateData: any = {};
+    if (newDate) updateData.date = newDate;
+    if (newStartTime) updateData.startTime = newStartTime;
+    if (newEndTime) updateData.endTime = newEndTime;
+    if (newCampus) updateData.campus = newCampus;
+    if (substituteTeacherId) updateData.userId = substituteTeacherId;
+
+    const updated = await prisma.teacherSchedule.update({
+      where: { id: scheduleId },
+      data: updateData
+    });
+
+    return res.status(200).json({ success: true, data: updated, message: 'Class rescheduled successfully.' });
+  } catch (error: any) {
+    console.error('[Reschedule Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+router.put('/teacher/schedules/:id/reschedule', authenticateJWT, requireTeacherOrAdmin, rescheduleHandler);
+router.put('/teacher/schedule/:id/reschedule', authenticateJWT, requireTeacherOrAdmin, rescheduleHandler);
+router.put('/schedules/:id/reschedule', authenticateJWT, requireTeacherOrAdmin, rescheduleHandler);
+router.put('/schedule/:id/reschedule', authenticateJWT, requireTeacherOrAdmin, rescheduleHandler);
+
 
 // 6. Log Location Ping for Geofencing Check
 router.post('/teacher/ping', authenticateJWT, requireTeacherOrAdmin, async (req: AuthenticatedRequest, res: Response) => {

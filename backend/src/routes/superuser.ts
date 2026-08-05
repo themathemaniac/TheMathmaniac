@@ -223,6 +223,78 @@ router.delete('/admins/:id', authenticateJWT, requireSuperuser, async (req: Auth
   }
 });
 
+// 5.5 Assign Permanent Branch(es) to Admin (Superuser only)
+router.put('/admins/:id/branch', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const targetUserId = req.params.id;
+    const { branch } = req.body;
+    const branchStr = typeof branch === 'string' ? branch.trim() : (Array.isArray(branch) ? branch.join(',').trim() : '');
+
+    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!targetUser) {
+      return res.status(404).json({ success: false, error: 'Admin not found.' });
+    }
+    if (targetUser.role !== 'ADMIN') {
+      return res.status(400).json({ success: false, error: 'This user is not an Admin.' });
+    }
+
+    // Update user record in PostgreSQL
+    const updatedUser = await prisma.user.update({
+      where: { id: targetUserId },
+      data: { assignedBranch: branchStr }
+    });
+
+    // Parse assigned branches
+    const assignedBranches = branchStr.split(',').map(b => b.trim()).filter(Boolean);
+
+    // Auto-enroll in all batches of assigned branches as Administrative Help,
+    // and remove from any batches in unassigned branches.
+    const allCourses = await prisma.course.findMany({ select: { id: true, branch: true } });
+    for (const course of allCourses) {
+      const isCourseInAssignedBranch = assignedBranches.includes(course.branch);
+      if (isCourseInAssignedBranch) {
+        const existing = await prisma.courseTeacher.findUnique({
+          where: { courseId_userId: { courseId: course.id, userId: targetUserId } }
+        });
+        if (!existing) {
+          await prisma.courseTeacher.create({
+            data: { courseId: course.id, userId: targetUserId }
+          });
+        }
+      } else {
+        await prisma.courseTeacher.deleteMany({
+          where: { courseId: course.id, userId: targetUserId }
+        });
+      }
+    }
+
+    // Audit Log
+    await prisma.auditLog.create({
+      data: {
+        action: 'USER_UPDATED',
+        userId: targetUserId,
+        actorId: req.user!.id,
+        details: `Superuser assigned branch(es): "${branchStr || 'None'}" to admin ${targetUser.name}.`,
+      },
+    });
+
+    // Firestore Sync
+    if (isFirebaseEnabled && db) {
+      try {
+        await db.collection('admin').doc(targetUserId).set({ assignedBranch: branchStr }, { merge: true });
+        console.log(`[Firebase Update] Updated assignedBranch for admin ${targetUserId} in Firestore.`);
+      } catch (e) {
+        console.error('[Firebase Update Error]', e);
+      }
+    }
+
+    return res.status(200).json({ success: true, data: updatedUser, message: 'Admin branch assignment updated successfully.' });
+  } catch (error: any) {
+    console.error('[Assign Branch Error]', error);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // 6. Create / Assign Shift to Admin (Superuser or Admin)
 router.post('/shifts', authenticateJWT, requireAdminOrSuperuser, async (req: AuthenticatedRequest, res: Response) => {
   try {
