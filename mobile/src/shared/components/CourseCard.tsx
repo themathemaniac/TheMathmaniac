@@ -108,15 +108,28 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             )}
           </View>
 
-          <View className="flex-row justify-end items-center mt-4 pt-3 border-t border-slate-200">
-            {isPurchased && (
-              <Text className="text-base font-bold text-blue-600 mr-auto">
-                Unlocked
-              </Text>
-            )}
-            <View className="bg-blue-100 px-3 py-1.5 rounded-full border border-blue-200">
+          <View className="flex-row justify-between items-center mt-4 pt-3 border-t border-slate-200">
+            <View className="flex-row items-center flex-1">
+              {isPurchased && !onThemePress && (
+                <Text className="text-base font-bold text-blue-600 mr-auto">
+                  Unlocked
+                </Text>
+              )}
+              {onThemePress && (
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onThemePress(e);
+                  }}
+                  className="bg-blue-50 border border-blue-200 px-3 py-1 rounded-full mr-2"
+                >
+                  <Text className="text-[10px] font-bold text-blue-600 uppercase">Theme</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            <View className="bg-blue-100 px-3 py-1.5 rounded-full border border-blue-200 ml-2">
               <Text className="text-xs font-semibold text-blue-600">
-                {isPurchased ? 'Start Study' : 'Get Course'}
+                {onThemePress ? 'Manage Batch' : isPurchased ? 'Start Study' : 'Get Course'}
               </Text>
             </View>
           </View>

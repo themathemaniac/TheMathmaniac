@@ -116,28 +116,36 @@ export const TeacherCoursesScreen: React.FC = () => {
 
               return groupedResult.map((group, gIdx) => (
                 <View key={gIdx} className="mb-6">
-                  <Text className="text-slate-300 text-sm font-black uppercase tracking-wider mb-3 px-1">
-                    {group.title}
-                  </Text>
-                  {group.items.map((course: any) => (
-                    <CourseCard
-                      key={course.id}
-                      id={course.id}
-                      title={course.title}
-                      category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
-                      price={course.price || 0}
-                      thumbnailUrl={course.thumbnailUrl}
-                      lectureCount={course.lectureCount || 0}
-                      teacherName={course.instructorName}
-                      horizontal={true}
-                      onPress={() => navigation.navigate('TeacherCourseDetails', { courseId: course.id, courseTitle: course.title })}
-                      onThemePress={(e) => {
-                        e?.stopPropagation && e.stopPropagation();
-                        setSelectedCourseForTheme(course);
-                        setShowThemeSelector(true);
-                      }}
-                    />
-                  ))}
+                  <View className="flex-row justify-between items-baseline mb-3 px-1">
+                    <Text className="text-slate-100 text-lg font-bold">
+                      {group.title}
+                    </Text>
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    className="py-1"
+                  >
+                    {group.items.map((course: any) => (
+                      <CourseCard
+                        key={course.id}
+                        id={course.id}
+                        title={course.title}
+                        category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
+                        price={course.price || 0}
+                        thumbnailUrl={course.thumbnailUrl}
+                        lectureCount={course.lectureCount || 0}
+                        teacherName={course.instructorName}
+                        horizontal={false}
+                        onPress={() => navigation.navigate('TeacherCourseDetails', { courseId: course.id, courseTitle: course.title })}
+                        onThemePress={(e) => {
+                          e?.stopPropagation && e.stopPropagation();
+                          setSelectedCourseForTheme(course);
+                          setShowThemeSelector(true);
+                        }}
+                      />
+                    ))}
+                  </ScrollView>
                 </View>
               ));
             })()}

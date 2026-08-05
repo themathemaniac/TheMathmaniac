@@ -358,16 +358,26 @@ const getTeacherSchedulesHandler = async (req: AuthenticatedRequest, res: Respon
       
       let slots: any[] = [];
       try {
-        slots = JSON.parse(course.timeSlots);
+        slots = typeof course.timeSlots === 'string' ? JSON.parse(course.timeSlots) : (course.timeSlots || []);
       } catch(e) {}
       
       for (const slot of slots) {
-        if (!slot.day || !slot.startTime || !slot.endTime) continue;
-        const slotDayStr = slot.day.substring(0, 3); 
+        if (!slot || !slot.day) continue;
+        let startTime = slot.startTime || '';
+        let endTime = slot.endTime || '';
+        if ((!startTime || !endTime) && slot.time) {
+          const parts = String(slot.time).split(/[-–—]|to/i);
+          startTime = parts[0]?.trim() || startTime;
+          endTime = parts[1]?.trim() || endTime;
+        }
+        if (!startTime || !endTime) continue;
+
+        const slotDayStr = String(slot.day).trim().substring(0, 3).toLowerCase();
         
         for (const dateStr of next14Days) {
-          const d = new Date(dateStr);
-          const dayName = shortDays[d.getDay()];
+          const [y, m, dNum] = dateStr.split('-').map(Number);
+          const d = new Date(y, m - 1, dNum);
+          const dayName = shortDays[d.getDay()].toLowerCase();
           if (dayName === slotDayStr) {
             const title = course.title;
             const campus = course.branch || 'Madhyamgram';
@@ -375,7 +385,7 @@ const getTeacherSchedulesHandler = async (req: AuthenticatedRequest, res: Respon
             const subject = course.category?.name || '';
             
             const existing = await prisma.teacherSchedule.findFirst({
-               where: { userId: ct.userId, date: dateStr, startTime: slot.startTime, endTime: slot.endTime, title }
+               where: { userId: ct.userId, date: dateStr, startTime, endTime, title }
             });
             
             if (!existing) {
@@ -387,8 +397,8 @@ const getTeacherSchedulesHandler = async (req: AuthenticatedRequest, res: Respon
                      class: targetClass,
                      subject,
                      date: dateStr,
-                     startTime: slot.startTime,
-                     endTime: slot.endTime
+                     startTime,
+                     endTime
                   }
                });
             }

@@ -20,21 +20,30 @@ export async function syncAllSchedules(targetDateStr: string, targetUserId?: str
       
       let slots: any[] = [];
       try {
-        slots = typeof course.timeSlots === 'string' ? JSON.parse(course.timeSlots) : course.timeSlots;
+        slots = typeof course.timeSlots === 'string' ? JSON.parse(course.timeSlots) : (course.timeSlots || []);
       } catch(e) {}
       
       for (const slot of slots) {
-        if (!slot.day || !slot.startTime || !slot.endTime) continue;
-        const slotDayStr = slot.day.substring(0, 3);
+        if (!slot || !slot.day) continue;
+        let startTime = slot.startTime || '';
+        let endTime = slot.endTime || '';
+        if ((!startTime || !endTime) && slot.time) {
+          const parts = String(slot.time).split(/[-–—]|to/i);
+          startTime = parts[0]?.trim() || startTime;
+          endTime = parts[1]?.trim() || endTime;
+        }
+        if (!startTime || !endTime) continue;
+
+        const slotDayStr = String(slot.day).trim().substring(0, 3).toLowerCase();
         
-        if (dayName === slotDayStr) {
+        if (dayName.toLowerCase() === slotDayStr) {
           const title = course.title;
           const campus = course.branch || 'Madhyamgram';
           const targetClass = course.targetClass || '';
           const subject = course.category?.name || '';
           
           const existing = await prisma.teacherSchedule.findFirst({
-             where: { userId: ct.userId, date: targetDateStr, startTime: slot.startTime, endTime: slot.endTime, title }
+             where: { userId: ct.userId, date: targetDateStr, startTime, endTime, title }
           });
           
           if (!existing) {
@@ -46,8 +55,8 @@ export async function syncAllSchedules(targetDateStr: string, targetUserId?: str
                    class: targetClass,
                    subject,
                    date: targetDateStr,
-                   startTime: slot.startTime,
-                   endTime: slot.endTime
+                   startTime,
+                   endTime
                 }
              });
              console.log(`[Schedule Sync] Created TeacherSchedule for ${ct.userId} on ${targetDateStr}: ${title}`);

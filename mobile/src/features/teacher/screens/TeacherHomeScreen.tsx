@@ -123,17 +123,17 @@ export const TeacherHomeScreen: React.FC = () => {
     } catch(e) {}
 
     slots.forEach(slot => {
-      const dayMap: Record<string, string> = { 'Mon': 'Monday', 'Tue': 'Tuesday', 'Wed': 'Wednesday', 'Thu': 'Thursday', 'Fri': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday' };
-      const dayOfWeek = dayMap[slot.day] || slot.day;
+      if (!slot) return;
+      const rawDay = String(slot.day || '').trim().toLowerCase().substring(0, 3);
+      const dayMap: Record<string, string> = { 'mon': 'Monday', 'tue': 'Tuesday', 'wed': 'Wednesday', 'thu': 'Thursday', 'fri': 'Friday', 'sat': 'Saturday', 'sun': 'Sunday' };
+      const dayOfWeek = dayMap[rawDay] || slot.day;
       
-      let startTime = ''; let endTime = '';
-      if (slot.time) {
-        const parts = slot.time.split('-');
-        startTime = parts[0]?.trim() || '';
-        endTime = parts[1]?.trim() || '';
-      } else if (slot.startTime && slot.endTime) {
-        startTime = slot.startTime;
-        endTime = slot.endTime;
+      let startTime = slot.startTime || '';
+      let endTime = slot.endTime || '';
+      if ((!startTime || !endTime) && slot.time) {
+        const parts = String(slot.time).split(/[-–—]|to/i);
+        startTime = parts[0]?.trim() || startTime;
+        endTime = parts[1]?.trim() || endTime;
       }
 
       if (!startTime || !endTime) return;
