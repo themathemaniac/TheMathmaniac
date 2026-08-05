@@ -50,6 +50,7 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
   });
 
   const [monthLogs, setMonthLogs] = useState<Record<string, string>>({});
+  const [holidayTitles, setHolidayTitles] = useState<Record<string, string>>({});
   
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
@@ -77,9 +78,25 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
       const response = await apiClient.get('/attendance/month-summary', {
         params: { month: currentMonth + 1, year: currentYear }
       });
-      if (response.data.success) {
-        setMonthLogs(response.data.data);
+      const updatedLogs: Record<string, string> = response.data?.success ? { ...response.data.data } : {};
+      
+      try {
+        const calRes = await apiClient.get('/profile/calendar');
+        if (calRes.data.success && Array.isArray(calRes.data.data)) {
+          const hTitles: Record<string, string> = {};
+          calRes.data.data.forEach((ev: any) => {
+            if (ev.type === 'HOLIDAY' && ev.date) {
+              hTitles[ev.date] = ev.title || 'Institute Holiday';
+              updatedLogs[ev.date] = 'HOLIDAY';
+            }
+          });
+          setHolidayTitles(hTitles);
+        }
+      } catch(calErr) {
+        console.log('Error fetching holiday calendar:', calErr);
       }
+
+      setMonthLogs(updatedLogs);
     } catch (e) {
       console.log('Error fetching month summary:', e);
     }
@@ -127,7 +144,54 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
   };
 
   const getSchedulesForDate = (dateStr: string) => {
-    return schedules.filter(s => s.date === dateStr);
+    const dbSchedules = schedules.filter(s => s.date === dateStr);
+    
+    const [y, m, dNum] = dateStr.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, dNum);
+    const shortDays = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const targetDay = shortDays[dateObj.getDay()];
+    
+    const combined = [...dbSchedules];
+    
+    courses.forEach(course => {
+      let slots: any[] = [];
+      try {
+        slots = typeof course.timeSlots === 'string' ? JSON.parse(course.timeSlots) : (course.timeSlots || []);
+      } catch(e) {}
+      
+      slots.forEach((slot: any) => {
+        if (!slot || !slot.day) return;
+        const slotDay = String(slot.day).trim().substring(0, 3).toLowerCase();
+        if (slotDay === targetDay) {
+          let startTime = slot.startTime || '';
+          let endTime = slot.endTime || '';
+          if ((!startTime || !endTime) && slot.time) {
+            const parts = String(slot.time).split(/[-–—]|to/i);
+            startTime = parts[0]?.trim() || startTime;
+            endTime = parts[1]?.trim() || endTime;
+          }
+          if (!startTime || !endTime) return;
+
+          const alreadyExists = combined.some(s => s.title === course.title && (s.startTime === startTime || s.campus === course.branch));
+          if (!alreadyExists) {
+            combined.push({
+              id: `dynamic-${course.id}-${dateStr}-${startTime}`,
+              title: course.title,
+              subject: course.category?.name || 'Program',
+              class: course.targetClass || '',
+              campus: course.branch || 'Sodepur',
+              date: dateStr,
+              startTime,
+              endTime,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
+      });
+    });
+    
+    return combined;
   };
 
   const isFutureDate = (dateStr: string) => {
@@ -423,7 +487,7 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
         {isSelectedHoliday && (
           <View className="p-3 rounded-2xl border mb-2 flex-row justify-between items-center bg-red-500/5 border-red-500/15">
             <View className="flex-1 mr-2">
-              <Text className="text-xs font-black text-red-400">Institute Holiday</Text>
+              <Text className="text-xs font-black text-red-400">{holidayTitles[selectedDateStr] ? holidayTitles[selectedDateStr].replace(/^Holiday:\s*/i, '') : 'Institute Holiday'}</Text>
               <Text className="text-slate-400 text-[10px] mt-0.5 leading-4">No regular classes are held today.</Text>
             </View>
             <View className="px-2 py-0.5 rounded-lg bg-red-500/10">

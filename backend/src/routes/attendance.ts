@@ -262,6 +262,15 @@ router.get('/month-summary', authenticateJWT, requireTeacherOrAdmin, async (req:
       }
     }
 
+    const holidays = await prisma.holiday.findMany({
+      where: {
+        date: { startsWith: prefix },
+      },
+    });
+    for (const h of holidays) {
+      dayStatuses[h.date] = 'HOLIDAY';
+    }
+
     return res.status(200).json({
       success: true,
       data: dayStatuses,

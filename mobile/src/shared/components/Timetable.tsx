@@ -179,6 +179,54 @@ export const Timetable: React.FC<TimetableProps> = ({ sessions, onSessionPress, 
         {DAYS.map(day => renderDayRow(day))}
       </View>
 
+      {/* Detailed Schedule Breakdown */}
+      <View className="mt-6 pt-4 border-t border-slate-800">
+        <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-3 px-1">
+          Detailed Weekly Schedule & Timings
+        </Text>
+        {sessions.length === 0 ? (
+          <Text className="text-slate-600 text-xs font-bold py-2 px-1">No classes assigned to this timetable.</Text>
+        ) : (
+          DAYS.map(day => {
+            const daySessions = sessions.filter(s => s.dayOfWeek.toUpperCase().startsWith(day.substring(0, 3).toUpperCase()));
+            if (daySessions.length === 0) return null;
+
+            return (
+              <View key={`breakdown-${day}`} className="mb-4 last:mb-0">
+                <View className="flex-row items-center mb-2">
+                  <View className="bg-[#2D8C82]/15 px-2 py-0.5 rounded-md mr-2">
+                    <Text className="text-[#2D8C82] text-[10px] font-black uppercase tracking-wider">{day}</Text>
+                  </View>
+                </View>
+                {daySessions.map(session => (
+                  <TouchableOpacity
+                    key={`card-${session.id}`}
+                    activeOpacity={0.8}
+                    onPress={() => handlePress(session)}
+                    className="p-3.5 rounded-2xl border border-slate-800 mb-2 bg-slate-950/40 flex-row justify-between items-center"
+                  >
+                    <View className="flex-1 mr-3">
+                      <View className="flex-row items-center gap-2 mb-1">
+                        <View className="w-2 h-2 rounded-full" style={{ backgroundColor: session.color || '#3CA79B' }} />
+                        <Text className="text-slate-100 font-bold text-sm" numberOfLines={1}>{session.courseName}</Text>
+                      </View>
+                      <View className="flex-row items-center flex-wrap gap-2 mt-1">
+                        <Text className="text-slate-300 font-semibold text-[11px]">🕒 {session.startTime} - {session.endTime}</Text>
+                        <Text className="text-slate-400 font-medium text-[11px]">•</Text>
+                        <Text className="text-slate-400 font-medium text-[11px]">📍 {session.location || 'Sodepur'}</Text>
+                      </View>
+                    </View>
+                    <View className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800">
+                      <Text className="text-slate-300 font-bold text-[10px]">{session.batchName}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            );
+          })
+        )}
+      </View>
+
       {/* Session Details Modal */}
       <Modal
         visible={!!selectedSession}
