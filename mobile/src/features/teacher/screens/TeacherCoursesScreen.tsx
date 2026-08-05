@@ -131,7 +131,7 @@ export const TeacherCoursesScreen: React.FC = () => {
                         key={course.id}
                         id={course.id}
                         title={course.title}
-                        category={course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
+                        category={course.category?.name || (course.targetClass ? `Class ${course.targetClass}` : 'Program')}
                         price={course.price || 0}
                         thumbnailUrl={course.thumbnailUrl}
                         lectureCount={course.lectureCount || 0}

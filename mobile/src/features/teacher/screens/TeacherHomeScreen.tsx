@@ -144,7 +144,7 @@ export const TeacherHomeScreen: React.FC = () => {
         startTime,
         endTime,
         courseName: course.title,
-        batchName: course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program',
+        batchName: course.targetClass && course.category?.name ? `${course.category.name} • Class ${course.targetClass}` : (course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'),
         location: course.branch || 'Sodepur',
         color: COLORS[courseIdx % COLORS.length]
       });

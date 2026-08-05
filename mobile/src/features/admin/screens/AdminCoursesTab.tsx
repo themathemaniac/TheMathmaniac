@@ -598,6 +598,8 @@ export const AdminCoursesTab: React.FC = () => {
                       const matchedCat = categories.find(c => subj.toLowerCase().includes(c.name.toLowerCase()));
                       if (matchedCat) {
                         setNewCourse(prev => ({ ...prev, categoryId: matchedCat.id }));
+                      } else {
+                        setNewCourse(prev => ({ ...prev, categoryId: '' }));
                       }
                       const av = getAvailableBatches(subj, selectedClass, editingCourseId);
                       if (selectedBatch && !av.includes(selectedBatch)) {
