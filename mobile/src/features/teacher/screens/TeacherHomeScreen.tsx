@@ -222,6 +222,7 @@ export const TeacherHomeScreen: React.FC = () => {
                 <Timetable
                   title="Timetable"
                   sessions={mappedSchedules}
+                  hideDetailedSchedule={true}
                 />
               </View>
             ) : (

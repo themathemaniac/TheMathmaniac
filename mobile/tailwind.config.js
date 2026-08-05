@@ -46,21 +46,21 @@ module.exports = {
         }
       },
       fontFamily: {
-        sans: ['Poppins_400Regular'],
-        poppins: ['Poppins_400Regular'],
+        sans: ['Inter_400Regular'],
+        inter: ['Inter_400Regular'],
       }
     },
   },
   plugins: [
     function({ addUtilities }) {
       addUtilities({
-        '.font-light': { fontWeight: '300', fontFamily: 'Poppins_300Light' },
-        '.font-normal': { fontWeight: '400', fontFamily: 'Poppins_400Regular' },
-        '.font-medium': { fontWeight: '500', fontFamily: 'Poppins_500Medium' },
-        '.font-semibold': { fontWeight: '600', fontFamily: 'Poppins_600SemiBold' },
-        '.font-bold': { fontWeight: '700', fontFamily: 'Poppins_700Bold' },
-        '.font-extrabold': { fontWeight: '800', fontFamily: 'Poppins_800ExtraBold' },
-        '.font-black': { fontWeight: '900', fontFamily: 'Poppins_900Black' },
+        '.font-light': { fontWeight: '300', fontFamily: 'Inter_300Light' },
+        '.font-normal': { fontWeight: '400', fontFamily: 'Inter_400Regular' },
+        '.font-medium': { fontWeight: '500', fontFamily: 'Inter_500Medium' },
+        '.font-semibold': { fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
+        '.font-bold': { fontWeight: '700', fontFamily: 'Inter_700Bold' },
+        '.font-extrabold': { fontWeight: '800', fontFamily: 'Inter_800ExtraBold' },
+        '.font-black': { fontWeight: '900', fontFamily: 'Inter_900Black' },
       });
     }
   ],

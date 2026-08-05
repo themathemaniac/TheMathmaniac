@@ -53,7 +53,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
               </Text>
               {branch && (
                 <Text className="text-xs font-semibold text-emerald-700 mt-1">
-                  📍 {branch}
+                  {branch}
                 </Text>
               )}
               {teacherName && (
@@ -110,7 +110,7 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             </Text>
             {branch && (
               <Text className="text-xs font-bold text-emerald-700 mt-1.5">
-                📍 {branch}
+                {branch}
               </Text>
             )}
             {teacherName && (

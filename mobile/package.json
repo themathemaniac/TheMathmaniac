@@ -9,6 +9,7 @@
     "ts:check": "tsc"
   },
   "dependencies": {
+    "@expo-google-fonts/inter": "^0.4.2",
     "@expo-google-fonts/poppins": "^0.4.1",
     "@react-native-community/datetimepicker": "^8.4.4",
     "@react-native-picker/picker": "2.11.1",

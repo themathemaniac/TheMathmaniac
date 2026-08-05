@@ -8,32 +8,32 @@ import { PushNotificationProvider } from './src/core/providers/PushNotificationP
 import { Text, TextInput, StyleSheet } from 'react-native';
 import {
   useFonts,
-  Poppins_300Light,
-  Poppins_400Regular,
-  Poppins_500Medium,
-  Poppins_600SemiBold,
-  Poppins_700Bold,
-  Poppins_800ExtraBold,
-  Poppins_900Black,
-} from '@expo-google-fonts/poppins';
+  Inter_300Light,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+  Inter_900Black,
+} from '@expo-google-fonts/inter';
 
 import { enableScreens } from 'react-native-screens';
 import './src/features/teacher/tasks/GeofenceTask';
 
 enableScreens(true);
 
-// Set default typography to Poppins across React Native Text and TextInput components
+// Set default typography to Inter across React Native Text and TextInput components
 const setGlobalFont = () => {
   try {
     const customTextProps = {
       ...((Text as any).defaultProps || {}),
-      style: [ { fontFamily: 'Poppins_400Regular' } ],
+      style: [ { fontFamily: 'Inter_400Regular' } ],
     };
     (Text as any).defaultProps = customTextProps;
 
     const customTextInputProps = {
       ...((TextInput as any).defaultProps || {}),
-      style: [ { fontFamily: 'Poppins_400Regular' } ],
+      style: [ { fontFamily: 'Inter_400Regular' } ],
     };
     (TextInput as any).defaultProps = customTextInputProps;
 
@@ -42,17 +42,17 @@ const setGlobalFont = () => {
       (Text as any).render = function (...args: any[]) {
         const origin = oldTextRender.call(this, ...args);
         if (!origin) return origin;
-        const flatStyle = StyleSheet.flatten([ { fontFamily: 'Poppins_400Regular' }, origin.props.style ]);
-        let customFontFamily = 'Poppins_400Regular';
+        const flatStyle = StyleSheet.flatten([ { fontFamily: 'Inter_400Regular' }, origin.props.style ]);
+        let customFontFamily = 'Inter_400Regular';
         if (flatStyle && flatStyle.fontWeight) {
           const fw = String(flatStyle.fontWeight);
-          if (fw === '300' || fw === 'light') customFontFamily = 'Poppins_300Light';
-          else if (fw === '400' || fw === 'normal') customFontFamily = 'Poppins_400Regular';
-          else if (fw === '500' || fw === 'medium') customFontFamily = 'Poppins_500Medium';
-          else if (fw === '600' || fw === 'semibold') customFontFamily = 'Poppins_600SemiBold';
-          else if (fw === '700' || fw === 'bold') customFontFamily = 'Poppins_700Bold';
-          else if (fw === '800' || fw === 'extrabold') customFontFamily = 'Poppins_800ExtraBold';
-          else if (fw === '900' || fw === 'black') customFontFamily = 'Poppins_900Black';
+          if (fw === '300' || fw === 'light') customFontFamily = 'Inter_300Light';
+          else if (fw === '400' || fw === 'normal') customFontFamily = 'Inter_400Regular';
+          else if (fw === '500' || fw === 'medium') customFontFamily = 'Inter_500Medium';
+          else if (fw === '600' || fw === 'semibold') customFontFamily = 'Inter_600SemiBold';
+          else if (fw === '700' || fw === 'bold') customFontFamily = 'Inter_700Bold';
+          else if (fw === '800' || fw === 'extrabold') customFontFamily = 'Inter_800ExtraBold';
+          else if (fw === '900' || fw === 'black') customFontFamily = 'Inter_900Black';
         }
         return React.cloneElement(origin, {
           style: [ origin.props.style, { fontFamily: customFontFamily } ],
@@ -77,13 +77,13 @@ const queryClient = new QueryClient({
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    Poppins_300Light,
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-    Poppins_700Bold,
-    Poppins_800ExtraBold,
-    Poppins_900Black,
+    Inter_300Light,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+    Inter_900Black,
   });
 
   if (!fontsLoaded) {
