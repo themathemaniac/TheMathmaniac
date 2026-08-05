@@ -38,9 +38,11 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 
 interface TeacherAttendanceCalendarProps {
   courses: any[];
+  schedules?: any[];
+  onReschedule?: (sched: any) => void;
 }
 
-export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps> = ({ courses }) => {
+export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps> = ({ courses, schedules = [], onReschedule }) => {
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
     const d = new Date();
@@ -124,19 +126,8 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
     return new Date(y, m - 1, d);
   };
 
-  // Determine what classes happen on a specific date string
-  const getCoursesForDate = (dateStr: string) => {
-    const d = getLocalDate(dateStr);
-    const fullWeekDaysMap: Record<number, string> = { 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat', 0: 'Sun' };
-    const dayOfWeek = fullWeekDaysMap[d.getDay()];
-
-    return courses.filter(course => {
-      let slots: any[] = [];
-      try {
-        slots = typeof course.timeSlots === 'string' ? JSON.parse(course.timeSlots) : (course.timeSlots || []);
-      } catch (e) {}
-      return slots.some(slot => slot.day === dayOfWeek || slot.day === getFullDayName(dayOfWeek));
-    });
+  const getSchedulesForDate = (dateStr: string) => {
+    return schedules.filter(s => s.date === dateStr);
   };
 
   const isFutureDate = (dateStr: string) => {
@@ -147,14 +138,20 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
   };
 
 
-  const openAttendanceModal = async (course: any) => {
+  const openAttendanceModal = async (sched: any) => {
     if (isFutureDate(selectedDateStr)) {
       Alert.alert('Future Date', 'Cannot mark attendance for future dates.');
       return;
     }
     
+    const course = courses.find(c => c.title === sched.title);
+    if (!course) {
+      Alert.alert('Error', 'Original course not found for this schedule.');
+      return;
+    }
+
     setSelectedCourseId(course.id);
-    setSelectedCourseName(course.title);
+    setSelectedCourseName(sched.title);
     setSelectedCourse(course);
     setModalVisible(true);
     setLoadingRoster(true);
@@ -325,7 +322,7 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
   const presentCount = roster.filter(s => s.status === 'PRESENT').length;
   const absentCount = roster.filter(s => s.status === 'ABSENT').length;
 
-  const selectedDayCourses = getCoursesForDate(selectedDateStr);
+  const selectedDaySchedules = getSchedulesForDate(selectedDateStr);
   const isSelectedHoliday = monthLogs[selectedDateStr] === 'HOLIDAY';
 
   return (
@@ -365,10 +362,14 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
               }
 
               const formattedDateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-              const hasClasses = getCoursesForDate(formattedDateStr).length > 0;
+              const daySchedules = getSchedulesForDate(formattedDateStr);
+              const hasClasses = daySchedules.length > 0;
               const hasHoliday = monthLogs[formattedDateStr] === 'HOLIDAY';
               
               const isSelected = selectedDateStr === formattedDateStr;
+              
+              // Implicitly check if any schedule was rescheduled (updatedAt > createdAt + 1000ms tolerance)
+              const hasRescheduled = daySchedules.some(s => new Date(s.updatedAt).getTime() > new Date(s.createdAt).getTime() + 1000);
 
               let dayBg = 'bg-transparent';
               let dayText = 'text-slate-300';
@@ -381,6 +382,10 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
                 dayBg = 'bg-red-500/10';
                 dayText = 'text-red-400 font-bold';
                 borderStyle = 'border-red-500/20';
+              } else if (hasRescheduled) {
+                dayBg = 'bg-amber-500/10';
+                dayText = 'text-amber-400 font-bold';
+                borderStyle = 'border-amber-500/20';
               } else if (hasClasses) {
                 dayBg = 'bg-blue-500/10';
                 dayText = 'text-blue-400 font-bold';
@@ -399,7 +404,7 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
                   {!isSelected && (hasHoliday || hasClasses) && (
                     <View className="flex-row gap-0.5 absolute bottom-1 justify-center">
                       {hasHoliday && <View className="w-1 h-1 rounded-full bg-red-400" />}
-                      {hasClasses && !hasHoliday && <View className="w-1 h-1 rounded-full bg-blue-400" />}
+                      {hasClasses && !hasHoliday && <View className={`w-1 h-1 rounded-full ${hasRescheduled ? 'bg-amber-400' : 'bg-blue-400'}`} />}
                     </View>
                   )}
                 </TouchableOpacity>
@@ -427,29 +432,45 @@ export const TeacherAttendanceCalendar: React.FC<TeacherAttendanceCalendarProps>
           </View>
         )}
 
-        {!isSelectedHoliday && selectedDayCourses.length === 0 && (
+        {!isSelectedHoliday && selectedDaySchedules.length === 0 && (
           <Text className="text-slate-600 text-[11px] font-bold text-center py-2">No classes scheduled for you on this date.</Text>
         )}
 
-        {selectedDayCourses.map((course, index) => (
-          <View
-            key={index}
-            className="p-3 rounded-2xl border mb-2 flex-row justify-between items-center bg-blue-500/5 border-blue-500/15"
-          >
-            <View className="flex-1 mr-2">
-              <Text className="text-xs font-black text-slate-100">{course.title}</Text>
-              <Text className="text-slate-400 text-[10px] mt-0.5 leading-4">
-                {course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program'}
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => openAttendanceModal(course)}
-              className="px-3 py-1.5 rounded-lg bg-blue-600 border border-blue-500 active:bg-blue-700"
+        {selectedDaySchedules.map((sched, index) => {
+          const isRescheduled = new Date(sched.updatedAt).getTime() > new Date(sched.createdAt).getTime() + 1000;
+          return (
+            <View
+              key={index}
+              className={`p-3 rounded-2xl border mb-2 flex-row justify-between items-center ${isRescheduled ? 'bg-amber-500/5 border-amber-500/20' : 'bg-blue-500/5 border-blue-500/15'}`}
             >
-              <Text className="text-[9px] font-black uppercase text-white tracking-wider">Mark</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
+              <View className="flex-1 mr-2">
+                <Text className={`text-xs font-black ${isRescheduled ? 'text-amber-400' : 'text-slate-100'}`}>{sched.title}</Text>
+                <Text className="text-slate-400 text-[10px] mt-0.5 leading-4">
+                  {sched.class ? `Class ${sched.class}` : sched.subject || 'Program'} • {sched.startTime} - {sched.endTime}
+                </Text>
+                {isRescheduled && (
+                  <Text className="text-amber-500/80 text-[9px] font-bold mt-1 uppercase tracking-widest">Rescheduled</Text>
+                )}
+              </View>
+              <View className="flex-row gap-2">
+                {onReschedule && (
+                  <TouchableOpacity
+                    onPress={() => onReschedule(sched)}
+                    className={`px-3 py-1.5 rounded-lg border active:opacity-80 ${isRescheduled ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-800 border-slate-700'}`}
+                  >
+                    <Text className={`text-[9px] font-black uppercase tracking-wider ${isRescheduled ? 'text-amber-400' : 'text-slate-300'}`}>Reschedule</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => openAttendanceModal(sched)}
+                  className={`px-3 py-1.5 rounded-lg border active:opacity-80 ${isRescheduled ? 'bg-amber-600 border-amber-500' : 'bg-blue-600 border-blue-500'}`}
+                >
+                  <Text className="text-[9px] font-black uppercase text-white tracking-wider">Mark</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })}
       </View>
 
       {/* Roster Modal */}
