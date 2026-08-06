@@ -61,6 +61,8 @@ export const TeacherPaymentsScreen: React.FC = () => {
     transactionNote: string;
     paidAt: string;
     createdAt: string;
+    status: string;
+    utrNumber?: string;
     user: {
       name: string;
       phoneNumber?: string;
@@ -78,6 +80,22 @@ export const TeacherPaymentsScreen: React.FC = () => {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [searchHistoryQuery, setSearchHistoryQuery] = useState('');
   const [selectedYear, setSelectedYear] = useState('All');
+  const [verifyingPayment, setVerifyingPayment] = useState<string | null>(null);
+
+  const handleVerifyUpi = async (paymentId: string, action: 'APPROVE' | 'REJECT') => {
+    try {
+      setVerifyingPayment(paymentId);
+      const res = await apiClient.post('/payments/admin/verify-upi', { paymentId, action });
+      if (res.data.success) {
+        Alert.alert('Success', `Payment successfully ${action.toLowerCase()}d.`);
+        fetchHistory();
+      }
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.error || `Failed to ${action.toLowerCase()} payment.`);
+    } finally {
+      setVerifyingPayment(null);
+    }
+  };
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroups(prev => ({
@@ -632,6 +650,11 @@ export const TeacherPaymentsScreen: React.FC = () => {
                                     <Text className="text-slate-400 text-[10px] mt-1.5 font-semibold">
                                       Batch: {item.course?.title || 'N/A'}
                                     </Text>
+                                    {item.status === 'PENDING_VERIFICATION' && (
+                                      <Text className="text-yellow-400 text-[10px] mt-1 font-bold">
+                                        UTR: {item.utrNumber || 'N/A'}
+                                      </Text>
+                                    )}
                                   </View>
                                   <View className="items-end">
                                     <Text className="text-emerald-400 text-xs font-bold">
@@ -644,12 +667,35 @@ export const TeacherPaymentsScreen: React.FC = () => {
                                 </View>
                                 <View className="mt-2.5 pt-2 border-t border-slate-900/40 flex-row justify-between items-center">
                                   <Text className="text-slate-550 text-[9px] italic flex-1 pr-2" numberOfLines={1}>
-                                    {item.transactionNote || 'Offline payment recorded by admin'}
+                                    {item.transactionNote || (item.status === 'PENDING_VERIFICATION' ? 'Student submitted UPI reference' : 'Offline payment recorded')}
                                   </Text>
                                   <Text className="text-slate-500 text-[9px] font-mono">
                                     {item.paidAt ? new Date(item.paidAt).toLocaleDateString() : 'N/A'}
                                   </Text>
                                 </View>
+
+                                {item.status === 'PENDING_VERIFICATION' && (
+                                  <View className="flex-row mt-3 pt-3 border-t border-slate-800/50 gap-x-2">
+                                    <TouchableOpacity
+                                      onPress={() => handleVerifyUpi(item.id, 'APPROVE')}
+                                      disabled={verifyingPayment === item.id}
+                                      className="flex-1 bg-green-600/20 border border-green-500 py-2 rounded-lg items-center"
+                                    >
+                                      <Text className="text-green-400 text-[10px] font-bold">
+                                        {verifyingPayment === item.id ? '...' : 'Verify'}
+                                      </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      onPress={() => handleVerifyUpi(item.id, 'REJECT')}
+                                      disabled={verifyingPayment === item.id}
+                                      className="flex-1 bg-red-600/20 border border-red-500 py-2 rounded-lg items-center"
+                                    >
+                                      <Text className="text-red-400 text-[10px] font-bold">
+                                        {verifyingPayment === item.id ? '...' : 'Reject'}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                )}
                               </View>
                             ))}
                           </View>
@@ -693,6 +739,11 @@ export const TeacherPaymentsScreen: React.FC = () => {
                                     <Text className="text-slate-400 text-[10px] mt-1 font-semibold">
                                       Billing Month: {formatMonthName(item.month)}
                                     </Text>
+                                    {item.status === 'PENDING_VERIFICATION' && (
+                                      <Text className="text-yellow-400 text-[10px] mt-1 font-bold">
+                                        UTR: {item.utrNumber || 'N/A'}
+                                      </Text>
+                                    )}
                                   </View>
                                   <View className="items-end">
                                     <Text className="text-emerald-400 text-xs font-bold">
@@ -705,12 +756,35 @@ export const TeacherPaymentsScreen: React.FC = () => {
                                 </View>
                                 <View className="mt-2.5 pt-2 border-t border-slate-900/40 flex-row justify-between items-center">
                                   <Text className="text-slate-550 text-[9px] italic flex-1 pr-2" numberOfLines={1}>
-                                    {item.transactionNote || 'Offline payment recorded by admin'}
+                                    {item.transactionNote || (item.status === 'PENDING_VERIFICATION' ? 'Student submitted UPI reference' : 'Offline payment recorded')}
                                   </Text>
                                   <Text className="text-slate-500 text-[9px] font-mono">
                                     {item.paidAt ? new Date(item.paidAt).toLocaleDateString() : 'N/A'}
                                   </Text>
                                 </View>
+
+                                {item.status === 'PENDING_VERIFICATION' && (
+                                  <View className="flex-row mt-3 pt-3 border-t border-slate-800/50 gap-x-2">
+                                    <TouchableOpacity
+                                      onPress={() => handleVerifyUpi(item.id, 'APPROVE')}
+                                      disabled={verifyingPayment === item.id}
+                                      className="flex-1 bg-green-600/20 border border-green-500 py-2 rounded-lg items-center"
+                                    >
+                                      <Text className="text-green-400 text-[10px] font-bold">
+                                        {verifyingPayment === item.id ? '...' : 'Verify'}
+                                      </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      onPress={() => handleVerifyUpi(item.id, 'REJECT')}
+                                      disabled={verifyingPayment === item.id}
+                                      className="flex-1 bg-red-600/20 border border-red-500 py-2 rounded-lg items-center"
+                                    >
+                                      <Text className="text-red-400 text-[10px] font-bold">
+                                        {verifyingPayment === item.id ? '...' : 'Reject'}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                )}
                               </View>
                             ))}
                           </View>

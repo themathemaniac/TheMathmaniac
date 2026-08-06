@@ -168,7 +168,7 @@ router.get('/admin/history', authenticateJWT, async (req: AuthenticatedRequest, 
     }
     const payments = await prisma.feePayment.findMany({
       where: {
-        status: 'SUCCESS',
+        status: { in: ['SUCCESS', 'PENDING_VERIFICATION'] },
         courseId: { not: null },
         course: {
           category: {

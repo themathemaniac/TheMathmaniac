@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, Image, Alert } from 'react-native';
+import { View, Text, ScrollView, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Modal, Image, Alert } from 'react-native';
 import { apiClient } from '../../../core/api/client';
 import { COURSE_THEMES, getThemeUrl, extractThemeColor } from '../../../core/constants/courseThemes';
 import { CourseCard } from '../../../shared/components/CourseCard';
@@ -73,85 +73,93 @@ export const TeacherCoursesScreen: React.FC = () => {
           <ActivityIndicator size="large" color="#2D8C82" />
         </View>
       ) : (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2D8C82" />}
-        >
-          <View className="pb-24">
-            {(() => {
-              if (courses.length === 0) {
-                return (
+        <View style={{ flex: 1 }}>
+          {(() => {
+            if (courses.length === 0) {
+              return (
+                <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2D8C82" />}>
                   <View className="items-center py-20">
                     <Text className="text-4xl">📚</Text>
                     <Text className="text-slate-400 font-bold mt-4">No batches available.</Text>
                   </View>
-                );
+                </ScrollView>
+              );
+            }
+
+            const groups: { [key: string]: any[] } = {};
+            const other: any[] = [];
+
+            courses.forEach((c) => {
+              if (c.targetClass && !isNaN(Number(c.targetClass))) {
+                const num = Number(c.targetClass);
+                if (!groups[num]) groups[num] = [];
+                groups[num].push(c);
+              } else {
+                other.push(c);
               }
+            });
 
-              const groups: { [key: string]: any[] } = {};
-              const other: any[] = [];
+            const sortedKeys = Object.keys(groups).map(Number).sort((a, b) => a - b);
+            const groupedResult = sortedKeys.map((k) => ({
+              id: `class-${k}`,
+              title: `Class ${k}`,
+              items: groups[k],
+            }));
 
-              courses.forEach((c) => {
-                if (c.targetClass && !isNaN(Number(c.targetClass))) {
-                  const num = Number(c.targetClass);
-                  if (!groups[num]) groups[num] = [];
-                  groups[num].push(c);
-                } else {
-                  other.push(c);
-                }
+            if (other.length > 0) {
+              groupedResult.push({
+                id: 'other',
+                title: 'Other Programs & Batches',
+                items: other,
               });
+            }
 
-              const sortedKeys = Object.keys(groups).map(Number).sort((a, b) => a - b);
-              const groupedResult = sortedKeys.map((k) => ({
-                title: `Class ${k}`,
-                items: groups[k],
-              }));
-
-              if (other.length > 0) {
-                groupedResult.push({
-                  title: 'Other Programs & Batches',
-                  items: other,
-                });
-              }
-
-              return groupedResult.map((group, gIdx) => (
-                <View key={gIdx} className="mb-6">
-                  <View className="flex-row justify-between items-baseline mb-3 px-1">
-                    <Text className="text-slate-100 text-lg font-bold">
-                      {group.title}
-                    </Text>
+            return (
+              <FlatList
+                data={groupedResult}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2D8C82" />}
+                renderItem={({ item: group }) => (
+                  <View className="mb-6">
+                    <View className="flex-row justify-between items-baseline mb-3 px-1">
+                      <Text className="text-slate-100 text-lg font-bold">
+                        {group.title}
+                      </Text>
+                    </View>
+                    <FlatList
+                      data={group.items}
+                      keyExtractor={(course) => course.id}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      className="py-1"
+                      renderItem={({ item: course }) => (
+                        <CourseCard
+                          id={course.id}
+                          title={course.title}
+                          category={course.category?.name || (course.targetClass ? `Class ${course.targetClass}` : 'Program')}
+                          price={course.price || 0}
+                          thumbnailUrl={course.thumbnailUrl}
+                          lectureCount={course.lectureCount || 0}
+                          teacherName={course.instructorName}
+                          branch={course.branch || 'Sodepur'}
+                          horizontal={false}
+                          onPress={() => navigation.navigate('TeacherCourseDetails', { courseId: course.id, courseTitle: course.title })}
+                          onThemePress={(e) => {
+                            e?.stopPropagation && e.stopPropagation();
+                            setSelectedCourseForTheme(course);
+                            setShowThemeSelector(true);
+                          }}
+                        />
+                      )}
+                    />
                   </View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    className="py-1"
-                  >
-                    {group.items.map((course: any) => (
-                      <CourseCard
-                        key={course.id}
-                        id={course.id}
-                        title={course.title}
-                        category={course.category?.name || (course.targetClass ? `Class ${course.targetClass}` : 'Program')}
-                        price={course.price || 0}
-                        thumbnailUrl={course.thumbnailUrl}
-                        lectureCount={course.lectureCount || 0}
-                        teacherName={course.instructorName}
-                        branch={course.branch || 'Sodepur'}
-                        horizontal={false}
-                        onPress={() => navigation.navigate('TeacherCourseDetails', { courseId: course.id, courseTitle: course.title })}
-                        onThemePress={(e) => {
-                          e?.stopPropagation && e.stopPropagation();
-                          setSelectedCourseForTheme(course);
-                          setShowThemeSelector(true);
-                        }}
-                      />
-                    ))}
-                  </ScrollView>
-                </View>
-              ));
-            })()}
-          </View>
-        </ScrollView>
+                )}
+              />
+            );
+          })()}
+        </View>
       )}
 
       {/* Theme Selection Modal */}

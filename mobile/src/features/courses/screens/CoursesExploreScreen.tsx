@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, RefreshControl, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TextInput, ScrollView, FlatList, RefreshControl, TouchableOpacity, Image } from 'react-native';
 import { apiClient } from '../../../core/api/client';
 import { CourseCard } from '../../../shared/components/CourseCard';
 import { Skeleton } from '../../../shared/components/Skeleton';
@@ -106,43 +106,47 @@ export const CoursesExploreScreen: React.FC = () => {
       </View>
 
       {/* Courses List */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2D8C82" />}
-      >
+      <View style={{ flex: 1 }}>
         {loading ? (
-          <View className="space-y-4">
+          <View className="space-y-4 pt-4">
             <Skeleton height={120} borderRadius={24} />
             <Skeleton height={120} borderRadius={24} />
             <Skeleton height={120} borderRadius={24} />
-          </View>
-        ) : courses.length > 0 ? (
-          <View className="pb-24">
-            {courses.map((course) => (
-              <CourseCard
-                key={course.id}
-                id={course.id}
-                title={course.title}
-                category={course.targetClass && course.category?.name ? `${course.category.name} • Class ${course.targetClass}` : (course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program')}
-                price={course.price}
-                thumbnailUrl={course.thumbnailUrl}
-                lectureCount={course.lectureCount}
-                isPurchased={course.isPurchased}
-                teacherName={course.teachers && course.teachers.length > 0 ? course.teachers.map((t: any) => t.user?.name).filter(Boolean).join(', ') : course.instructorName}
-                onPress={() => navigation.navigate('CourseDetails', { courseId: course.id })}
-                horizontal
-              />
-            ))}
           </View>
         ) : (
-          <View className="items-center py-20">
-            <Text className="text-4xl">📚</Text>
-            <Text className="text-slate-400 font-bold mt-4 text-center">
-              No programs found matching the query.
-            </Text>
-          </View>
+          <FlatList
+            data={courses}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2D8C82" />}
+            contentContainerStyle={{ paddingBottom: 100, paddingTop: 10 }}
+            ListEmptyComponent={
+              <View className="items-center py-20">
+                <Text className="text-4xl">📚</Text>
+                <Text className="text-slate-400 font-bold mt-4 text-center">
+                  No programs found matching the query.
+                </Text>
+              </View>
+            }
+            renderItem={({ item: course }) => (
+              <View className="mb-4">
+                <CourseCard
+                  id={course.id}
+                  title={course.title}
+                  category={course.targetClass && course.category?.name ? `${course.category.name} • Class ${course.targetClass}` : (course.targetClass ? `Class ${course.targetClass}` : course.category?.name || 'Program')}
+                  price={course.price}
+                  thumbnailUrl={course.thumbnailUrl}
+                  lectureCount={course.lectureCount}
+                  isPurchased={course.isPurchased}
+                  teacherName={course.teachers && course.teachers.length > 0 ? course.teachers.map((t: any) => t.user?.name).filter(Boolean).join(', ') : course.instructorName}
+                  onPress={() => navigation.navigate('CourseDetails', { courseId: course.id })}
+                  horizontal
+                />
+              </View>
+            )}
+          />
         )}
-      </ScrollView>
+      </View>
     </View>
   );
 };

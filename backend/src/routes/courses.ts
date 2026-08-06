@@ -3,8 +3,10 @@ import prisma from '../config/db';
 import * as jwt from 'jsonwebtoken';
 import { AuthenticatedRequest, authenticateJWT } from '../middleware/auth';
 import { createNotificationAndPush } from '../utils/notifications';
+import NodeCache from 'node-cache';
 
 const router = Router();
+const cache = new NodeCache({ stdTTL: 300 }); // Cache for 5 minutes
 const JWT_SECRET = process.env.JWT_SECRET || 'mathemaniac_secret_key';
 
 interface DecodedToken {
@@ -30,7 +32,11 @@ function getOptionalUserInfo(authHeader: string | undefined): DecodedToken | nul
 // 1. Get Categories
 router.get('/categories', async (req, res) => {
   try {
+    const cachedCats = cache.get('categories_all');
+    if (cachedCats) return res.status(200).json({ success: true, data: cachedCats });
+
     const categories = await prisma.courseCategory.findMany();
+    cache.set('categories_all', categories);
     return res.status(200).json({ success: true, data: categories });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.message });
@@ -65,25 +71,32 @@ router.get('/', async (req, res) => {
       };
     }
 
-    const courses = await prisma.course.findMany({
-      where: whereClause,
-      include: {
-        category: true,
-        teachers: {
-          include: {
-            user: { select: { name: true } }
-          }
+    // Generate cache key for the query (ignoring user role/purchase logic, we only cache the raw DB result)
+    const cacheKey = `courses_raw_${category || 'all'}_${search || 'none'}_${assigned || 'none'}_${userId || 'none'}`;
+    let courses: any[] = cache.get(cacheKey) || [];
+
+    if (!courses || courses.length === 0) {
+      courses = await prisma.course.findMany({
+        where: whereClause,
+        include: {
+          category: true,
+          teachers: {
+            include: {
+              user: { select: { name: true } }
+            }
+          },
+          _count: {
+            select: { lectures: true },
+          },
         },
-        _count: {
-          select: { lectures: true },
-        },
-      },
-    });
+      });
+      cache.set(cacheKey, courses);
+    }
 
     let purchasedCourseIds: string[] = [];
     if (userId) {
       if (userRole === 'ADMIN' || userRole === 'TEACHER') {
-        purchasedCourseIds = courses.map((c) => c.id);
+        purchasedCourseIds = courses.map((c: any) => c.id);
       } else {
         const purchases = await prisma.purchase.findMany({
           where: {
