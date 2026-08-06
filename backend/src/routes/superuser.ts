@@ -244,14 +244,14 @@ router.put('/admins/:id/branch', authenticateJWT, requireSuperuser, async (req: 
       data: { assignedBranch: branchStr }
     });
 
-    // Parse assigned branches
-    const assignedBranches = branchStr.split(',').map(b => b.trim()).filter(Boolean);
+    // Parse assigned branches with case-insensitive matching
+    const assignedBranches = branchStr.split(',').map(b => b.trim().toLowerCase()).filter(Boolean);
 
     // Auto-enroll in all batches of assigned branches as Administrative Help,
     // and remove from any batches in unassigned branches.
     const allCourses = await prisma.course.findMany({ select: { id: true, branch: true } });
     for (const course of allCourses) {
-      const isCourseInAssignedBranch = assignedBranches.includes(course.branch);
+      const isCourseInAssignedBranch = assignedBranches.includes((course.branch || '').trim().toLowerCase());
       if (isCourseInAssignedBranch) {
         const existing = await prisma.courseTeacher.findUnique({
           where: { courseId_userId: { courseId: course.id, userId: targetUserId } }

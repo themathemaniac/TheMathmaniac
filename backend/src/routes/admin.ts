@@ -525,22 +525,23 @@ const COURSE_CREATOR_PHONE = '+919831754957'; // Shubhadeep Biswas
 
 async function syncBranchAdminsToCourse(courseId: string, branch: string) {
   if (!branch) return;
+  const targetBranch = branch.trim().toLowerCase();
   const admins = await prisma.user.findMany({
     where: { role: 'ADMIN' },
     select: { id: true, assignedBranch: true }
   });
   for (const adm of admins) {
-    const branches = (adm.assignedBranch || '').split(',').map(b => b.trim()).filter(Boolean);
+    const branches = (adm.assignedBranch || '').split(',').map(b => b.trim().toLowerCase()).filter(Boolean);
     const existing = await prisma.courseTeacher.findUnique({
       where: { courseId_userId: { courseId, userId: adm.id } }
     });
-    if (branches.includes(branch)) {
+    if (branches.includes(targetBranch)) {
       if (!existing) {
         await prisma.courseTeacher.create({
           data: { courseId, userId: adm.id }
         });
       }
-    } else if (existing && branches.length > 0) {
+    } else if (existing) {
       await prisma.courseTeacher.deleteMany({
         where: { courseId, userId: adm.id }
       });

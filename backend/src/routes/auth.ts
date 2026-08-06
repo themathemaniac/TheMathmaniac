@@ -47,6 +47,7 @@ export async function syncUserToFirestore(
         faculty: fullUser.faculty || null,
         school: fullUser.school || null,
         subjects: fullUser.subjects || null,
+        assignedBranch: fullUser.assignedBranch || null,
         createdAt: fullUser.createdAt,
         updatedAt: fullUser.updatedAt,
       };
@@ -139,6 +140,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
           class: firestoreUser.class || null,
           faculty: firestoreUser.faculty || null,
           school: firestoreUser.school || null,
+          assignedBranch: firestoreUser.assignedBranch || null,
         }
       });
     } else {
@@ -154,6 +156,7 @@ router.post('/login', loginRateLimiter, async (req, res) => {
           class: firestoreUser.class || null,
           faculty: firestoreUser.faculty || null,
           school: firestoreUser.school || null,
+          assignedBranch: firestoreUser.assignedBranch !== undefined ? firestoreUser.assignedBranch : user.assignedBranch,
         }
       });
     }
