@@ -195,4 +195,107 @@ router.get('/admin/history', authenticateJWT, async (req: AuthenticatedRequest, 
   }
 });
 
+// 5. Initiate UPI Payment (Generate deep link)
+router.post('/initiate-upi', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { courseId, month, amount, fine } = req.body;
+    if (!courseId || !month || amount === undefined) {
+      return res.status(400).json({ success: false, error: 'courseId, month, and amount are required.' });
+    }
+
+    const userId = req.user!.id;
+    const baseAmount = parseInt(amount, 10);
+    const fineAmount = parseInt(fine || '0', 10);
+    const totalAmount = baseAmount + fineAmount;
+
+    if (totalAmount <= 0) {
+      return res.status(400).json({ success: false, error: 'Invalid total amount.' });
+    }
+
+    let feePayment = await prisma.feePayment.findFirst({
+      where: { userId, courseId, month }
+    });
+
+    if (feePayment) {
+      feePayment = await prisma.feePayment.update({
+        where: { id: feePayment.id },
+        data: { amount: baseAmount, fine: fineAmount, totalAmount, status: 'PENDING', paymentMode: 'ONLINE_UPI' }
+      });
+    } else {
+      feePayment = await prisma.feePayment.create({
+        data: {
+          userId, courseId, month, amount: baseAmount, fine: fineAmount, totalAmount, status: 'PENDING', paymentMode: 'ONLINE_UPI'
+        }
+      });
+    }
+
+    const upiId = process.env.UPI_ID || '0343106082026MATH@cbin';
+    const payeeName = process.env.UPI_PAYEE_NAME || 'THE MATHEMANIAC';
+    const amountInINR = (totalAmount / 100).toFixed(2);
+    const trnNote = `Fee_${month}_${courseId}`.substring(0, 50);
+
+    const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amountInINR}&cu=INR&tn=${encodeURIComponent(trnNote)}`;
+
+    return res.status(200).json({ success: true, data: { feePayment, upiString } });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 6. Submit UTR after successful intent return
+router.post('/submit-utr', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { paymentId, utrNumber } = req.body;
+    if (!paymentId || !utrNumber || utrNumber.length < 6) {
+      return res.status(400).json({ success: false, error: 'Valid paymentId and utrNumber are required.' });
+    }
+
+    const feePayment = await prisma.feePayment.findUnique({ where: { id: paymentId } });
+    if (!feePayment || feePayment.userId !== req.user!.id) {
+      return res.status(404).json({ success: false, error: 'Payment record not found or unauthorized.' });
+    }
+
+    const updated = await prisma.feePayment.update({
+      where: { id: paymentId },
+      data: {
+        utrNumber: utrNumber.trim(),
+        status: 'PENDING_VERIFICATION'
+      }
+    });
+
+    return res.status(200).json({ success: true, data: updated });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// 7. Admin Verify UPI Payment
+router.post('/admin/verify-upi', authenticateJWT, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userRole = req.user?.role;
+    const isSuperuser = req.user?.phoneNumber && SUPERUSER_PHONES.includes(req.user.phoneNumber);
+    if (userRole !== 'ADMIN' && !isSuperuser) {
+      return res.status(403).json({ success: false, error: 'Access Denied.' });
+    }
+
+    const { paymentId, action, note } = req.body; // action: 'APPROVE' or 'REJECT'
+    if (!paymentId || !['APPROVE', 'REJECT'].includes(action)) {
+      return res.status(400).json({ success: false, error: 'Invalid paymentId or action.' });
+    }
+
+    const updated = await prisma.feePayment.update({
+      where: { id: paymentId },
+      data: {
+        status: action === 'APPROVE' ? 'SUCCESS' : 'FAILED',
+        paidAt: action === 'APPROVE' ? new Date() : null,
+        transactionNote: note || (action === 'APPROVE' ? 'Verified by Admin' : 'Rejected by Admin')
+      }
+    });
+
+    return res.status(200).json({ success: true, data: updated });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;

@@ -269,6 +269,7 @@ model FeePayment {
   transactionNote   String?
   razorpayOrderId   String?   @unique
   razorpayPaymentId String?
+  utrNumber         String?   @unique
   paidAt            DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
