@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, FlatList, RefreshControl, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, ScrollView, FlatList, RefreshControl, TouchableOpacity, Alert, Modal, TextInput, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
@@ -311,9 +311,18 @@ export const FeePaymentScreen: React.FC = () => {
                   </View>
                 </View>
 
-                <View className="bg-slate-950 border border-slate-850 rounded-2xl p-5 mb-4">
-                  <Text className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-2">Instructions</Text>
-                  <Text className="text-slate-500 text-xs">Tap below to open Google Pay, PhonePe, or Paytm automatically. The exact fee and recipient details will be pre-filled.</Text>
+                <View className="bg-slate-950 border border-slate-850 rounded-2xl p-5 mb-4 items-center">
+                  <Text className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-2 self-start">Instructions</Text>
+                  <Text className="text-slate-500 text-xs text-center mb-4">Tap below to open Google Pay, PhonePe, or Paytm automatically. The recipient details will be pre-filled. Please manually enter the exact fee amount.</Text>
+                  
+                  <View className="bg-white p-3 rounded-2xl w-full max-w-[200px] aspect-square items-center justify-center mb-2 shadow-sm shadow-blue-900/10">
+                    <Image 
+                      source={require('../../../../assets/the_mathemaniac_qr.png')} 
+                      className="w-full h-full"
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <Text className="text-slate-500 text-[10px] font-bold text-center mt-2">Scan or Pay via UPI below</Text>
                 </View>
 
                 <TouchableOpacity 

@@ -2,7 +2,7 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 
 export type AppTabsParamList = {
   Home: undefined;
-  Courses: undefined;
+  VirtualLab: undefined;
   Tests: undefined;
   Materials: undefined;
   Profile: undefined;
@@ -28,6 +28,7 @@ export type RootStackParamList = {
   TestResult: { resultData: any };
   FeePayment: undefined;
   AllAnnouncements: undefined;
+  LabWebView: { url: string; title: string };
 
   SuperuserReports: undefined;
   TeacherCourseDetails: { courseId: string; courseTitle: string; };

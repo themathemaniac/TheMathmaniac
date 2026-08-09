@@ -20,7 +20,8 @@ import { AdminProfileScreen } from '../features/admin/screens/AdminProfileScreen
 import { AdminAttendanceScreen } from '../features/admin/screens/AdminAttendanceScreen';
 import { HomeScreen } from '../features/home/screens/HomeScreen';
 import { AllAnnouncementsScreen } from '../features/home/screens/AllAnnouncementsScreen';
-import { CoursesExploreScreen } from '../features/courses/screens/CoursesExploreScreen';
+import { VirtualLabScreen } from '../features/courses/screens/VirtualLabScreen';
+import { LabWebViewScreen } from '../features/courses/screens/LabWebViewScreen';
 import { CourseDetailsScreen } from '../features/courses/screens/CourseDetailsScreen';
 import { LecturePlayerScreen } from '../features/lectures/screens/LecturePlayerScreen';
 import { MaterialsListScreen } from '../features/materials/screens/MaterialsListScreen';
@@ -34,7 +35,6 @@ import { FeePaymentScreen } from '../features/profile/screens/FeePaymentScreen';
 
 // Teacher Screens imports
 import { TeacherHomeScreen } from '../features/teacher/screens/TeacherHomeScreen';
-import { TeacherCoursesScreen } from '../features/teacher/screens/TeacherCoursesScreen';
 import { TeacherTestsScreen } from '../features/teacher/screens/TeacherTestsScreen';
 import { TeacherMaterialsScreen } from '../features/teacher/screens/TeacherMaterialsScreen';
 import { TeacherProfileScreen } from '../features/teacher/screens/TeacherProfileScreen';
@@ -68,7 +68,7 @@ function TabNavigator() {
         tabBarIcon: ({ focused }) => {
           let icon = '';
           if (route.name === 'Home') icon = '⚡';
-          if (route.name === 'Courses') icon = '📚';
+          if (route.name === 'VirtualLab') icon = '🧪';
           if (route.name === 'Tests') icon = '✏️';
           if (route.name === 'Materials') icon = '📁';
           if (route.name === 'Profile') icon = '👤';
@@ -91,7 +91,7 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Courses" component={CoursesExploreScreen} />
+      <Tab.Screen name="VirtualLab" component={VirtualLabScreen} options={{ tabBarLabel: 'Labs' }} />
       <Tab.Screen name="Tests" component={TestsListScreen} />
       <Tab.Screen name="Materials" component={MaterialsListScreen} />
       <Tab.Screen name="Profile" component={ProfileHomeScreen} />
@@ -121,7 +121,7 @@ function TeacherTabNavigator() {
         tabBarIcon: ({ focused }) => {
           let icon = '';
           if (route.name === 'Home') icon = '⚡';
-          if (route.name === 'Courses') icon = '📚';
+          if (route.name === 'VirtualLab') icon = '🧪';
           if (route.name === 'Tests') icon = '✏️';
           if (route.name === 'Materials') icon = '📁';
           if (route.name === 'Profile') icon = '👤';
@@ -144,7 +144,7 @@ function TeacherTabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={TeacherHomeScreen} />
-      <Tab.Screen name="Courses" component={TeacherCoursesScreen} />
+      <Tab.Screen name="VirtualLab" component={VirtualLabScreen} options={{ tabBarLabel: 'Labs' }} />
       <Tab.Screen name="Tests" component={TeacherTestsScreen} />
       <Tab.Screen name="Materials" component={TeacherMaterialsScreen} />
       <Tab.Screen name="Profile" component={TeacherProfileScreen} />
@@ -185,6 +185,7 @@ export const AppNavigator = () => {
         <Stack.Screen name="AdminPanel" component={AdminPanelScreen} />
         <Stack.Screen name="AdminProfile" component={AdminProfileScreen} />
         <Stack.Screen name="AppTabs" component={AppTabsWrapper} />
+        <Stack.Screen name="LabWebView" component={LabWebViewScreen} />
         <Stack.Screen name="CourseDetails" component={CourseDetailsScreen} />
         <Stack.Screen name="LecturePlayer" component={LecturePlayerScreen} />
         <Stack.Screen name="PDFViewer" component={PDFViewerScreen} />

@@ -337,7 +337,7 @@ export const ProfileHomeScreen: React.FC = () => {
                   Programs Unlocked
                 </Text>
                 <Text className="text-slate-100 text-2xl font-black mt-2">
-                  {profileData.stats.purchasedCoursesCount ?? 0}
+                  {profileData.stats?.purchasedCoursesCount ?? 0}
                 </Text>
               </View>
               {/* Box 2 */}
@@ -355,7 +355,7 @@ export const ProfileHomeScreen: React.FC = () => {
                   Tests Attempted
                 </Text>
                 <Text className="text-slate-100 text-2xl font-black mt-2">
-                  {profileData.stats.testsAttemptedCount}
+                  {profileData.stats?.testsAttemptedCount ?? 0}
                 </Text>
               </View>
               {/* Box 4 */}
@@ -364,7 +364,7 @@ export const ProfileHomeScreen: React.FC = () => {
                   Avg Accuracy
                 </Text>
                 <Text className="text-emerald-400 text-2xl font-black mt-2">
-                  {profileData.stats.averageTestAccuracy}%
+                  {profileData.stats?.averageTestAccuracy ?? 0}%
                 </Text>
               </View>
             </View>
@@ -438,7 +438,10 @@ export const ProfileHomeScreen: React.FC = () => {
           </View>
         ) : (
           <View className="items-center py-20">
-            <Text className="text-slate-400 font-bold">Failed to load details.</Text>
+            <Text className="text-slate-400 font-bold mb-4">Failed to load details.</Text>
+            <TouchableOpacity onPress={onRefresh} className="bg-emerald-600/20 px-6 py-3 rounded-xl border border-emerald-500/20">
+              <Text className="text-emerald-400 font-bold">Try Again</Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>

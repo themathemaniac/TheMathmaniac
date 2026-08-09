@@ -8,6 +8,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
 import { Timetable, RoutineSession, DayOfWeek } from '../../../shared/components/Timetable';
 import { TeacherAttendanceCalendar } from '../components/TeacherAttendanceCalendar';
+import { COURSE_THEMES, getThemeUrl, extractThemeColor } from '../../../core/constants/courseThemes';
+import { CourseCard } from '../../../shared/components/CourseCard';
 
 type TeacherHomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'SuperuserReports'>;
 
@@ -40,6 +42,10 @@ export const TeacherHomeScreen: React.FC = () => {
   const [isSubmittingReschedule, setIsSubmittingReschedule] = useState(false);
   const [peers, setPeers] = useState<{id: string, name: string}[]>([]);
   const [rescheduleTeacherId, setRescheduleTeacherId] = useState<string | null>(null);
+
+  // Theme Selector State
+  const [showThemeSelector, setShowThemeSelector] = useState(false);
+  const [selectedCourseForTheme, setSelectedCourseForTheme] = useState<any | null>(null);
 
   const isSuperuser = user && SUPERUSER_PHONES.includes(user.phoneNumber);
 
@@ -108,6 +114,22 @@ export const TeacherHomeScreen: React.FC = () => {
     }
   };
 
+  const handleUpdateTheme = async (themeUri: string) => {
+    if (!selectedCourseForTheme) return;
+    try {
+      setLoading(true);
+      await apiClient.put(`/courses/${selectedCourseForTheme.id}/theme`, { thumbnailUrl: themeUri });
+      Alert.alert("Success", "Course theme updated successfully!");
+      setShowThemeSelector(false);
+      setSelectedCourseForTheme(null);
+      await loadStats();
+    } catch (e: any) {
+      console.log('Error updating course theme:', e);
+      Alert.alert("Error", e.response?.data?.error || "Failed to update theme");
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadStats();
   }, []);
@@ -150,6 +172,31 @@ export const TeacherHomeScreen: React.FC = () => {
       });
     });
   });
+
+  const courseGroups: { [key: string]: any[] } = {};
+  const otherCourses: any[] = [];
+  courses.forEach((c) => {
+    if (c.targetClass && !isNaN(Number(c.targetClass))) {
+      const num = Number(c.targetClass);
+      if (!courseGroups[num]) courseGroups[num] = [];
+      courseGroups[num].push(c);
+    } else {
+      otherCourses.push(c);
+    }
+  });
+  const sortedKeys = Object.keys(courseGroups).map(Number).sort((a, b) => a - b);
+  const groupedCourses = sortedKeys.map((k) => ({
+    id: `class-${k}`,
+    title: `Class ${k}`,
+    items: courseGroups[k],
+  }));
+  if (otherCourses.length > 0) {
+    groupedCourses.push({
+      id: 'other',
+      title: 'Other Programs & Batches',
+      items: otherCourses,
+    });
+  }
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -231,6 +278,40 @@ export const TeacherHomeScreen: React.FC = () => {
               </View>
             )}
 
+
+            {/* Active Batches Section */}
+            {courses.length > 0 && (
+              <View className="mb-6">
+                <Text className="text-slate-100 text-lg font-bold mb-3 px-1">My Active Batches</Text>
+                {groupedCourses.map(group => (
+                  <View key={group.id} className="mb-4">
+                    <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 px-1">{group.title}</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="py-1">
+                      {group.items.map(course => (
+                        <CourseCard
+                          key={course.id}
+                          id={course.id}
+                          title={course.title}
+                          category={course.category?.name || (course.targetClass ? `Class ${course.targetClass}` : 'Program')}
+                          price={course.price || 0}
+                          thumbnailUrl={course.thumbnailUrl}
+                          lectureCount={course.lectureCount || 0}
+                          teacherName={course.instructorName}
+                          branch={course.branch || 'Sodepur'}
+                          horizontal={false}
+                          onPress={() => navigation.navigate('TeacherCourseDetails', { courseId: course.id, courseTitle: course.title })}
+                          onThemePress={(e) => {
+                            e?.stopPropagation && e.stopPropagation();
+                            setSelectedCourseForTheme(course);
+                            setShowThemeSelector(true);
+                          }}
+                        />
+                      ))}
+                    </ScrollView>
+                  </View>
+                ))}
+              </View>
+            )}
 
             {/* Superuser Controls Card */}
             {isSuperuser && (
@@ -344,6 +425,61 @@ export const TeacherHomeScreen: React.FC = () => {
                 {isSubmittingReschedule ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Text className="text-white text-xs font-bold">Save Change</Text>}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Theme Selection Modal */}
+      <Modal visible={showThemeSelector} animationType="slide" transparent onRequestClose={() => setShowThemeSelector(false)}>
+        <View className="flex-1 justify-end bg-black/80">
+          <View className="bg-slate-900 rounded-t-3xl border-t border-slate-800 pb-10" style={{ maxHeight: '60%' }}>
+            <View className="flex-row justify-between items-center p-5 border-b border-slate-850">
+              <Text className="text-slate-100 text-lg font-black">Select a Theme</Text>
+              <TouchableOpacity onPress={() => setShowThemeSelector(false)} className="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700/50">
+                <Text className="text-slate-300 font-bold text-xs">Cancel</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView className="p-5">
+              {(() => {
+                if (!selectedCourseForTheme) return null;
+                const titleLower = selectedCourseForTheme.title.toLowerCase();
+                let availableThemes: any[] = [];
+                if (/\b(computer|cs|tech|programming|coding)\b/.test(titleLower)) availableThemes = COURSE_THEMES.computer;
+                else if (/\b(physic|physics)\b/.test(titleLower)) availableThemes = COURSE_THEMES.physics;
+                else if (/\b(chem|chemistry)\b/.test(titleLower)) availableThemes = COURSE_THEMES.chemistry;
+                else if (/\b(math|maths|mathematics)\b/.test(titleLower)) availableThemes = COURSE_THEMES.maths;
+                else if (/\b(bio|biology|botany|zoology)\b/.test(titleLower)) availableThemes = COURSE_THEMES.biology;
+                else availableThemes = [...COURSE_THEMES.computer, ...COURSE_THEMES.physics, ...COURSE_THEMES.chemistry, ...COURSE_THEMES.maths, ...COURSE_THEMES.biology];
+
+                return (
+                  <View className="flex-row flex-wrap justify-between">
+                    {availableThemes.map((theme) => {
+                      const themeUri = getThemeUrl(theme.url, theme.color);
+                      const isSelected = selectedCourseForTheme.thumbnailUrl === themeUri;
+                      return (
+                        <TouchableOpacity
+                          key={theme.id}
+                          onPress={() => handleUpdateTheme(themeUri)}
+                          className={`rounded-xl overflow-hidden border-2 mb-4 ${isSelected ? 'border-blue-500 shadow-sm shadow-blue-500/50' : 'border-slate-800'}`}
+                          style={{ width: '48%' }}
+                        >
+                          <Image source={theme.url ? { uri: theme.url } : undefined} style={{ width: '100%', height: 90 }} resizeMode="cover" />
+                          <View className="p-2" style={{ backgroundColor: theme.color }}>
+                            <Text className="text-white text-[10px] font-bold text-center" numberOfLines={1}>{theme.name}</Text>
+                          </View>
+                          {isSelected && (
+                            <View className="absolute top-2 right-2 bg-blue-500 rounded-full w-5 h-5 items-center justify-center">
+                              <Text className="text-white text-[10px] font-black">✓</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                );
+              })()}
+              <View className="h-10" />
+            </ScrollView>
           </View>
         </View>
       </Modal>

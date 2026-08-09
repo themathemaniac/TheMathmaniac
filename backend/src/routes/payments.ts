@@ -234,7 +234,7 @@ router.post('/initiate-upi', authenticateJWT, async (req: AuthenticatedRequest, 
     const amountInINR = (totalAmount / 100).toFixed(2);
     const trnNote = `Fee_${month}_${courseId}`.substring(0, 50);
 
-    const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amountInINR}&cu=INR&tn=${encodeURIComponent(trnNote)}`;
+    const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&cu=INR&tn=${encodeURIComponent(trnNote)}`;
 
     return res.status(200).json({ success: true, data: { feePayment, upiString } });
   } catch (error: any) {

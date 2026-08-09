@@ -31,11 +31,20 @@ export const SplashScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
     const subscription = player.addListener('playToEnd', () => {
       setVideoFinished(true);
+      clearTimeout(timeoutId);
     });
+
+    // Fallback: If video takes longer than 3 seconds or fails to play/emit event
+    timeoutId = setTimeout(() => {
+      setVideoFinished(true);
+    }, 3000);
+
     return () => {
       subscription?.remove();
+      clearTimeout(timeoutId);
     };
   }, [player]);
 
