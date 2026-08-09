@@ -77,7 +77,9 @@ export function startScheduler() {
       const options: Intl.DateTimeFormatOptions = { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' };
       const todayStr = new Intl.DateTimeFormat('en-CA', options).format(new Date());
       const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const istString = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+      const istDate = new Date(istString);
+      const currentMinutes = istDate.getHours() * 60 + istDate.getMinutes();
 
       const schedules = await prisma.teacherSchedule.findMany({
         where: { date: todayStr }
