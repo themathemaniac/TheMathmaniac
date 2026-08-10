@@ -11,11 +11,9 @@
       "backgroundColor": "#EAE7DF"
     },
     "ios": {
-      "supportsTablet": true,
-      "buildNumber": "2"
+      "supportsTablet": true
     },
     "android": {
-      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Mathemaniac_Logo_Padded.png",
         "backgroundColor": "#EAE7DF"
