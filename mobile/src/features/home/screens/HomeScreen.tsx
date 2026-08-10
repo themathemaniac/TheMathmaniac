@@ -204,7 +204,7 @@ export const HomeScreen: React.FC = () => {
             <View className="mb-6">
               <View className="flex-row justify-between items-baseline mb-3">
                 <Text className="text-slate-100 text-lg font-bold">Your Courses</Text>
-                <TouchableOpacity onPress={() => navigation.navigate('AppTabs', { screen: 'Courses' })}>
+                <TouchableOpacity onPress={() => navigation.navigate('AppTabs', { screen: 'Home' })}>
                   <Text className="text-blue-600 text-xs font-bold">See All</Text>
                 </TouchableOpacity>
               </View>
@@ -251,7 +251,7 @@ export const HomeScreen: React.FC = () => {
               <View className="mb-6">
                 <View className="flex-row justify-between items-baseline mb-3">
                   <Text className="text-slate-100 text-lg font-bold">Recommended Courses</Text>
-                  <TouchableOpacity onPress={() => navigation.navigate('AppTabs', { screen: 'Courses' })}>
+                  <TouchableOpacity onPress={() => navigation.navigate('AppTabs', { screen: 'Home' })}>
                     <Text className="text-blue-600 text-xs font-bold">See All</Text>
                   </TouchableOpacity>
                 </View>
