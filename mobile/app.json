@@ -2,7 +2,7 @@
   "expo": {
     "name": "Mathemaniac",
     "slug": "mathemaniac-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/Mathemaniac_Logo_Padded.png",
     "userInterfaceStyle": "dark",
@@ -11,9 +11,11 @@
       "backgroundColor": "#EAE7DF"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "buildNumber": "2"
     },
     "android": {
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/Mathemaniac_Logo_Padded.png",
         "backgroundColor": "#EAE7DF"
