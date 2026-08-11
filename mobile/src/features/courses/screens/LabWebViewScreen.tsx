@@ -100,7 +100,7 @@ export const LabWebViewScreen: React.FC = () => {
 
   const spin = rotateAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '90deg']
+    outputRange: ['0deg', '-90deg']
   });
 
   return (
@@ -131,15 +131,15 @@ export const LabWebViewScreen: React.FC = () => {
         
         {/* Landscape Prompt Overlay */}
         {isNativeLab && isPortrait && (
-          <View className="absolute inset-0 bg-slate-950/100 z-20 justify-center items-center px-8">
-            <View className="bg-slate-900 p-8 rounded-3xl items-center border border-slate-800 shadow-2xl w-full max-w-sm">
+          <View className="absolute inset-0 bg-slate-50 z-20 justify-center items-center px-8">
+            <View className="bg-white p-8 rounded-3xl items-center border border-slate-200 shadow-2xl w-full max-w-sm">
               <Animated.View style={{ transform: [{ rotate: spin }] }}>
-                <Smartphone color="#94a3b8" size={64} strokeWidth={1.5} />
+                <Smartphone color="#0f172a" size={64} strokeWidth={1.5} />
               </Animated.View>
-              <Text className="text-white text-xl font-bold mt-8 mb-2 text-center">
+              <Text className="text-black text-xl font-bold mt-8 mb-2 text-center">
                 Rotate Device
               </Text>
-              <Text className="text-slate-400 text-center text-sm leading-6">
+              <Text className="text-slate-600 text-center text-sm leading-6">
                 Please rotate your phone to landscape mode to start the lab experience.
               </Text>
             </View>

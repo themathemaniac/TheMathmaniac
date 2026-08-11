@@ -69,8 +69,8 @@ export const VirtualLabScreen: React.FC = () => {
         <Text className="text-2xl">{lab.icon}</Text>
       </View>
       <View className="flex-1">
-        <Text className="text-slate-900 font-bold text-base mb-0.5" numberOfLines={1}>{lab.title}</Text>
-        <Text className="text-xs font-medium text-slate-500" numberOfLines={1}>Interactive Simulation</Text>
+        <Text className="text-black font-bold text-base mb-0.5" numberOfLines={1}>{lab.title}</Text>
+        <Text className="text-slate-500 text-xs font-medium" numberOfLines={1}>Interactive Simulation</Text>
       </View>
     </TouchableOpacity>
   );
@@ -79,7 +79,7 @@ export const VirtualLabScreen: React.FC = () => {
     <View className="flex-1 bg-slate-50 px-5 pt-14">
       <View className="flex-row justify-between items-center mb-6">
         <View>
-          <Text className="text-slate-900 text-2xl font-black">Virtual Labs</Text>
+          <Text className="text-black text-2xl font-black">Virtual Labs</Text>
           <Text className="text-slate-500 text-xs mt-1 font-medium">Interactive Learning Environments</Text>
         </View>
         <Image
@@ -89,10 +89,10 @@ export const VirtualLabScreen: React.FC = () => {
         />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         
         <View className="mb-6">
-          <Text className="text-slate-900 text-lg font-extrabold mb-4">Alchemax Chemistry Labs</Text>
+          <Text className="text-black text-lg font-extrabold mb-4">Alchemax Chemistry Labs</Text>
           <View className="flex-col">
             {ALCHEMAX_LABS.map(renderLabTile)}
           </View>
@@ -100,7 +100,7 @@ export const VirtualLabScreen: React.FC = () => {
 
         <View className="mb-2">
           <View className="h-[1px] bg-slate-200 w-full mb-6" />
-          <Text className="text-slate-900 text-lg font-extrabold mb-4">Graviton Physics Labs</Text>
+          <Text className="text-black text-lg font-extrabold mb-4">Graviton Physics Labs</Text>
           <View className="flex-col">
             {GRAVITON_LABS.map(renderLabTile)}
           </View>
