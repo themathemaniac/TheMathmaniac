@@ -122,7 +122,7 @@ export const LabWebViewScreen: React.FC = () => {
 
       {/* WebView */}
       <View className="flex-1 relative">
-        {loading && (
+        {loading && !(isNativeLab && isPortrait) && (
           <View className="absolute inset-0 justify-center items-center z-10 bg-slate-950">
             <ActivityIndicator size="large" color="#2D8C82" />
             <Text className="text-slate-400 mt-4 text-xs font-medium tracking-widest uppercase">Loading Lab...</Text>
@@ -130,8 +130,8 @@ export const LabWebViewScreen: React.FC = () => {
         )}
         
         {/* Landscape Prompt Overlay */}
-        {isNativeLab && isPortrait && !loading && (
-          <View className="absolute inset-0 bg-slate-950/90 z-20 justify-center items-center px-8">
+        {isNativeLab && isPortrait && (
+          <View className="absolute inset-0 bg-slate-950/100 z-20 justify-center items-center px-8">
             <View className="bg-slate-900 p-8 rounded-3xl items-center border border-slate-800 shadow-2xl w-full max-w-sm">
               <Animated.View style={{ transform: [{ rotate: spin }] }}>
                 <Smartphone color="#94a3b8" size={64} strokeWidth={1.5} />
@@ -140,22 +140,13 @@ export const LabWebViewScreen: React.FC = () => {
                 Rotate Device
               </Text>
               <Text className="text-slate-400 text-center text-sm leading-6">
-                Please rotate your phone to landscape mode for the best lab experience.
+                Please rotate your phone to landscape mode to start the lab experience.
               </Text>
-              
-              {/* Force continue button just in case rotation is disabled on device level */}
-              <TouchableOpacity 
-                className="mt-6 bg-slate-800 px-6 py-3 rounded-full"
-                onPress={() => setIsPortrait(false)}
-              >
-                <Text className="text-slate-300 text-xs font-bold uppercase tracking-wider">
-                  Continue anyway
-                </Text>
-              </TouchableOpacity>
             </View>
           </View>
         )}
 
+        {!(isNativeLab && isPortrait) && (
         <WebView
           ref={webViewRef}
           source={{ uri: currentUrl }}
@@ -205,8 +196,8 @@ export const LabWebViewScreen: React.FC = () => {
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled={true}
-          domStorageEnabled={true}
         />
+        )}
       </View>
     </View>
   );

@@ -57,7 +57,7 @@ export const VirtualLabScreen: React.FC = () => {
   const renderLabTile = (lab: LabItem) => (
     <TouchableOpacity
       key={lab.id}
-      className={`w-[48%] rounded-2xl p-4 mb-4 border ${lab.borderColor} ${lab.color} active:opacity-70`}
+      className="w-full flex-row items-center bg-white rounded-2xl p-4 mb-4 border border-slate-200 shadow-sm active:opacity-70"
       onPress={() => navigation.navigate('LabWebView', { 
         url: lab.url, 
         title: lab.title,
@@ -65,24 +65,26 @@ export const VirtualLabScreen: React.FC = () => {
         gravitonLabTitle: lab.gravitonLabTitle
       })}
     >
-      <View className="w-10 h-10 rounded-full bg-slate-900/30 justify-center items-center mb-3">
-        <Text className="text-xl">{lab.icon}</Text>
+      <View className="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 justify-center items-center mr-4">
+        <Text className="text-2xl">{lab.icon}</Text>
       </View>
-      <Text className="text-slate-100 font-bold text-sm mb-1" numberOfLines={1}>{lab.title}</Text>
-      <Text className={`text-[10px] font-medium ${lab.textColor}`} numberOfLines={2}>Interactive Simulation</Text>
+      <View className="flex-1">
+        <Text className="text-slate-900 font-bold text-base mb-0.5" numberOfLines={1}>{lab.title}</Text>
+        <Text className="text-xs font-medium text-slate-500" numberOfLines={1}>Interactive Simulation</Text>
+      </View>
     </TouchableOpacity>
   );
 
   return (
-    <View className="flex-1 bg-slate-950 px-5 pt-14">
+    <View className="flex-1 bg-slate-50 px-5 pt-14">
       <View className="flex-row justify-between items-center mb-6">
         <View>
-          <Text className="text-slate-100 text-2xl font-black">Virtual Labs</Text>
-          <Text className="text-slate-400 text-xs mt-1">Interactive Learning Environments</Text>
+          <Text className="text-slate-900 text-2xl font-black">Virtual Labs</Text>
+          <Text className="text-slate-500 text-xs mt-1 font-medium">Interactive Learning Environments</Text>
         </View>
         <Image
           source={require('../../../../assets/Mathemaniac_Logo_Padded.png')}
-          className="w-20 h-14 rounded-full border border-slate-700/60"
+          className="w-14 h-14 rounded-full border border-slate-200"
           resizeMode="cover"
         />
       </View>
@@ -90,16 +92,16 @@ export const VirtualLabScreen: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         
         <View className="mb-6">
-          <Text className="text-white text-lg font-bold mb-4">Chemistry Labs (Alchemax)</Text>
-          <View className="flex-row flex-wrap justify-between">
+          <Text className="text-slate-900 text-lg font-extrabold mb-4">Alchemax Chemistry Labs</Text>
+          <View className="flex-col">
             {ALCHEMAX_LABS.map(renderLabTile)}
           </View>
         </View>
 
         <View className="mb-2">
-          <View className="h-[1px] bg-slate-800 w-full mb-6" />
-          <Text className="text-slate-300 text-sm font-bold mb-4">Physics Simulations (Graviton)</Text>
-          <View className="flex-row flex-wrap justify-between">
+          <View className="h-[1px] bg-slate-200 w-full mb-6" />
+          <Text className="text-slate-900 text-lg font-extrabold mb-4">Graviton Physics Labs</Text>
+          <View className="flex-col">
             {GRAVITON_LABS.map(renderLabTile)}
           </View>
         </View>
