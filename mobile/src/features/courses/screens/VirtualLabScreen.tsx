@@ -4,144 +4,72 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../../navigation/types';
 
-// Updated lab data structure
-const PRIMARY_LABS = [
-  {
-    id: 'a1',
-    platform: 'Alchemax',
-    subject: 'Chemistry',
-    topic: 'Titration & Solutions',
-    title: 'Acid-Base Titration',
-    description: 'Advanced chemistry simulation for titration.',
-    url: 'https://alchemax-inky.vercel.app/',
-    icon: '🧪',
-    color: 'bg-indigo-500/20',
-    borderColor: 'border-indigo-500/50',
-    textColor: 'text-indigo-400',
-    platformColor: 'text-indigo-300'
-  },
-  {
-    id: 'a2',
-    platform: 'Alchemax',
-    subject: 'Chemistry',
-    topic: 'Molecular Structures',
-    title: 'Molecular Modeling',
-    description: 'Build and analyze 3D molecular structures.',
-    url: 'https://alchemax-inky.vercel.app/',
-    icon: '🧬',
-    color: 'bg-indigo-500/20',
-    borderColor: 'border-indigo-500/50',
-    textColor: 'text-indigo-400',
-    platformColor: 'text-indigo-300'
-  },
-  {
-    id: 'g1',
-    platform: 'Graviton',
-    subject: 'Physics',
-    topic: 'Mechanics',
-    title: 'Kinematics Lab',
-    description: 'Explore motion, velocity, and acceleration.',
-    url: 'https://graviton-gamma.vercel.app/',
-    icon: '⚛️',
-    color: 'bg-fuchsia-500/20',
-    borderColor: 'border-fuchsia-500/50',
-    textColor: 'text-fuchsia-400',
-    platformColor: 'text-fuchsia-300'
-  },
-  {
-    id: 'g2',
-    platform: 'Graviton',
-    subject: 'Physics',
-    topic: 'Electromagnetism',
-    title: 'Circuit Dynamics',
-    description: 'Advanced circuit building and testing.',
-    url: 'https://graviton-gamma.vercel.app/',
-    icon: '⚡',
-    color: 'bg-fuchsia-500/20',
-    borderColor: 'border-fuchsia-500/50',
-    textColor: 'text-fuchsia-400',
-    platformColor: 'text-fuchsia-300'
-  }
+type LabItem = {
+  id: string;
+  title: string;
+  url: string;
+  redirectUrl?: string;
+  gravitonLabTitle?: string;
+  icon: string;
+  color: string;
+  borderColor: string;
+  textColor: string;
+};
+
+const ALCHEMAX_LABS: LabItem[] = [
+  { id: 'a1', title: '3D Viewer', url: 'https://alchemax-inky.vercel.app/', redirectUrl: 'https://alchemax-inky.vercel.app/workspace/viewer', icon: '🧪', color: 'bg-indigo-500/20', borderColor: 'border-indigo-500/50', textColor: 'text-indigo-400' },
+  { id: 'a2', title: 'Reactions', url: 'https://alchemax-inky.vercel.app/', redirectUrl: 'https://alchemax-inky.vercel.app/workspace/reactions', icon: '🔥', color: 'bg-indigo-500/20', borderColor: 'border-indigo-500/50', textColor: 'text-indigo-400' },
+  { id: 'a3', title: 'Calculators', url: 'https://alchemax-inky.vercel.app/', redirectUrl: 'https://alchemax-inky.vercel.app/workspace/calculators', icon: '🧮', color: 'bg-indigo-500/20', borderColor: 'border-indigo-500/50', textColor: 'text-indigo-400' },
+  { id: 'a4', title: 'Periodic Table', url: 'https://alchemax-inky.vercel.app/', redirectUrl: 'https://alchemax-inky.vercel.app/workspace/periodic-table', icon: '📊', color: 'bg-indigo-500/20', borderColor: 'border-indigo-500/50', textColor: 'text-indigo-400' },
+  { id: 'a5', title: 'Compounds', url: 'https://alchemax-inky.vercel.app/', redirectUrl: 'https://alchemax-inky.vercel.app/workspace/compounds', icon: '⚗️', color: 'bg-indigo-500/20', borderColor: 'border-indigo-500/50', textColor: 'text-indigo-400' },
+  { id: 'a6', title: 'Isomers Explorer', url: 'https://alchemax-inky.vercel.app/', redirectUrl: 'https://alchemax-inky.vercel.app/workspace/isomers', icon: '🧬', color: 'bg-indigo-500/20', borderColor: 'border-indigo-500/50', textColor: 'text-indigo-400' },
+  { id: 'a7', title: 'Reaction Mechanisms', url: 'https://alchemax-inky.vercel.app/', redirectUrl: 'https://alchemax-inky.vercel.app/workspace/mechanisms', icon: '⚙️', color: 'bg-indigo-500/20', borderColor: 'border-indigo-500/50', textColor: 'text-indigo-400' },
+  { id: 'a8', title: 'Electronic Effects', url: 'https://alchemax-inky.vercel.app/', redirectUrl: 'https://alchemax-inky.vercel.app/workspace/effects', icon: '⚡', color: 'bg-indigo-500/20', borderColor: 'border-indigo-500/50', textColor: 'text-indigo-400' },
+  { id: 'a9', title: 'Electronegativity Visualiser', url: 'https://alchemax-inky.vercel.app/', redirectUrl: 'https://alchemax-inky.vercel.app/workspace/visualiser', icon: '👁️', color: 'bg-indigo-500/20', borderColor: 'border-indigo-500/50', textColor: 'text-indigo-400' },
+  { id: 'a10', title: 'Bonds & Forces', url: 'https://alchemax-inky.vercel.app/', redirectUrl: 'https://alchemax-inky.vercel.app/workspace/bonds', icon: '🔗', color: 'bg-indigo-500/20', borderColor: 'border-indigo-500/50', textColor: 'text-indigo-400' }
 ];
 
-const SECONDARY_LABS = [
-  {
-    id: 'p1',
-    platform: 'PhET',
-    title: 'Forces and Motion',
-    description: 'Interactive simulations for kinematics and dynamics.',
-    url: 'https://phet.colorado.edu/sims/html/forces-and-motion-basics/latest/forces-and-motion-basics_en.html',
-    icon: '🚀',
-    color: 'bg-blue-500/10',
-    borderColor: 'border-blue-500/20',
-    textColor: 'text-blue-400'
-  },
-  {
-    id: 'p2',
-    platform: 'PhET',
-    title: 'Circuit Construction',
-    description: 'Build and test electrical circuits safely.',
-    url: 'https://phet.colorado.edu/sims/html/circuit-construction-kit-dc/latest/circuit-construction-kit-dc_en.html',
-    icon: '🔌',
-    color: 'bg-amber-500/10',
-    borderColor: 'border-amber-500/20',
-    textColor: 'text-amber-400'
-  },
-  {
-    id: 'o1',
-    platform: 'Other',
-    title: 'Biology Microscopy',
-    description: 'Explore cells under a virtual microscope.',
-    url: 'https://www.ncbionetwork.org/iet/microscope/',
-    icon: '🔬',
-    color: 'bg-emerald-500/10',
-    borderColor: 'border-emerald-500/20',
-    textColor: 'text-emerald-400'
-  }
+const GRAVITON_LABS: LabItem[] = [
+  { id: 'g1', title: 'Free Fall & Air Resistance', gravitonLabTitle: 'Free Fall & Air Resistance', url: 'https://graviton-gamma.vercel.app/', icon: '🪂', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g2', title: 'Universal Motion Simulator', gravitonLabTitle: 'Universal Motion Simulator', url: 'https://graviton-gamma.vercel.app/', icon: '🚀', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g3', title: 'Friction on Inclined Plane', gravitonLabTitle: 'Friction on Inclined Plane', url: 'https://graviton-gamma.vercel.app/', icon: '📐', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g4', title: 'Pendulum Motion', gravitonLabTitle: 'Pendulum Motion', url: 'https://graviton-gamma.vercel.app/', icon: '⏱️', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g5', title: 'Circular Motion', gravitonLabTitle: 'Circular Motion', url: 'https://graviton-gamma.vercel.app/', icon: '🔄', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g6', title: 'Spring-Mass Oscillator', gravitonLabTitle: 'Spring-Mass Oscillator', url: 'https://graviton-gamma.vercel.app/', icon: '〰️', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g7', title: 'Projectile Motion', gravitonLabTitle: 'Projectile Motion', url: 'https://graviton-gamma.vercel.app/', icon: '☄️', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g8', title: 'Collisions & Momentum', gravitonLabTitle: 'Collisions & Momentum', url: 'https://graviton-gamma.vercel.app/', icon: '💥', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g9', title: 'Ray Optics & Lenses', gravitonLabTitle: 'Ray Optics & Lenses', url: 'https://graviton-gamma.vercel.app/', icon: '🔍', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g10', title: 'Lateral Inversion', gravitonLabTitle: 'Lateral Inversion', url: 'https://graviton-gamma.vercel.app/', icon: '🪞', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g11', title: 'Critical Angle & TIR', gravitonLabTitle: 'Critical Angle & TIR', url: 'https://graviton-gamma.vercel.app/', icon: '💎', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g12', title: 'Wave Interference', gravitonLabTitle: 'Wave Interference', url: 'https://graviton-gamma.vercel.app/', icon: '🌊', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g13', title: 'AC Circuit & Resonance', gravitonLabTitle: 'AC Circuit & Resonance', url: 'https://graviton-gamma.vercel.app/', icon: '⚡', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g14', title: 'Magnetic Field & Lorentz Force', gravitonLabTitle: 'Magnetic Field & Lorentz Force', url: 'https://graviton-gamma.vercel.app/', icon: '🧲', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g15', title: 'Gas Laws & Thermodynamics', gravitonLabTitle: 'Gas Laws & Thermodynamics', url: 'https://graviton-gamma.vercel.app/', icon: '🌡️', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g16', title: 'Photoelectric Effect', gravitonLabTitle: 'Photoelectric Effect', url: 'https://graviton-gamma.vercel.app/', icon: '☀️', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g17', title: 'Alpha Radiation Decay', gravitonLabTitle: 'Alpha Radiation Decay', url: 'https://graviton-gamma.vercel.app/', icon: 'α', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g18', title: 'Beta Radiation Decay', gravitonLabTitle: 'Beta Radiation Decay', url: 'https://graviton-gamma.vercel.app/', icon: 'β', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' },
+  { id: 'g19', title: 'Gamma Radiation', gravitonLabTitle: 'Gamma Radiation', url: 'https://graviton-gamma.vercel.app/', icon: 'γ', color: 'bg-fuchsia-500/20', borderColor: 'border-fuchsia-500/50', textColor: 'text-fuchsia-400' }
 ];
 
 export const VirtualLabScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
 
-  const renderPrimaryLab = (lab: typeof PRIMARY_LABS[0]) => (
-    <TouchableOpacity
-      key={lab.id}
-      className={`w-full rounded-3xl p-5 mb-4 border ${lab.borderColor} ${lab.color} active:opacity-70`}
-      onPress={() => navigation.navigate('LabWebView', { url: lab.url, title: lab.title })}
-    >
-      <View className="flex-row items-center justify-between mb-3">
-        <View className="flex-row items-center">
-          <View className="w-10 h-10 rounded-full bg-slate-900/50 justify-center items-center mr-3">
-            <Text className="text-xl">{lab.icon}</Text>
-          </View>
-          <View>
-            <Text className={`text-[10px] font-bold uppercase tracking-wider ${lab.platformColor}`}>
-              Powered by {lab.platform}
-            </Text>
-            <Text className="text-slate-300 text-[10px]">{lab.subject} • {lab.topic}</Text>
-          </View>
-        </View>
-        <View className="bg-slate-900/60 px-3 py-1.5 rounded-full">
-          <Text className="text-white text-xs font-bold">Open Lab</Text>
-        </View>
-      </View>
-      
-      <Text className="text-slate-100 font-black text-lg mb-1">{lab.title}</Text>
-      <Text className={`text-xs font-medium ${lab.textColor}`}>{lab.description}</Text>
-    </TouchableOpacity>
-  );
-
-  const renderSecondaryLab = (lab: typeof SECONDARY_LABS[0]) => (
+  const renderLabTile = (lab: LabItem) => (
     <TouchableOpacity
       key={lab.id}
       className={`w-[48%] rounded-2xl p-4 mb-4 border ${lab.borderColor} ${lab.color} active:opacity-70`}
-      onPress={() => navigation.navigate('LabWebView', { url: lab.url, title: lab.title })}
+      onPress={() => navigation.navigate('LabWebView', { 
+        url: lab.url, 
+        title: lab.title,
+        redirectUrl: lab.redirectUrl,
+        gravitonLabTitle: lab.gravitonLabTitle
+      })}
     >
       <View className="w-10 h-10 rounded-full bg-slate-900/30 justify-center items-center mb-3">
         <Text className="text-xl">{lab.icon}</Text>
       </View>
       <Text className="text-slate-100 font-bold text-sm mb-1" numberOfLines={1}>{lab.title}</Text>
-      <Text className={`text-[10px] font-medium ${lab.textColor}`} numberOfLines={2}>{lab.description}</Text>
+      <Text className={`text-[10px] font-medium ${lab.textColor}`} numberOfLines={2}>Interactive Simulation</Text>
     </TouchableOpacity>
   );
 
@@ -162,15 +90,17 @@ export const VirtualLabScreen: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         
         <View className="mb-6">
-          <Text className="text-white text-lg font-bold mb-4">Featured Labs</Text>
-          {PRIMARY_LABS.map(renderPrimaryLab)}
+          <Text className="text-white text-lg font-bold mb-4">Chemistry Labs (Alchemax)</Text>
+          <View className="flex-row flex-wrap justify-between">
+            {ALCHEMAX_LABS.map(renderLabTile)}
+          </View>
         </View>
 
         <View className="mb-2">
           <View className="h-[1px] bg-slate-800 w-full mb-6" />
-          <Text className="text-slate-300 text-sm font-bold mb-4">Additional Simulations</Text>
+          <Text className="text-slate-300 text-sm font-bold mb-4">Physics Simulations (Graviton)</Text>
           <View className="flex-row flex-wrap justify-between">
-            {SECONDARY_LABS.map(renderSecondaryLab)}
+            {GRAVITON_LABS.map(renderLabTile)}
           </View>
         </View>
 
@@ -178,4 +108,3 @@ export const VirtualLabScreen: React.FC = () => {
     </View>
   );
 };
-

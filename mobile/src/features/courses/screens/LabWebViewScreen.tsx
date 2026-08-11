@@ -13,15 +13,20 @@ type LabWebViewRouteProp = {
   params: {
     url: string;
     title: string;
+    redirectUrl?: string;
+    gravitonLabTitle?: string;
   };
 };
 
 export const LabWebViewScreen: React.FC = () => {
   const route = useRoute<LabWebViewRouteProp>();
   const navigation = useNavigation<StackNavigationProp<RootStackParamList>>();
-  const { url, title } = route.params;
+  const { url, title, redirectUrl, gravitonLabTitle } = route.params;
   const [loading, setLoading] = useState(true);
   const [isPortrait, setIsPortrait] = useState(true);
+  const [currentUrl, setCurrentUrl] = useState(url);
+  const [hasRedirected, setHasRedirected] = useState(false);
+  const webViewRef = useRef<WebView>(null);
 
   const isNativeLab = url.includes('alchemax') || url.includes('graviton');
 
@@ -152,9 +157,51 @@ export const LabWebViewScreen: React.FC = () => {
         )}
 
         <WebView
-          source={{ uri: url }}
+          ref={webViewRef}
+          source={{ uri: currentUrl }}
           className="flex-1 bg-transparent"
-          onLoadEnd={() => setLoading(false)}
+          onLoadEnd={(syntheticEvent) => {
+            setLoading(false);
+            const loadedUrl = syntheticEvent.nativeEvent.url;
+            
+            if (!hasRedirected) {
+              if (redirectUrl && (loadedUrl === url || loadedUrl === url + '/')) {
+                setTimeout(() => {
+                  setCurrentUrl(redirectUrl);
+                  setHasRedirected(true);
+                }, 1500);
+              } else if (gravitonLabTitle && (loadedUrl === url || loadedUrl === url + '/')) {
+                setTimeout(() => {
+                  setCurrentUrl(url.replace(/\/$/, '') + '/workspace');
+                  setHasRedirected(true);
+                }, 1500);
+              }
+            } else if (hasRedirected && gravitonLabTitle && loadedUrl.includes('/workspace')) {
+              // Inject JS to select the lab in Graviton
+              const js = `
+                setTimeout(function() {
+                  let sidebar = document.querySelector('.overflow-y-auto');
+                  if (!sidebar) {
+                    const toggleBtn = document.querySelector('button[aria-label="Toggle Sidebar"]');
+                    if (toggleBtn) toggleBtn.click();
+                  }
+                  
+                  setTimeout(() => {
+                    const buttons = Array.from(document.querySelectorAll('button'));
+                    const targetBtn = buttons.find(b => b.textContent.includes("${gravitonLabTitle}"));
+                    if (targetBtn) targetBtn.click();
+                    
+                    setTimeout(() => {
+                      const toggleBtn = document.querySelector('button[aria-label="Toggle Sidebar"]');
+                      if (toggleBtn) toggleBtn.click();
+                    }, 500);
+                  }, 300);
+                }, 1000);
+                true;
+              `;
+              webViewRef.current?.injectJavaScript(js);
+            }
+          }}
           allowsInlineMediaPlayback={true}
           mediaPlaybackRequiresUserAction={false}
           javaScriptEnabled={true}

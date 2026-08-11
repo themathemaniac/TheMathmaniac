@@ -28,8 +28,7 @@ export type RootStackParamList = {
   TestResult: { resultData: any };
   FeePayment: undefined;
   AllAnnouncements: undefined;
-  LabWebView: { url: string; title: string };
-
+  LabWebView: { url: string; title: string; redirectUrl?: string; gravitonLabTitle?: string };
   SuperuserReports: undefined;
   TeacherCourseDetails: { courseId: string; courseTitle: string; };
   TeacherPayments: undefined;
