@@ -284,7 +284,7 @@ export const SuperuserAdminManagementTab: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Assign Branch Error:', error);
-      Alert.alert('Error', error.response?.data?.error || 'Failed to assign branch.');
+      Alert.alert('Error', error.response?.data?.error || error.message || 'Failed to assign branch.');
     } finally {
       setIsAssigningBranch(false);
     }

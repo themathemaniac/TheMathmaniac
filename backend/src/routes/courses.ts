@@ -54,9 +54,10 @@ router.get('/', async (req, res) => {
     }
 
     if (search) {
+      const searchTerms = String(search).split(' ').join(' | ');
       whereClause.OR = [
-        { title: { contains: String(search), mode: 'insensitive' } },
-        { description: { contains: String(search), mode: 'insensitive' } },
+        { title: { search: searchTerms } },
+        { description: { search: searchTerms } },
       ];
     }
 

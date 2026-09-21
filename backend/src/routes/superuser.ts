@@ -251,22 +251,28 @@ router.put('/admins/:id/branch', authenticateJWT, requireSuperuser, async (req: 
     // Auto-enroll in all batches of assigned branches as Administrative Help,
     // and remove from any batches in unassigned branches.
     const allCourses = await prisma.course.findMany({ select: { id: true, branch: true } });
-    for (const course of allCourses) {
-      const isCourseInAssignedBranch = assignedBranches.includes((course.branch || '').trim().toLowerCase());
-      if (isCourseInAssignedBranch) {
-        const existing = await prisma.courseTeacher.findUnique({
-          where: { courseId_userId: { courseId: course.id, userId: targetUserId } }
-        });
-        if (!existing) {
-          await prisma.courseTeacher.create({
-            data: { courseId: course.id, userId: targetUserId }
-          });
-        }
-      } else {
-        await prisma.courseTeacher.deleteMany({
-          where: { courseId: course.id, userId: targetUserId }
-        });
-      }
+    const courseIdsToEnroll = allCourses
+      .filter(c => assignedBranches.includes((c.branch || '').trim().toLowerCase()))
+      .map(c => c.id);
+
+    const courseIdsToUnenroll = allCourses
+      .filter(c => !assignedBranches.includes((c.branch || '').trim().toLowerCase()))
+      .map(c => c.id);
+
+    // Delete unenrolled in one query
+    if (courseIdsToUnenroll.length > 0) {
+      await prisma.courseTeacher.deleteMany({
+        where: { userId: targetUserId, courseId: { in: courseIdsToUnenroll } }
+      });
+    }
+
+    // Upsert enrolled in one query (using createMany with skipDuplicates)
+    if (courseIdsToEnroll.length > 0) {
+      const dataToInsert = courseIdsToEnroll.map(id => ({ courseId: id, userId: targetUserId }));
+      await prisma.courseTeacher.createMany({
+        data: dataToInsert,
+        skipDuplicates: true
+      });
     }
 
     // Audit Log

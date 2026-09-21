@@ -4,7 +4,8 @@ datasource db {
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
 }
 
 model User {
@@ -40,6 +41,8 @@ model User {
   updatedAt           DateTime             @updatedAt
 
   @@index([email])
+  @@index([phoneNumber])
+  @@index([role])
 }
 
 model CourseCategory {
@@ -75,6 +78,8 @@ model Course {
   feePayments      FeePayment[]
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
+
+  @@index([title])
 }
 
 model BundleItem {
