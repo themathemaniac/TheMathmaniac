@@ -124,7 +124,8 @@ router.post('/admins', authenticateJWT, requireSuperuser, async (req: Authentica
 
     // Check if user already exists in Firestore/Prisma
     const existing = await findUserByPhoneInFirestore(formattedPhone);
-    if (existing) {
+    const existingPrisma = await prisma.user.findFirst({ where: { phoneNumber: formattedPhone } });
+    if (existing || existingPrisma) {
       return res.status(400).json({ success: false, error: 'User with this phone number already exists.' });
     }
 

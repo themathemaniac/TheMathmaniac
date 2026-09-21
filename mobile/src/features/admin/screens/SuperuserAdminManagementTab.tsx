@@ -237,7 +237,7 @@ export const SuperuserAdminManagementTab: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Create Admin Error:', error);
-      Alert.alert('Error', error.response?.data?.error || 'Failed to create admin.');
+      Alert.alert('Error', error.response?.data?.error || error.message || 'Failed to create admin.');
     } finally {
       setIsSubmittingAdmin(false);
     }
