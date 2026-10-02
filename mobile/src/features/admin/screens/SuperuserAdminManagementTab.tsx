@@ -269,6 +269,37 @@ export const SuperuserAdminManagementTab: React.FC = () => {
     );
   };
 
+  const handleResetAdmin = (admin: any) => {
+    Alert.alert(
+      'Reset Admin Credentials',
+      `Are you sure you want to reset credentials for ${admin.name}?\n\nThis will reset their password to default (Password@123) and regenerate their recovery passphrase immediately.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset Credentials',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const res = await apiClient.post(`/superuser/admins/${admin.id}/recovery`);
+              if (res.data.success) {
+                setGeneratedCreds({
+                  name: admin.name,
+                  phone: res.data.data.phone || admin.phoneNumber,
+                  tempPass: res.data.data.tempPass || res.data.data.temporaryPassword,
+                  passphrase: res.data.data.passphrase || res.data.data.recoveryPassphrase,
+                });
+                setShowCredsModal(true);
+              }
+            } catch (error: any) {
+              console.error('Reset Admin Error:', error);
+              Alert.alert('Error', error.response?.data?.error || 'Failed to reset admin credentials.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleAssignBranch = async () => {
     if (!selectedAdminForBranch) return;
 
@@ -477,12 +508,20 @@ export const SuperuserAdminManagementTab: React.FC = () => {
                 <Text className="text-[#2D8C82] font-black text-[10px] uppercase">Schedule</Text>
               </TouchableOpacity>
               {isSuperuser && (
-                <TouchableOpacity
-                  onPress={() => handleDeleteAdmin(admin)}
-                  className="bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl"
-                >
-                  <Text className="text-red-400 font-extrabold text-[10px] uppercase">Remove</Text>
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity
+                    onPress={() => handleResetAdmin(admin)}
+                    className="bg-amber-500/10 border border-amber-500/20 px-3 py-2 rounded-xl"
+                  >
+                    <Text className="text-amber-400 font-extrabold text-[10px] uppercase">Reset</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleDeleteAdmin(admin)}
+                    className="bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-xl"
+                  >
+                    <Text className="text-red-400 font-extrabold text-[10px] uppercase">Remove</Text>
+                  </TouchableOpacity>
+                </>
               )}
             </View>
           </View>

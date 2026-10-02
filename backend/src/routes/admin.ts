@@ -143,13 +143,13 @@ router.post('/users/:id/recovery', authenticateJWT, requireAdmin, async (req: Au
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
 
-    // Get phone number from Firestore
-    let formattedPhone = '';
+    // Get phone number from Firestore or Prisma
+    let formattedPhone = targetUser.phoneNumber || '';
     if (db) {
-      const collName = targetUser.role === 'STUDENT' ? 'students' : 'teachers';
+      const collName = targetUser.role === 'STUDENT' ? 'students' : (targetUser.role === 'TEACHER' ? 'teachers' : 'admin');
       const doc = await db.collection(collName).doc(targetUserId).get();
-      if (doc.exists) {
-        formattedPhone = doc.data()!.phoneNumber || '';
+      if (doc.exists && doc.data()!.phoneNumber) {
+        formattedPhone = doc.data()!.phoneNumber;
       }
     }
 

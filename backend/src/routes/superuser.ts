@@ -224,6 +224,77 @@ router.delete('/admins/:id', authenticateJWT, requireSuperuser, async (req: Auth
   }
 });
 
+// 5.1 Reset Branch Admin Credentials & Recovery Passphrase (Superuser only)
+router.post('/admins/:id/recovery', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const targetUserId = req.params.id;
+    const targetUser = await prisma.user.findUnique({ where: { id: targetUserId } });
+
+    if (!targetUser) {
+      return res.status(404).json({ success: false, error: 'Admin not found.' });
+    }
+
+    if (targetUser.role !== 'ADMIN') {
+      return res.status(400).json({ success: false, error: 'This user is not an Admin.' });
+    }
+
+    let formattedPhone = targetUser.phoneNumber || '';
+    if (db) {
+      const doc = await db.collection('admin').doc(targetUserId).get();
+      if (doc.exists && doc.data()!.phoneNumber) {
+        formattedPhone = doc.data()!.phoneNumber;
+      }
+    }
+
+    if (!formattedPhone) {
+      return res.status(400).json({ success: false, error: 'Admin phone number not found.' });
+    }
+
+    const plaintextTempPassword = 'Password@123';
+    const plaintextPassphrase = generatePassphrase();
+
+    const passwordHash = await bcrypt.hash(plaintextTempPassword, 10);
+    const passphraseHash = await bcrypt.hash(plaintextPassphrase, 10);
+
+    const updatedUser = await prisma.user.update({
+      where: { id: targetUserId },
+      data: {
+        firstLogin: true
+      }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'ACCOUNT_RECOVERY',
+        userId: targetUserId,
+        actorId: req.user!.id,
+        details: `Superuser reset credentials for admin ${targetUser.name}. Password reset to default and new passphrase generated.`,
+      },
+    });
+
+    await syncUserToFirestore(updatedUser, {
+      phoneNumber: formattedPhone,
+      passwordHash,
+      passphraseHash
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        tempPass: plaintextTempPassword,
+        passphrase: plaintextPassphrase,
+        temporaryPassword: plaintextTempPassword,
+        recoveryPassphrase: plaintextPassphrase,
+        phone: formattedPhone,
+        name: targetUser.name
+      }
+    });
+  } catch (error: any) {
+    console.error('[Superuser Admin Recovery Error]', error);
+    return res.status(500).json({ success: false, error: error.message || 'Failed to reset admin credentials.' });
+  }
+});
+
 // 5.5 Assign Permanent Branch(es) to Admin (Superuser only)
 router.put('/admins/:id/branch', authenticateJWT, requireSuperuser, async (req: AuthenticatedRequest, res: Response) => {
   try {
