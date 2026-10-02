@@ -36,22 +36,6 @@ export const LoginScreen: React.FC<Props> = ({ navigation }) => {
     if (success) {
       const currentUser = useAuthStore.getState().user;
       if (currentUser) {
-        if (role === 'STUDENT' && currentUser.role !== 'STUDENT') {
-          Alert.alert('Access Denied', 'You cannot log into the Student Portal with a Teacher/Admin account.');
-          await logout();
-          return;
-        }
-        if (role === 'TEACHER' && currentUser.role !== 'TEACHER') {
-          Alert.alert('Access Denied', 'You cannot log into the Teacher Portal with this account.');
-          await logout();
-          return;
-        }
-        if (role === 'ADMIN' && currentUser.role !== 'ADMIN') {
-          Alert.alert('Access Denied', 'You cannot log into the Admin Portal with this account.');
-          await logout();
-          return;
-        }
-        
         // Redirect to Mandatory Change Password if first login
         if (currentUser.firstLogin) {
           navigation.replace('MandatoryChangePassword');
